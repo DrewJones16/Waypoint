@@ -70,6 +70,18 @@
     margin-bottom: 8px;
   }
 
+  .section-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 22px 0;
+  }
+  .section-caption {
+    font-size: 12px;
+    color: #555B70;
+    line-height: 1.5;
+    margin: -2px 0 12px;
+  }
+
   /* Buttons */
   .btn {
     display: block;
@@ -2629,11 +2641,17 @@ function screenBrief() {
         </div>
       </div>
 
+      <div class="section-divider"></div>
+
       <p class="label" style="margin-bottom:2px;">Your route</p>
+      <p class="section-caption">Each stop is a topic from your courses. Green and checked means it's covered — the rest fills in as you take more classes.</p>
       ${journeyPathSvg()}
 
       ${history.length > 1 ? sparklineHTML(history) : ''}
       ${milestone}
+
+      <div class="section-divider"></div>
+
       ${bodyCard}
 
       <button class="btn btn-primary" onclick="startSession()">Keep building the edge →</button>
