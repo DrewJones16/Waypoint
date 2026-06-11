@@ -46,6 +46,42 @@
     transition: width 0.6s ease;
   }
 
+  /* Bottom tab bar */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    display: flex;
+    background: rgba(13,15,20,0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    z-index: 30;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 11px 0 9px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555B70;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    transition: color 0.15s;
+  }
+  .tab-item.active { color: #1D9E75; }
+  .tab-item:hover { color: #8A90A8; }
+  .tab-item.active:hover { color: #1D9E75; }
+  #app.has-tabbar .screen { padding-bottom: 92px; }
+
   /* Screen container */
   .screen {
     flex: 1;
@@ -669,6 +705,30 @@ const ICONS = {
   cars: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5h7a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H2z"/><path d="M22 4.5h-7a3 3 0 0 0-3 3v12a2.5 2.5 0 0 1 2.5-2.5H22z"/></svg>`,
 };
 function sectionIcon(mcat) { return ICONS[mcat] || ''; }
+
+// Bottom tab bar — shown on the main "home base" screens for quick navigation
+const TAB_ICONS = {
+  home:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>`,
+  route: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>`,
+  log:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`,
+};
+
+const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklogdone', 'complete'];
+
+function tabBarHTML() {
+  const tabs = [
+    { id: 'brief',   label: 'Home',  icon: TAB_ICONS.home,  match: ['brief', 'complete'] },
+    { id: 'reveal',  label: 'Route', icon: TAB_ICONS.route, match: ['reveal'] },
+    { id: 'quicklog',label: 'Log',   icon: TAB_ICONS.log,   match: ['quicklog', 'quicklogdone'] },
+  ];
+  return `<div class="tab-bar">
+    ${tabs.map(t => `
+      <button class="tab-item ${t.match.includes(S.screen) ? 'active' : ''}" onclick="go('${t.id}')">
+        ${t.icon}
+        <span>${t.label}</span>
+      </button>`).join('')}
+  </div>`;
+}
 
 const QUESTIONS = [
   // ── Biology I ───────────────────────────────────────────────────────────────
@@ -2782,8 +2842,6 @@ function screenBrief() {
       ${bodyCard}
 
       <button class="btn btn-primary" onclick="startSession()">Keep building the edge →</button>
-      <button class="btn btn-ghost" onclick="go('quicklog')">📍 Just learned this in lecture?</button>
-      <button class="btn btn-ghost" onclick="go('reveal')">See my full route</button>
     </div>`;
 }
 
@@ -3135,8 +3193,6 @@ function screenComplete() {
 
       <button class="btn btn-primary" id="reminder-btn" onclick="setReminder(this)">Set a daily reminder</button>
       <button class="btn btn-ghost" onclick="shareCoverageCard()">📤 Share my progress</button>
-      <button class="btn btn-ghost" onclick="go('brief')">Done for today</button>
-      <button class="btn btn-ghost" onclick="go('reveal')">See my full route</button>
     </div>`;
 }
 
@@ -3150,7 +3206,6 @@ function screenQuickLog() {
         <h2 style="margin-bottom:5px;">No courses selected yet</h2>
         <p style="font-size:14px;margin-bottom:20px;">Add your courses first so we know what topics to pull questions from.</p>
         <button class="btn btn-primary" onclick="go('courses')">Add my courses</button>
-        <button class="btn btn-ghost" onclick="go('brief')">← Back</button>
       </div>`;
   }
 
@@ -3168,8 +3223,6 @@ function screenQuickLog() {
             <span class="tp-arrow">→</span>
           </button>`).join('')}
       </div>
-
-      <button class="btn btn-ghost" onclick="go('brief')">← Back</button>
     </div>`;
 }
 
@@ -3470,6 +3523,15 @@ function render() {
     case 'quicklog': html += screenQuickLog(); break;
     case 'quicklogdone': html += screenQuickLogDone(); break;
   }
+
+  const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
+  if (showTabBar) {
+    html += tabBarHTML();
+    el.classList.add('has-tabbar');
+  } else {
+    el.classList.remove('has-tabbar');
+  }
+
   el.innerHTML = html;
 
   // Post-render injections
