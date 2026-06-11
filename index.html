@@ -149,6 +149,40 @@
   }
   .btn-ghost:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.18); color: #8A90A8; }
 
+  /* Prominent share CTA — teal accent, lighter-weight than primary */
+  .btn-share {
+    background: rgba(29,158,117,0.1);
+    color: #1D9E75;
+    border: 1px solid rgba(29,158,117,0.3);
+    font-weight: 600;
+    margin-top: 10px;
+  }
+  .btn-share:hover { background: rgba(29,158,117,0.16); border-color: rgba(29,158,117,0.45); }
+  .btn-share:disabled { opacity: 0.55; cursor: default; }
+
+  /* Toast (brief confirmation messages) */
+  .wp-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(16px);
+    background: #1A1E2E;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #F0F2F8;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 12px 20px;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 1000;
+    max-width: 86%;
+    text-align: center;
+    pointer-events: none;
+  }
+  .wp-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   /* Year selection */
   .year-btn {
     display: flex;
@@ -2738,7 +2772,7 @@ function milestoneCopy() {
   return `<div class="cov-milestone-card">
     <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;">🎉 ${m.title}</div>
     <p style="font-size:14px;color:#B8E8D4;line-height:1.5;margin-bottom:10px;">${m.text}</p>
-    <button class="btn btn-ghost" style="margin-top:0;font-size:13px;padding:10px 16px;" onclick="shareCoverageCard('coverage')">📤 Share this</button>
+    <button class="btn btn-share" style="margin-top:0;font-size:13px;padding:10px 16px;" onclick="shareCoverageCard('coverage', this)">📤 Share this</button>
   </div>`;
 }
 
@@ -3410,7 +3444,7 @@ function screenReveal() {
         </div>`}
 
       <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} onclick="startSession()">Practice from what you know →</button>
-      ${cov > 0 ? `<button class="btn btn-ghost" onclick="shareCoverageCard('coverage')">📤 Share my progress</button>` : ''}
+      ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)">📤 Share my progress</button>` : ''}
       <button class="btn btn-ghost" onclick="go('courses')">← Update my courses</button>
     </div>`;
 }
@@ -3578,8 +3612,8 @@ function screenComplete() {
       ${retention}
 
       <button class="btn btn-primary" id="reminder-btn" onclick="setReminder(this)">Set a daily reminder</button>
-      ${S.streak >= 7 ? `<button class="btn btn-ghost" onclick="shareCoverageCard('streak')">🔥 Share my streak</button>` : ''}
-      <button class="btn btn-ghost" onclick="shareCoverageCard('coverage')">📤 Share my progress</button>
+      ${S.streak >= 7 ? `<button class="btn btn-share" onclick="shareCoverageCard('streak', this)">🔥 Share my streak</button>` : ''}
+      <button class="btn btn-share" onclick="shareCoverageCard('coverage', this)">📤 Share my progress</button>
     </div>`;
 }
 
@@ -3767,12 +3801,22 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-async function shareCoverageCard(variant = 'coverage') {
+async function shareCoverageCard(variant = 'coverage', btn) {
   const cov   = coverage(S.courses);
   const myTopics    = TOPICS.filter(t => t.course && S.courses.has(t.course));
   const totalTopics = TOPICS.filter(t => t.course).length;
   const streak = S.streak;
   const isStreak = variant === 'streak' && streak >= 7;
+
+  // Sharing should feel instant — show a loading state on the button right away
+  // rather than leaving it looking like a dead click while the card renders.
+  let btnLabel;
+  if (btn) {
+    btnLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Preparing…';
+  }
+  const restoreBtn = () => { if (btn) { btn.disabled = false; btn.textContent = btnLabel; } };
 
   const W = 1080, H = 1350;
   const canvas = document.createElement('canvas');
@@ -3892,22 +3936,37 @@ async function shareCoverageCard(variant = 'coverage') {
   ctx.fillText('Track your own MCAT coverage → drewjones16.github.io/Waypoint', W / 2, H - 60);
 
   canvas.toBlob(async (blob) => {
-    if (!blob) return;
+    if (!blob) { restoreBtn(); return; }
     const filename = isStreak ? 'waypoint-streak.png' : 'waypoint-progress.png';
     const file = new File([blob], filename, { type: 'image/png' });
     const shareText = isStreak
       ? `I'm on a ${streak}-day Waypoint streak — tracking my MCAT coverage.`
       : `I've covered ${cov}% of the MCAT — tracked with Waypoint.`;
+    const shareUrl = 'https://drewjones16.github.io/Waypoint';
+
+    // 1) Best case: hand the image straight to the OS share sheet (iOS/Android, some desktop browsers)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({
-          files: [file],
-          title: 'My Waypoint progress',
-          text: shareText
-        });
+        await navigator.share({ files: [file], title: 'My Waypoint progress', text: shareText });
+        restoreBtn();
         return;
-      } catch (e) { /* user cancelled — fall back to download */ }
+      } catch (e) {
+        if (e.name === 'AbortError') { restoreBtn(); return; } // user backed out of the sheet — done, no fallback
+      }
     }
+
+    // 2) Most desktop browsers support the share sheet for text+link even without file support
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'My Waypoint progress', text: shareText, url: shareUrl });
+        restoreBtn();
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') { restoreBtn(); return; }
+      }
+    }
+
+    // 3) Last resort (Web Share API unsupported): save the image and let them know where it went
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -3916,7 +3975,25 @@ async function shareCoverageCard(variant = 'coverage') {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    showToast('Image saved — attach it to your post!');
+    restoreBtn();
   }, 'image/png');
+}
+
+// Lightweight toast notification — no dependencies, fades in/out on its own.
+function showToast(msg) {
+  const existing = document.getElementById('wp-toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.id = 'wp-toast';
+  t.className = 'wp-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  }, 2600);
 }
 
 function wrapCanvasText(ctx, text, maxWidth) {
