@@ -2285,6 +2285,364 @@ const QUESTIONS = [
     ans:1,
     exp:'The passage explicitly sets up two opposing forces: Nagel\'s principled argument (equal culpability = equal blame, regardless of outcomes) and the "persistent intuition" that outcomes are morally relevant. The tension is between principled consistency and resilient human moral intuition. Option A (legal vs. moral) — both drivers are being judged morally in the passage, not legally. Option C (consequentialism vs. deontology) is related to the issue but not the specific tension the passage frames. Option D (individual vs. society) doesn\'t appear in the passage.'
   },
+  // ── Biology I — Molecular Biology additional batch ──────────────────────────
+  {
+    id:'b26', topic:'mol-bio',
+    stem:'The Meselson-Stahl experiment demonstrated that DNA replication is semiconservative. After one round of replication in a cell where both original strands were heavy (¹⁵N), each daughter DNA molecule contains:',
+    opts:['Two heavy (¹⁵N) strands',
+          'Two light (¹⁴N) strands',
+          'One heavy and one light strand',
+          'A random mixture of heavy and light nucleotides within each strand'],
+    ans:2,
+    exp:'Semiconservative replication means each parental strand serves as a template for a new complementary strand. After one round, every daughter molecule has one original (heavy, ¹⁵N) strand and one newly synthesized (light, ¹⁴N) strand — a hybrid. This contrasts with conservative replication (would give one fully heavy + one fully light molecule) and dispersive replication (would give mixed strands). Meselson and Stahl\'s density-gradient centrifugation results matched the semiconservative model, ruling out the other two.'
+  },
+  {
+    id:'b27', topic:'mol-bio',
+    stem:'At the replication fork, the lagging strand is synthesized discontinuously as Okazaki fragments because:',
+    opts:['DNA polymerase can only synthesize in the 3′→5′ direction',
+          'DNA polymerase can only synthesize in the 5′→3′ direction, and this strand runs antiparallel to the fork\'s opening direction',
+          'The lagging strand template has no primer binding sites',
+          'Helicase only unwinds DNA on one side of the fork'],
+    ans:1,
+    exp:'DNA polymerase synthesizes only 5′→3′. The leading strand template is oriented so synthesis proceeds continuously toward the fork. The lagging strand template runs in the opposite direction, so polymerase must work away from the fork in short bursts (Okazaki fragments), each requiring its own RNA primer (laid down by primase) before DNA polymerase extends it. Ligase later joins these fragments into one continuous strand.'
+  },
+  {
+    id:'b28', topic:'mol-bio',
+    stem:'The genetic code is described as "degenerate" because:',
+    opts:['Some codons do not code for any amino acid',
+          'Multiple codons can specify the same amino acid',
+          'Each amino acid has only one possible codon',
+          'The code differs between every species'],
+    ans:1,
+    exp:'With 64 possible codons but only 20 amino acids, most amino acids are specified by more than one codon (e.g., leucine has 6). This redundancy — degeneracy — mostly occurs at the third (wobble) position of the codon, where non-standard base pairing with the tRNA anticodon is tolerated. This buffers the genetic code against many point mutations: a change in the third position often still codes for the same amino acid (a "silent" mutation). The three stop codons (UAA, UAG, UGA) code for no amino acid, but that\'s a separate property from degeneracy itself.'
+  },
+  {
+    id:'b29', topic:'mol-bio',
+    stem:'A point mutation changes the start codon AUG to ACG. The most likely consequence is:',
+    opts:['A single amino acid substitution near the N-terminus only',
+          'Translation fails to initiate at this site, since ribosomes cannot recognize ACG as a start codon',
+          'The reading frame shifts for the rest of the mRNA',
+          'The mRNA is degraded immediately upon transcription'],
+    ans:1,
+    exp:'AUG (coding for Met) is the near-universal start codon — it\'s recognized by the initiator tRNA and small ribosomal subunit during translation initiation. Changing it to ACG (Thr) typically prevents the ribosome from assembling at that site, so translation does not begin (or begins inefficiently at a downstream alternative AUG, if present). This is a point mutation, not an insertion/deletion, so it does not shift the reading frame. Compare to mutations in stop codons (e.g., UAA → UAU), which cause read-through and an abnormally long protein.'
+  },
+  {
+    id:'b30', topic:'mol-bio',
+    stem:'In the lac operon, when lactose is present and glucose is absent, what happens?',
+    opts:['The repressor binds the operator, blocking transcription',
+          'Lactose (via allolactose) binds the repressor, causing it to release the operator and allow transcription',
+          'RNA polymerase is permanently blocked from binding the promoter',
+          'The operon is transcribed only when both lactose and glucose are absent'],
+    ans:1,
+    exp:'The lac operon is controlled by a repressor protein that binds the operator and blocks RNA polymerase when lactose is absent. When lactose is present, allolactose (a lactose metabolite) binds the repressor, changing its shape so it releases the operator — transcription can proceed. Glucose levels affect this through CAP/cAMP (catabolite repression): low glucose → high cAMP → CAP binds and enhances polymerase binding, maximizing lac operon transcription. The operon is most active with lactose present AND glucose absent — a classic dual-control system.'
+  },
+  {
+    id:'b31', topic:'mol-bio',
+    stem:'Heavy methylation of cytosine residues in a gene\'s promoter region is most likely to result in:',
+    opts:['Increased transcription of that gene',
+          'Decreased transcription of that gene, without changing the DNA sequence',
+          'A frameshift mutation in the coding sequence',
+          'Conversion of the gene into a pseudogene through deletion'],
+    ans:1,
+    exp:'DNA methylation (typically at CpG islands in promoters) is a major epigenetic mechanism: it generally recruits proteins that condense chromatin and physically blocks transcription factor binding, silencing the gene. Crucially, this is epigenetic — the underlying DNA sequence is unchanged, but gene expression is altered, and these patterns can be heritable across cell divisions. Histone deacetylation has a similar silencing effect by tightening chromatin, while histone acetylation loosens chromatin and promotes transcription.'
+  },
+  {
+    id:'b32', topic:'mol-bio',
+    stem:'During PCR, the annealing step serves to:',
+    opts:['Separate the double-stranded DNA template into single strands',
+          'Allow short primers to bind to complementary sequences on the single-stranded template',
+          'Extend the primers using DNA polymerase',
+          'Permanently denature the DNA polymerase enzyme'],
+    ans:1,
+    exp:'PCR cycles through three temperature steps: (1) denaturation (~95°C) separates the double helix into single strands; (2) annealing (~50-65°C) lets short complementary primers bind to the template, flanking the target sequence; (3) extension (~72°C) is when a heat-stable DNA polymerase (e.g., Taq) synthesizes new complementary strands from the primers. Each cycle roughly doubles the amount of target DNA, producing exponential amplification — the basis for genetic testing and forensic analysis.'
+  },
+  {
+    id:'b33', topic:'mol-bio',
+    stem:'Restriction enzymes used in recombinant DNA technology recognize and cut DNA at:',
+    opts:['Random locations throughout the genome',
+          'Specific, often palindromic, sequences of DNA',
+          'Only RNA-DNA hybrid regions',
+          'The telomeres at the ends of chromosomes'],
+    ans:1,
+    exp:'Restriction enzymes (originally a bacterial defense against viral DNA) recognize specific short sequences, often palindromic (read the same 5′→3′ on both strands, e.g., GAATTC for EcoRI), and cut the DNA at or near that site. This produces fragments with either "sticky ends" (staggered cuts leaving overhangs) or "blunt ends." Because the same enzyme always cuts the same sequence, scientists can cut a plasmid and a gene of interest with the same enzyme, producing complementary sticky ends that DNA ligase can join — the basis of recombinant DNA technology.'
+  },
+  // ── General Chemistry I — third additional batch (Acid-Base) ────────────────
+  {
+    id:'c23', topic:'acid-base',
+    stem:'According to the Brønsted-Lowry definition, an acid is a substance that:',
+    opts:['Accepts a pair of electrons',
+          'Donates a proton (H⁺)',
+          'Increases the concentration of OH⁻ in solution',
+          'Donates a pair of electrons'],
+    ans:1,
+    exp:'Brønsted-Lowry: acids are proton (H⁺) donors, bases are proton acceptors. (The Lewis definition is broader: acids accept electron pairs, bases donate electron pairs — every Brønsted-Lowry pair is also a Lewis pair, but Lewis acids include species with no protons to donate, like BF₃.) The Arrhenius definition is narrowest: acids increase [H⁺], bases increase [OH⁻], in aqueous solution only. The MCAT tests all three, but Brønsted-Lowry is the workhorse definition for buffers, titrations, and conjugate pairs.'
+  },
+  {
+    id:'c24', topic:'acid-base',
+    stem:'Acid X has a pKa of 2, and acid Y has a pKa of 8. Which statement is correct?',
+    opts:['Acid X is weaker than acid Y because it has a smaller pKa',
+          'Acid X is a stronger acid than acid Y, and its conjugate base is weaker',
+          'Acid Y dissociates more completely in water than acid X',
+          'pKa values cannot be used to compare acid strength'],
+    ans:1,
+    exp:'Lower pKa = larger Ka = stronger acid (dissociates more completely). Acid X (pKa 2) is a much stronger acid than acid Y (pKa 8) — by 6 orders of magnitude in Ka. There\'s an inverse relationship between an acid\'s strength and its conjugate base\'s strength: a strong acid (low pKa) has a weak conjugate base, because that conjugate base has little tendency to grab a proton back. This acid/conjugate-base strength seesaw is heavily tested in buffer and titration questions.'
+  },
+  {
+    id:'c25', topic:'acid-base',
+    stem:'An aqueous solution of NH₄Cl (ammonium chloride) is best described as:',
+    opts:['Neutral, because it is a salt formed from neutralization',
+          'Acidic, because NH₄⁺ is the conjugate acid of the weak base NH₃ and donates a proton to water',
+          'Basic, because Cl⁻ is a strong base',
+          'Acidic, because Cl⁻ hydrolyzes water'],
+    ans:1,
+    exp:'Salts formed from a weak base and strong acid produce acidic solutions. NH₄Cl dissociates into NH₄⁺ and Cl⁻. Cl⁻ is the conjugate base of the strong acid HCl — far too weak a base to affect pH (spectator ion). NH₄⁺, however, is the conjugate acid of the weak base NH₃ and can donate a proton to water (NH₄⁺ + H₂O ⇌ NH₃ + H₃O⁺), generating excess H₃O⁺ and lowering pH. General rule: salts of (strong acid + weak base) → acidic; salts of (weak acid + strong base, e.g., NaCH₃COO) → basic; salts of (strong acid + strong base) → neutral.'
+  },
+  {
+    id:'c26', topic:'acid-base',
+    stem:'In a titration of a weak acid with a strong base (NaOH), the pH at the equivalence point is:',
+    opts:['Exactly 7, because equal moles of acid and base have reacted',
+          'Greater than 7, because the solution contains the conjugate base of the weak acid',
+          'Less than 7, because excess weak acid remains',
+          'Undefined, because weak acids cannot be titrated'],
+    ans:1,
+    exp:'At the equivalence point, moles of acid = moles of base added, and the original weak acid HA has been fully converted to its conjugate base A⁻ (plus Na⁺ and water). A⁻ is a weak base and reacts with water (A⁻ + H₂O ⇌ HA + OH⁻), producing a slightly basic solution — pH > 7. Only a strong acid/strong base titration gives pH = 7 at the equivalence point, because neither the conjugate acid nor conjugate base is reactive. This is why phenolphthalein (basic-range color change) is often used for weak acid/strong base titrations.'
+  },
+  {
+    id:'c27', topic:'acid-base',
+    stem:'Bicarbonate (HCO₃⁻) is described as amphoteric because it can:',
+    opts:['Only act as a base by accepting a proton',
+          'Only act as an acid by donating a proton',
+          'Act as either an acid (donating H⁺ to form CO₃²⁻) or a base (accepting H⁺ to form H₂CO₃), depending on what it reacts with',
+          'Neither donate nor accept protons under any conditions'],
+    ans:2,
+    exp:'An amphoteric (or amphiprotic) species can act as either a Brønsted-Lowry acid or base. HCO₃⁻ can donate a proton to become CO₃²⁻ (acting as an acid) or accept a proton to become H₂CO₃ (acting as a base). This dual capacity is central to the bicarbonate buffer system that maintains blood pH around 7.4 — one of the most physiologically important buffer systems on the MCAT. Water itself is the classic amphoteric example, capable of both donating (forming OH⁻) and accepting (forming H₃O⁺) protons.'
+  },
+  {
+    id:'c28', topic:'acid-base',
+    stem:'A buffer is most effective at resisting pH changes when:',
+    opts:['The pH of the solution equals the pKa of the weak acid component, and both the acid and conjugate base are present in significant concentrations',
+          'The solution contains only the weak acid with no conjugate base present',
+          'The pKa of the acid is far from the desired pH',
+          'The buffer components are present in very dilute concentrations'],
+    ans:0,
+    exp:'Buffer capacity — the amount of acid or base a buffer can absorb before pH changes significantly — is maximized when pH ≈ pKa (equal concentrations of HA and A⁻, per Henderson-Hasselbalch) and when both species are present in high enough concentration to "soak up" added H⁺ or OH⁻. A buffer whose pKa is far from the working pH, or one that\'s too dilute, will be quickly overwhelmed. This is why physiological buffers (like phosphate, pKa ≈ 7.2, and bicarbonate) are matched closely to the pH ranges they need to maintain.'
+  },
+  {
+    id:'c29', topic:'acid-base',
+    stem:'For the polyprotic acid H₃PO₄, the successive dissociation constants follow Ka1 > Ka2 > Ka3. This is because:',
+    opts:['Each successive proton is removed from an increasingly negatively charged species, making it harder to remove',
+          'Each successive proton is held more loosely as the molecule gets larger',
+          'The molecule becomes more acidic overall after each deprotonation',
+          'Ka values are unrelated to molecular charge and this pattern is coincidental'],
+    ans:0,
+    exp:'Removing H⁺ from a neutral molecule (H₃PO₄ → H₂PO₄⁻) is easier than removing H⁺ from a species that already carries a negative charge (H₂PO₄⁻ → HPO₄²⁻), which is in turn easier than removing it from a doubly negative species (HPO₄²⁻ → PO₄³⁻). Electrostatic attraction between the departing H⁺ (positive) and the increasingly negative conjugate base makes each successive deprotonation less favorable — hence Ka1 > Ka2 > Ka3 (and pKa1 < pKa2 < pKa3). This pattern holds for all polyprotic acids and explains why polyprotic species can buffer across multiple pH ranges.'
+  },
+  // ── General Chemistry I — fourth additional batch (Bonding) ──────────────────
+  {
+    id:'c30', topic:'bonding',
+    stem:'Ammonia (NH₃) has a trigonal pyramidal molecular geometry and is polar because:',
+    opts:['Nitrogen has 4 bonding pairs and no lone pairs, giving a symmetric tetrahedral shape',
+          'Nitrogen has 3 bonding pairs and 1 lone pair; the lone pair distorts the shape and creates an asymmetric charge distribution',
+          'All N–H bonds are nonpolar, so any net dipole comes only from the lone pair',
+          'The molecule is linear, like CO₂, so the dipoles cancel'],
+    ans:1,
+    exp:'NH₃ has 4 electron domains around N (3 bonding pairs to H, 1 lone pair) — tetrahedral electron geometry, but trigonal pyramidal molecular geometry because the lone pair occupies one position without contributing to the visible shape. The lone pair pushes the N–H bonds slightly closer together (~107° vs. the ideal 109.5°) and creates an asymmetric electron distribution. Combined with the polar N–H bonds (N is more electronegative than H), this gives NH₃ a net dipole moment — it\'s polar. Compare to BF₃ (trigonal planar, no lone pair, symmetric, nonpolar) despite also having polar bonds.'
+  },
+  {
+    id:'c31', topic:'bonding',
+    stem:'In the molecule CH₂=CH₂ (ethylene), the carbon atoms are best described as:',
+    opts:['sp hybridized, with two perpendicular pi bonds between the carbons',
+          'sp² hybridized, with one sigma bond and one pi bond between the carbons',
+          'sp³ hybridized, with two sigma bonds between the carbons',
+          'Unhybridized, since hybridization only applies to single bonds'],
+    ans:1,
+    exp:'Each carbon in ethylene forms 3 sigma bonds (2 to H, 1 to the other C) using 3 sp² hybrid orbitals arranged in a trigonal planar geometry (~120° angles), leaving one unhybridized p orbital on each carbon. These p orbitals overlap side-by-side to form a pi bond — the second bond of the C=C double bond. General pattern: 4 sigma bonds → sp³ (tetrahedral, e.g., methane); 3 sigma + 1 pi → sp² (trigonal planar, e.g., alkenes, carbonyls); 2 sigma + 2 pi → sp (linear, e.g., alkynes, CO₂).'
+  },
+  {
+    id:'c32', topic:'bonding',
+    stem:'A carbon-carbon triple bond (C≡C, as in acetylene) consists of:',
+    opts:['Three sigma bonds',
+          'One sigma bond and two pi bonds',
+          'Two sigma bonds and one pi bond',
+          'Three pi bonds and no sigma bonds'],
+    ans:1,
+    exp:'Every covalent bond\'s first connection is a sigma bond (formed by direct, head-on orbital overlap — the strongest type, allows free rotation around it). Any additional bonds between the same two atoms are pi bonds (formed by sideways overlap of unhybridized p orbitals, restricting rotation). A single bond = 1 sigma. A double bond = 1 sigma + 1 pi. A triple bond = 1 sigma + 2 pi. This is why triple bonds are shorter and stronger than double bonds, but also why molecules with double/triple bonds can\'t rotate freely around that bond — relevant to cis/trans isomerism.'
+  },
+  {
+    id:'c33', topic:'bonding',
+    stem:'Among the noble gases, boiling point increases from He to Rn (He < Ne < Ar < Kr < Xe < Rn) primarily because:',
+    opts:['Larger noble gases form stronger covalent bonds between atoms',
+          'Larger atoms have more electrons and a larger, more polarizable electron cloud, leading to stronger London dispersion forces',
+          'Larger noble gases become more polar as atomic number increases',
+          'Hydrogen bonding becomes stronger between larger noble gas atoms'],
+    ans:1,
+    exp:'Noble gases are monatomic and nonpolar — the only intermolecular force available is London dispersion (induced dipole-induced dipole), arising from temporary fluctuations in electron distribution. Larger atoms have more electrons spread over a larger volume, making the electron cloud more polarizable (easier to distort into a temporary dipole) — this strengthens London dispersion forces and raises boiling point. This same principle explains why larger nonpolar molecules (e.g., I₂ vs. F₂) have higher boiling points despite both being nonpolar — London dispersion forces are present in ALL molecules, but dominate when no dipole-dipole or hydrogen bonding is possible.'
+  },
+  {
+    id:'c34', topic:'bonding',
+    stem:'Which ionic compound would be expected to have the highest lattice energy?',
+    opts:['NaCl (Na⁺ and Cl⁻)','NaF (Na⁺ and F⁻)','MgO (Mg²⁺ and O²⁻)','KBr (K⁺ and Br⁻)'],
+    ans:2,
+    exp:'Lattice energy — the energy released when gaseous ions form a solid ionic lattice — increases with greater ionic charge and decreases with greater ionic radius (Coulomb\'s law: E ∝ (q₁q₂)/r). MgO has ions with charges of +2 and −2 (versus +1/−1 for the others), making the charge product 4 times larger, and Mg²⁺/O²⁻ are also relatively small ions — both factors give MgO by far the highest lattice energy here. This is why MgO has an extremely high melting point (~2850°C) compared to NaCl (~801°C). Higher charge has a much bigger effect on lattice energy than smaller radius.'
+  },
+  {
+    id:'c35', topic:'bonding',
+    stem:'The bond lengths in the ozone molecule (O₃) are observed to be identical and intermediate between a typical O–O single bond and O=O double bond. This is best explained by:',
+    opts:['Ozone rapidly interconverts between two distinct structures',
+          'Resonance — the true structure is a hybrid of multiple Lewis structures with the extra electrons delocalized across both O–O bonds',
+          'One oxygen atom is sp³ hybridized while the other is sp²',
+          'Measurement error, since Lewis structures predict one single and one double bond'],
+    ans:1,
+    exp:'Ozone can be drawn with two valid Lewis structures, differing only in which O–O bond is the "double" bond. Neither structure alone is correct — the actual molecule is a resonance hybrid, where the pi electrons are delocalized across both O–O bonds equally. This gives both bonds identical, intermediate bond lengths (bond order 1.5 each). Resonance is not rapid interconversion between structures (a common misconception) — it\'s a single, delocalized electronic structure that Lewis structures (a localized-bond model) can\'t fully capture. Benzene\'s six equal C–C bonds are the classic resonance example.'
+  },
+  {
+    id:'c36', topic:'bonding',
+    stem:'Rank the following from weakest to strongest: (1) London dispersion forces between two CH₄ molecules, (2) hydrogen bonding between two H₂O molecules, (3) ion-dipole interaction between Na⁺ and H₂O.',
+    opts:['3 < 2 < 1','1 < 2 < 3','2 < 1 < 3','1 < 3 < 2'],
+    ans:1,
+    exp:'General strength hierarchy of intermolecular/interparticle interactions: ion-dipole > hydrogen bonding > dipole-dipole > London dispersion forces (for comparable particle sizes). Ion-dipole interactions (like Na⁺ attracting the partial negative oxygen of water — the basis of hydration shells around dissolved ions) are strongest because a full charge interacts with a dipole. Hydrogen bonding is a particularly strong type of dipole-dipole interaction (present in water, ammonia, HF). London dispersion forces, while present in all molecules, are weakest for small nonpolar molecules like CH₄. So: London dispersion (1) < hydrogen bonding (2) < ion-dipole (3).'
+  },
+  // ── General Chemistry I — fifth additional batch (Atomic Structure) ──────────
+  {
+    id:'c37', topic:'atomic',
+    stem:'When an electron in a hydrogen atom falls from a higher energy level (n=3) to a lower one (n=2), the atom:',
+    opts:['Absorbs a photon with energy equal to the difference between the two levels',
+          'Emits a photon with energy equal to the difference between the two levels',
+          'Emits an electron from the nucleus',
+          'Remains unchanged in energy, since electrons move freely between levels'],
+    ans:1,
+    exp:'In the Bohr model, electrons occupy discrete (quantized) energy levels. Moving to a lower-energy level releases the energy difference as a photon (emission) — this produces the bright lines in an emission spectrum. Moving to a higher-energy level requires absorbing a photon of exactly that energy difference (absorption spectrum). Photon energy relates to wavelength/frequency by E = hf = hc/λ — larger energy gaps produce higher-frequency (shorter wavelength) photons. This is the basis of spectroscopy: each element has a unique set of energy gaps, producing a unique spectral "fingerprint."'
+  },
+  {
+    id:'c38', topic:'atomic',
+    stem:'Effective nuclear charge (Zeff) experienced by a valence electron is best described as:',
+    opts:['Equal to the total number of protons in the nucleus, with no adjustment',
+          'The nuclear charge reduced by the shielding effect of inner-shell electrons',
+          'Always equal for all elements in the same period',
+          'Determined only by the number of neutrons in the nucleus'],
+    ans:1,
+    exp:'Zeff ≈ Z (atomic number/protons) − S (shielding from core electrons). Inner-shell (core) electrons partially block, or "shield," the nuclear charge felt by valence electrons. Across a period, Z increases by 1 each step but core shielding stays roughly constant, so Zeff increases left to right — pulling valence electrons in more tightly. This single concept (Zeff) underlies the periodic trends in atomic radius (decreases across a period), ionization energy (increases across a period), and electronegativity (increases across a period). Down a group, Zeff stays roughly similar, but radius increases due to additional electron shells.'
+  },
+  {
+    id:'c39', topic:'atomic',
+    stem:'An atom has 17 protons, 18 neutrons, and 17 electrons. This atom is:',
+    opts:['A neutral isotope of chlorine with mass number 35',
+          'A neutral isotope of chlorine with mass number 18',
+          'A chloride anion (Cl⁻) with mass number 35',
+          'An isotope of argon, since protons + neutrons = 35'],
+    ans:0,
+    exp:'The number of protons (17) defines the element — chlorine. Mass number = protons + neutrons = 17 + 18 = 35, giving chlorine-35 (³⁵Cl), the more abundant chlorine isotope. Since electrons (17) = protons (17), the atom is neutral (not an ion). Isotopes of an element have the same number of protons but different numbers of neutrons (e.g., ³⁵Cl vs. ³⁷Cl), giving them the same chemical properties but different masses — relevant to average atomic mass calculations (a weighted average of isotope masses by natural abundance).'
+  },
+  {
+    id:'c40', topic:'atomic',
+    stem:'The actual ground-state electron configuration of chromium (Cr, Z=24) is [Ar] 3d⁵ 4s¹ rather than the "expected" [Ar] 3d⁴ 4s² from the Aufbau principle. This is because:',
+    opts:['Chromium has fewer electrons than expected',
+          'A half-filled d subshell (3d⁵) provides extra stability, so an electron shifts from 4s to 3d',
+          'The Aufbau principle does not apply to transition metals',
+          'This configuration is incorrect and a common textbook error'],
+    ans:1,
+    exp:'While the Aufbau principle (fill lowest-energy orbitals first) predicts [Ar] 3d⁴ 4s² for Cr, half-filled (d⁵) and fully-filled (d¹⁰) subshells have extra stability due to favorable exchange energy and symmetric electron distribution. So one 4s electron shifts into the 3d subshell, giving [Ar] 3d⁵ 4s¹ — six unpaired electrons total, maximizing stability per Hund\'s-rule reasoning. Copper (Cu, Z=29) shows the same pattern: [Ar] 3d¹⁰ 4s¹ instead of [Ar] 3d⁹ 4s², favoring the fully-filled 3d¹⁰. These are the two classic Aufbau exceptions tested on the MCAT.'
+  },
+  {
+    id:'c41', topic:'atomic',
+    stem:'Compared to a neutral sodium atom (Na), the sodium cation (Na⁺) has:',
+    opts:['A larger radius, because it has lost an electron',
+          'A smaller radius, because it has lost its entire outermost electron shell, and the remaining electrons are pulled in by the same nuclear charge',
+          'The same radius, since radius depends only on the number of protons',
+          'A larger radius, because the remaining electrons repel each other more'],
+    ans:1,
+    exp:'Na ([Ne]3s¹) loses its single 3s electron to form Na⁺ ([Ne]) — losing an entire electron shell. With one fewer shell and the same nuclear charge now acting on fewer electrons, Na⁺ is significantly smaller than neutral Na. General rule: cations are smaller than their parent atoms (lost electrons, often a whole shell, same nuclear pull on fewer electrons); anions are larger than their parent atoms (gained electrons, more electron-electron repulsion, same nuclear pull spread over more electrons). For isoelectronic species (same electron count, e.g., Na⁺, Mg²⁺, F⁻, O²⁻, Ne — all 10 electrons), radius decreases as nuclear charge (protons) increases.'
+  },
+  {
+    id:'c42', topic:'atomic',
+    stem:'According to Hund\'s rule, the ground-state electron configuration of nitrogen\'s three 2p electrons is:',
+    opts:['All three paired in a single 2p orbital',
+          'Two paired in one orbital, one unpaired in another',
+          'One electron in each of the three 2p orbitals, all with parallel spins',
+          'Distributed randomly with no preferred arrangement'],
+    ans:2,
+    exp:'Hund\'s rule: electrons fill degenerate (equal-energy) orbitals singly, with parallel spins, before any orbital gets a second electron (pairing). For nitrogen (1s² 2s² 2p³), the three 2p electrons each occupy a separate p orbital (pₓ, py, pz) with parallel spins, rather than two pairing up in one orbital while a third sits empty. This minimizes electron-electron repulsion (electrons in the same orbital repel more than electrons in separate orbitals) and maximizes total spin — both stabilizing. This rule, combined with the Aufbau principle (fill lowest energy first) and the Pauli exclusion principle (max 2 electrons per orbital, opposite spins), determines all ground-state electron configurations.'
+  },
+  {
+    id:'c43', topic:'atomic',
+    stem:'A photon has a wavelength of 500 nm. As wavelength increases, the photon\'s energy:',
+    opts:['Increases proportionally, since E = hλ',
+          'Decreases, since energy is inversely proportional to wavelength (E = hc/λ)',
+          'Stays constant regardless of wavelength',
+          'Increases only for wavelengths in the visible spectrum'],
+    ans:1,
+    exp:'Photon energy is given by E = hf = hc/λ, where h is Planck\'s constant and c is the speed of light. Energy is directly proportional to frequency but inversely proportional to wavelength — longer wavelength means lower energy and lower frequency. This is why high-energy radiation (gamma rays, X-rays) has very short wavelengths, while low-energy radiation (radio waves) has long wavelengths. On the MCAT, this relationship explains why UV light (shorter λ than visible) carries enough energy to break chemical bonds (causing sunburn/DNA damage), while visible and infrared light generally do not.'
+  },
+  {
+    id:'c44', topic:'atomic',
+    stem:'Elements in the same group (column) of the periodic table have similar chemical properties primarily because they have:',
+    opts:['The same atomic mass',
+          'The same number of valence electrons',
+          'The same number of total electrons',
+          'The same atomic radius'],
+    ans:1,
+    exp:'Group number (for main-group elements) corresponds directly to the number of valence electrons (electrons in the outermost shell), which determine an element\'s chemical bonding behavior — how many bonds it forms, what ions it tends to make, and its reactivity. For example, all Group 1 elements (Li, Na, K...) have 1 valence electron and tend to form +1 cations; all Group 17 elements (halogens) have 7 valence electrons and tend to form −1 anions or share one electron in covalent bonds. Atomic mass and total electron count vary widely within a group — only the valence electron count (and resulting chemical behavior) is conserved.'
+  },
+  // ── General Chemistry I — sixth additional batch (Stoichiometry) ─────────────
+  {
+    id:'c45', topic:'stoich',
+    stem:'To prepare 250 mL of a 0.5 M solution by diluting a 2.0 M stock solution, how many mL of the stock solution are needed?',
+    opts:['31.25 mL','62.5 mL','125 mL','500 mL'],
+    ans:1,
+    exp:'Dilution formula: M₁V₁ = M₂V₂ (moles of solute don\'t change upon dilution, only concentration and volume). M₁ = 2.0 M (stock), M₂ = 0.5 M (target), V₂ = 250 mL. Solve: V₁ = (M₂V₂)/M₁ = (0.5 × 250)/2.0 = 62.5 mL. So 62.5 mL of stock is measured out, then diluted with solvent (water) up to a total volume of 250 mL. This formula works regardless of volume units, as long as both volumes use the same units.'
+  },
+  {
+    id:'c46', topic:'stoich',
+    stem:'A compound is found to be 40.0% carbon, 6.7% hydrogen, and 53.3% oxygen by mass. What is its empirical formula?',
+    opts:['CH₂O','C₂H₄O₂','CHO','C₂H₆O'],
+    ans:0,
+    exp:'Assume 100 g of compound: 40.0 g C, 6.7 g H, 53.3 g O. Convert to moles: C = 40.0/12 ≈ 3.33 mol, H = 6.7/1 ≈ 6.7 mol, O = 53.3/16 ≈ 3.33 mol. Divide by the smallest value (3.33): C = 1, H ≈ 2, O = 1 → empirical formula CH₂O (this is also the empirical formula of glucose, C₆H₁₂O₆, and formaldehyde). The empirical formula shows the simplest whole-number ratio of atoms; the molecular formula (found using molar mass) may be a whole-number multiple of it.'
+  },
+  {
+    id:'c47', topic:'stoich',
+    stem:'Using PV = nRT, what volume does 2 moles of an ideal gas occupy at STP (0°C, 1 atm)?',
+    opts:['11.2 L','22.4 L','44.8 L','67.2 L'],
+    ans:2,
+    exp:'At STP, 1 mole of any ideal gas occupies 22.4 L (a constant worth memorizing). For 2 moles: V = 2 × 22.4 L = 44.8 L. This shortcut comes directly from PV = nRT: V = nRT/P = (1 mol)(0.0821 L·atm/mol·K)(273 K)/(1 atm) ≈ 22.4 L. Be careful: STP conditions (0°C/273K, 1 atm) differ from "standard conditions" used in thermodynamics (25°C/298K, 1 atm) — only STP gives the clean 22.4 L/mol value.'
+  },
+  {
+    id:'c48', topic:'stoich',
+    stem:'How many molecules are present in 0.5 moles of CO₂?',
+    opts:['3.01 × 10²²','6.02 × 10²³','3.01 × 10²³','1.20 × 10²⁴'],
+    ans:2,
+    exp:'Avogadro\'s number (6.02 × 10²³) is the number of particles (atoms, molecules, ions) per mole. For 0.5 moles: 0.5 × 6.02 × 10²³ = 3.01 × 10²³ molecules of CO₂. Each molecule contains 1 C atom and 2 O atoms, so the total atom count would be 3 times higher (≈9.03 × 10²³ atoms) — but the question asks for molecules, not atoms. Always double check whether a question asks for moles, molecules, or atoms — these are easy to conflate under time pressure.'
+  },
+  {
+    id:'c49', topic:'stoich',
+    stem:'Freezing point depression (ΔTf = iKfm) depends on molality (m) rather than molarity (M) primarily because:',
+    opts:['Molality and molarity are always numerically identical',
+          'Molality (mol solute / kg solvent) doesn\'t change with temperature, while molarity (mol solute / L solution) does, since solution volume changes with temperature',
+          'Molarity cannot be measured for aqueous solutions',
+          'Freezing point depression only applies to solid solutes'],
+    ans:1,
+    exp:'Molarity depends on solution volume, which expands or contracts with temperature — making it a temperature-dependent quantity. Molality depends on the mass of solvent, which doesn\'t change with temperature. Since freezing point depression (and other colligative properties measured across a temperature change) needs a concentration unit that stays constant as temperature changes, molality is used. For dilute aqueous solutions at room temperature, molarity and molality are numerically very close (1 L of water ≈ 1 kg), but they are conceptually distinct, and the MCAT tests that distinction directly.'
+  },
+  {
+    id:'c50', topic:'stoich',
+    stem:'A gas has a density of 1.96 g/L at STP. Its molar mass is closest to:',
+    opts:['22 g/mol','32 g/mol','44 g/mol','88 g/mol'],
+    ans:2,
+    exp:'At STP, 1 mole of any ideal gas occupies 22.4 L. Molar mass = density × molar volume = 1.96 g/L × 22.4 L/mol ≈ 44 g/mol. This corresponds to CO₂ (12 + 16×2 = 44 g/mol) — a useful check. This calculation links density (a measurable bulk property) to molar mass (a per-particle property) via the molar volume constant, and is a common "two-step" MCAT stoichiometry question that combines gas laws with mole concepts.'
+  },
+  {
+    id:'c51', topic:'stoich',
+    stem:'What is the percent composition by mass of oxygen in water (H₂O, molar mass 18 g/mol)?',
+    opts:['11.1%','50%','88.9%','16%'],
+    ans:2,
+    exp:'Percent composition = (mass of element in formula / molar mass of compound) × 100. Oxygen contributes 16 g/mol out of water\'s total 18 g/mol: (16/18) × 100 ≈ 88.9%. Hydrogen contributes the remaining ~11.1% (2 g/mol of 18 g/mol). Percent composition is used to verify a compound\'s identity from experimental mass data and is the reverse process of finding an empirical formula (which starts from percent composition and works backward to a mole ratio).'
+  },
+  {
+    id:'c52', topic:'stoich',
+    stem:'Given the balanced equation 2Al + 3CuSO₄ → Al₂(SO₄)₃ + 3Cu, how many moles of Cu are produced from 4 moles of Al (assuming excess CuSO₄)?',
+    opts:['2 moles','4 moles','6 moles','8 moles'],
+    ans:2,
+    exp:'The mole ratio between Al and Cu in the balanced equation is 2:3. With 4 moles of Al (and CuSO₄ in excess, so Al is limiting): moles Cu = 4 mol Al × (3 mol Cu / 2 mol Al) = 6 moles Cu. The balanced equation\'s coefficients always give the mole-to-mole conversion ratio between any two species in a reaction — the foundation of all stoichiometry calculations, whether converting moles to moles, moles to grams, or grams to grams (via molar mass).'
+  },
 ];
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
@@ -2662,6 +3020,9 @@ const TOPIC_SKILL = {
   'neuro':     'Pathway tracing — from stimulus to response, through every synapse and structure.',
   'orgo':      'Mechanism prediction — given a structure and conditions, predict what happens and why.',
   'thermo':    'Conceptual math — what does a ΔG value actually mean for whether a reaction proceeds?',
+  'atomic':    'Trend reasoning — connecting periodic table position to predictable atomic behavior.',
+  'bonding':   'Structure-to-property reasoning — going from a molecule\'s shape to its physical behavior.',
+  'stoich':    'Quantitative translation — converting between moles, mass, volume, and particles without losing the thread.',
   'acid-base': 'Equilibrium reasoning — which direction does the system shift, and what drives it?',
   'physics':   'Principle application — taking a physical law and applying it to something unfamiliar.',
   'psych':     'Theory recognition — which framework best explains this behavior or outcome?',
@@ -2679,6 +3040,9 @@ const TOPIC_CRUNCH = {
   'neuro':    'Notoriously hard to self-study. Most classmates cram it the month before the exam.',
   'orgo':     'Year-3 classmates re-learn mechanisms for weeks. You already have this.',
   'thermo':   'A classic year-3 crunch topic. You\'re handling it years ahead of schedule.',
+  'atomic':   'Foundational Gen Chem — most classmates haven\'t touched periodic trends since freshman year.',
+  'bonding':  'A Gen Chem cornerstone that resurfaces all over Orgo and Biochem. You\'re ahead of schedule.',
+  'stoich':   'The math most premeds get rusty on by year 3. You\'re keeping it sharp early.',
   'acid-base':'One of the highest-tested MCAT topics — most classmates forget it after Gen Chem.',
   'physics':  'Most premeds ignore physics until 6 weeks out. Not you.',
   'psych':    'The section most students leave until last. You\'re practicing it now.',
