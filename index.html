@@ -173,6 +173,65 @@
   }
   .courses-scroll { overflow-y: auto; flex: 1; margin: 0 -2px; padding: 0 2px; }
 
+  /* Quick-log topic picker */
+  .topic-pick-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    background: #131520;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 13px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    color: #E0E3EE;
+    font-size: 14px;
+    font-family: inherit;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .topic-pick-btn:hover { background: #191D2A; border-color: rgba(255,255,255,0.13); }
+  .topic-pick-btn .tp-name { flex: 1; min-width: 0; }
+  .topic-pick-btn .tp-arrow { color: #444B62; font-size: 14px; flex-shrink: 0; }
+
+  /* Retention nudge card */
+  .nudge-card {
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(129,140,248,0.25);
+    border-radius: 10px;
+    padding: 13px 16px;
+    margin-bottom: 16px;
+  }
+  .nudge-card .nudge-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #8B93F8;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 5px;
+  }
+  .nudge-card p {
+    font-size: 14px;
+    color: #B0B5C8;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+  .nudge-actions { display: flex; gap: 8px; }
+  .nudge-actions button {
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    border: none;
+  }
+  .nudge-btn-primary { background: #6366F1; color: #fff; }
+  .nudge-btn-primary:hover { background: #7577F5; }
+  .nudge-btn-ghost { background: transparent; color: #6B7185; border: 1px solid rgba(255,255,255,0.1) !important; }
+  .nudge-btn-ghost:hover { color: #8A90A8; }
+
   /* Coverage reveal */
   .coverage-num {
     font-family: 'Space Grotesk', -apple-system, sans-serif;
@@ -2169,6 +2228,9 @@ const S = {
   sessionHistory: [],   // last 7 sessions [{date, correct, total}]
   milestonesShown: {}, // {10: true, 50: true, ...} — so milestone banners only show once
   covMilestonesShown: {}, // {15: true, 22: true, ...} — coverage-% milestone banners
+  topicLastSeen: {}, // {topicId: 'YYYY-MM-DD'} — last date the user engaged with this topic (session or quick-log)
+  quickLog: null, // { topicId } while a quick-log session is active
+  nudgeDismissed: {}, // {topicId: 'YYYY-MM-DD'} — nudge for this topic dismissed on this date
 };
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
@@ -2183,6 +2245,8 @@ function save() {
   localStorage.setItem('wp_history',    JSON.stringify(S.sessionHistory.slice(-7)));
   localStorage.setItem('wp_milestones', JSON.stringify(S.milestonesShown));
   localStorage.setItem('wp_cov_milestones', JSON.stringify(S.covMilestonesShown));
+  localStorage.setItem('wp_topic_last_seen', JSON.stringify(S.topicLastSeen));
+  localStorage.setItem('wp_nudge_dismissed', JSON.stringify(S.nudgeDismissed));
 }
 
 function load() {
@@ -2202,6 +2266,10 @@ function load() {
     if (ms) S.milestonesShown = JSON.parse(ms);
     const cms = localStorage.getItem('wp_cov_milestones');
     if (cms) S.covMilestonesShown = JSON.parse(cms);
+    const tls = localStorage.getItem('wp_topic_last_seen');
+    if (tls) S.topicLastSeen = JSON.parse(tls);
+    const nd = localStorage.getItem('wp_nudge_dismissed');
+    if (nd) S.nudgeDismissed = JSON.parse(nd);
 
     // Reset streak if more than 1 day has passed
     if (S.lastDate) {
@@ -2275,6 +2343,54 @@ function todayTopics() {
     const q = QUESTIONS.find(x => x.id === a.qId);
     return q ? q.topic : null;
   }).filter(Boolean));
+}
+
+// Record that the user engaged with these topics today (used for retention nudges)
+function markTopicsSeen(topicIds) {
+  const today = isoDate();
+  topicIds.forEach(tid => { S.topicLastSeen[tid] = today; });
+}
+
+function isoDate(d = new Date()) {
+  return d.toISOString().slice(0, 10);
+}
+
+// Find the best candidate topic for a "you covered this a while ago" nudge
+function getRetentionNudge() {
+  const today = new Date();
+  let best = null;
+  for (const [tid, dateStr] of Object.entries(S.topicLastSeen)) {
+    if (S.nudgeDismissed[tid] === isoDate()) continue;
+    const topic = TOPICS.find(t => t.id === tid);
+    if (!topic) continue;
+    const days = Math.floor((today - new Date(dateStr)) / 86400000);
+    if (days < 21) continue; // too recent to nudge
+
+    // Skip topics the user is already practicing well and recently
+    const topicQs = QUESTIONS.filter(q => q.topic === tid);
+    const stats = topicQs.reduce((acc, q) => {
+      const s = S.qStats[q.id];
+      if (s) { acc.right += s.right; acc.wrong += s.wrong; }
+      return acc;
+    }, { right: 0, wrong: 0 });
+    const total = stats.right + stats.wrong;
+    const pct = total > 0 ? stats.right / total : 0;
+    if (total >= 4 && pct >= 0.85 && days < 42) continue; // still solid, not urgent yet
+
+    if (!best || days > best.days) best = { topic, days };
+  }
+  return best;
+}
+
+function weeksAgo(days) {
+  const w = Math.round(days / 7);
+  return w <= 0 ? 'recently' : w === 1 ? '1 week ago' : `${w} weeks ago`;
+}
+
+function dismissNudge(topicId) {
+  S.nudgeDismissed[topicId] = isoDate();
+  save();
+  render();
 }
 
 // ── MAP RENDERER ──────────────────────────────────────────────────────────────
@@ -2564,6 +2680,16 @@ function screenBrief() {
   const headline  = getWelcomeHeadline();
   const trendText = getTrendInsight(history);
   const milestone = getMilestone();
+  const nudge     = getRetentionNudge();
+  const nudgeHTML = nudge ? `
+    <div class="nudge-card">
+      <div class="nudge-label">Retention check</div>
+      <p>You covered <strong style="color:#F0F2F8;">${nudge.topic.name}</strong> ${weeksAgo(nudge.days)} — want a quick refresher while you remember it?</p>
+      <div class="nudge-actions">
+        <button class="nudge-btn-primary" onclick="startQuickLog('${nudge.topic.id}')">Quick refresher →</button>
+        <button class="nudge-btn-ghost" onclick="dismissNudge('${nudge.topic.id}')">Not now</button>
+      </div>
+    </div>` : '';
 
   // SVG ring
   const r = 38, circ = Math.round(2 * Math.PI * r);
@@ -2652,9 +2778,11 @@ function screenBrief() {
 
       <div class="section-divider"></div>
 
+      ${nudgeHTML}
       ${bodyCard}
 
       <button class="btn btn-primary" onclick="startSession()">Keep building the edge →</button>
+      <button class="btn btn-ghost" onclick="go('quicklog')">📍 Just learned this in lecture?</button>
       <button class="btn btn-ghost" onclick="go('reveal')">See my full route</button>
     </div>`;
 }
@@ -2857,7 +2985,7 @@ function screenQuestion() {
   return `
     <div class="screen">
       <div class="q-meta">
-        <span class="q-count">Question ${S.idx + 1} of ${S.session.length}</span>
+        <span class="q-count">${S.quickLog ? 'Quick check' : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
         <div style="display:flex;gap:6px;align-items:center;">
           <span style="font-size:10px;font-weight:600;background:rgba(255,255,255,0.07);color:#555B70;padding:3px 8px;border-radius:10px;letter-spacing:0.04em;">MCAT-style</span>
           <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicObj.disp : ''}</span>
@@ -3006,8 +3134,58 @@ function screenComplete() {
       ${retention}
 
       <button class="btn btn-primary" id="reminder-btn" onclick="setReminder(this)">Set a daily reminder</button>
+      <button class="btn btn-ghost" onclick="shareCoverageCard()">📤 Share my progress</button>
       <button class="btn btn-ghost" onclick="go('brief')">Done for today</button>
       <button class="btn btn-ghost" onclick="go('reveal')">See my full route</button>
+    </div>`;
+}
+
+function screenQuickLog() {
+  const myTopics = TOPICS.filter(t => t.course && S.courses.has(t.course));
+
+  if (!myTopics.length) {
+    return `
+      <div class="screen">
+        <p class="label">Just learned this?</p>
+        <h2 style="margin-bottom:5px;">No courses selected yet</h2>
+        <p style="font-size:14px;margin-bottom:20px;">Add your courses first so we know what topics to pull questions from.</p>
+        <button class="btn btn-primary" onclick="go('courses')">Add my courses</button>
+        <button class="btn btn-ghost" onclick="go('brief')">← Back</button>
+      </div>`;
+  }
+
+  return `
+    <div class="screen">
+      <p class="label">Just learned this?</p>
+      <h2 style="margin-bottom:5px;">What did you cover in lecture today?</h2>
+      <p style="font-size:14px;margin-bottom:20px;">Pick a topic and we'll pull a couple MCAT-style questions on it right now — while it's fresh.</p>
+
+      <div>
+        ${myTopics.map(t => `
+          <button class="topic-pick-btn" onclick="startQuickLog('${t.id}')">
+            <span class="q-tag ${sectionTag(t.mcat)}">${sectionIcon(t.mcat)}${t.disp}</span>
+            <span class="tp-name">${t.name}</span>
+            <span class="tp-arrow">→</span>
+          </button>`).join('')}
+      </div>
+
+      <button class="btn btn-ghost" onclick="go('brief')">← Back</button>
+    </div>`;
+}
+
+function screenQuickLogDone() {
+  const topic   = TOPICS.find(t => t.id === (S.quickLog && S.quickLog.topicId));
+  const correct = S.answers.filter(a => a.correct).length;
+  const total   = S.answers.length;
+
+  return `
+    <div class="screen">
+      <p class="label">Logged</p>
+      <h2 style="margin-bottom:5px;">${topic ? topic.name : 'Topic'} — done.</h2>
+      <p style="font-size:15px;margin-bottom:20px;">${correct}/${total} correct. While it's still fresh in your head is exactly when this sticks best.</p>
+
+      <button class="btn btn-primary" onclick="go('brief')">Back to my route</button>
+      <button class="btn btn-ghost" onclick="go('quicklog')">Log another topic</button>
     </div>`;
 }
 
@@ -3043,9 +3221,25 @@ function startSession() {
   S.idx      = 0;
   S.answers  = [];
   S.answered = null;
+  S.quickLog = null;
   if (!S.session.length) {
     alert('No questions available yet. Please select at least one course first.');
     go('courses');
+    return;
+  }
+  go('question');
+}
+
+// "Just learned this" quick-log — 2-3 questions on a single topic, right now
+function startQuickLog(topicId) {
+  const pool = QUESTIONS.filter(q => q.topic === topicId).sort(() => Math.random() - 0.5);
+  S.session  = pool.slice(0, Math.min(3, pool.length));
+  S.idx      = 0;
+  S.answers  = [];
+  S.answered = null;
+  S.quickLog = { topicId };
+  if (!S.session.length) {
+    go('brief');
     return;
   }
   go('question');
@@ -3069,6 +3263,16 @@ function next() {
   S.idx++;
   S.answered = null;
   if (S.idx >= S.session.length) {
+
+    // Quick-log sessions skip the full completion screen and streak/history bookkeeping
+    if (S.quickLog) {
+      S.totalAnswered += S.answers.length;
+      markTopicsSeen([S.quickLog.topicId]);
+      save();
+      go('quicklogdone');
+      return;
+    }
+
     const correct = S.answers.filter(a => a.correct).length;
     const total   = S.answers.length;
 
@@ -3076,6 +3280,7 @@ function next() {
     S.sessionHistory.push({ date: new Date().toDateString(), correct, total });
     if (S.sessionHistory.length > 7) S.sessionHistory = S.sessionHistory.slice(-7);
     S.totalAnswered += total;
+    markTopicsSeen(todayTopics());
 
     // Update streak
     const today = new Date().toDateString();
@@ -3098,9 +3303,156 @@ function setReminder(btn) {
   btn.style.background = '#0F6E56';
 }
 
+// ── SHAREABLE COVERAGE CARD ─────────────────────────────────────────────────────
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+async function shareCoverageCard() {
+  const cov   = coverage(S.courses);
+  const myTopics    = TOPICS.filter(t => t.course && S.courses.has(t.course));
+  const totalTopics = TOPICS.filter(t => t.course).length;
+  const streak = S.streak;
+
+  const W = 1080, H = 1350;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  try {
+    await Promise.all([
+      document.fonts.load('700 230px "Space Grotesk"'),
+      document.fonts.load('700 34px "Space Grotesk"'),
+      document.fonts.load('700 80px "Space Grotesk"'),
+      document.fonts.load('600 38px "Inter"'),
+      document.fonts.load('500 30px "Inter"'),
+    ]);
+  } catch (e) { /* fonts may not be ready — fall back to default */ }
+
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#0B0D14');
+  bg.addColorStop(1, '#10151C');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const glow = ctx.createRadialGradient(W * 0.82, H * 0.12, 0, W * 0.82, H * 0.12, W * 0.75);
+  glow.addColorStop(0, 'rgba(29,158,117,0.28)');
+  glow.addColorStop(1, 'rgba(29,158,117,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Branding
+  ctx.fillStyle = '#1D9E75';
+  ctx.font = '700 36px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Waypoint', 70, 110);
+
+  ctx.fillStyle = '#555B70';
+  ctx.font = '500 28px "Inter", sans-serif';
+  ctx.fillText('My MCAT prep route', 70, 152);
+
+  // Big coverage number
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#F0F2F8';
+  ctx.font = '700 240px "Space Grotesk", sans-serif';
+  ctx.fillText(`${cov}%`, W / 2, 540);
+
+  ctx.fillStyle = '#1D9E75';
+  ctx.font = '600 40px "Inter", sans-serif';
+  ctx.fillText('of the MCAT covered', W / 2, 605);
+
+  // Stat cards: streak + topics unlocked
+  const cardY = 700, cardW = 445, cardH = 230, cardR = 22, gap = 50;
+  const cardX1 = (W - cardW * 2 - gap) / 2;
+  const cardX2 = cardX1 + cardW + gap;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.fill();
+  roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.stroke();
+  roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.stroke();
+
+  // Streak card
+  ctx.fillStyle = '#F0F2F8';
+  ctx.font = '700 90px "Space Grotesk", sans-serif';
+  ctx.fillText(streak > 0 ? `🔥 ${streak}` : '—', cardX1 + cardW / 2, cardY + 120);
+  ctx.fillStyle = '#8A90A8';
+  ctx.font = '500 30px "Inter", sans-serif';
+  ctx.fillText(streak === 1 ? 'day streak' : 'day streak', cardX1 + cardW / 2, cardY + 175);
+
+  // Topics unlocked card
+  ctx.fillStyle = '#F0F2F8';
+  ctx.font = '700 90px "Space Grotesk", sans-serif';
+  ctx.fillText(`${myTopics.length}/${totalTopics}`, cardX2 + cardW / 2, cardY + 120);
+  ctx.fillStyle = '#8A90A8';
+  ctx.font = '500 30px "Inter", sans-serif';
+  ctx.fillText('topics unlocked', cardX2 + cardW / 2, cardY + 175);
+
+  // Tagline
+  ctx.fillStyle = '#6B7185';
+  ctx.font = '500 32px "Inter", sans-serif';
+  const lines = wrapCanvasText(ctx, 'Building the habit one topic at a time — before most premeds even open a prep book.', W - 180);
+  lines.forEach((line, i) => ctx.fillText(line, W / 2, 1060 + i * 44));
+
+  // Footer
+  ctx.fillStyle = '#444B62';
+  ctx.font = '500 26px "Inter", sans-serif';
+  ctx.fillText('drewjones16.github.io/Waypoint', W / 2, H - 60);
+
+  canvas.toBlob(async (blob) => {
+    if (!blob) return;
+    const file = new File([blob], 'waypoint-progress.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'My Waypoint progress',
+          text: `I've covered ${cov}% of the MCAT — tracked with Waypoint.`
+        });
+        return;
+      } catch (e) { /* user cancelled — fall back to download */ }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'waypoint-progress.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+function wrapCanvasText(ctx, text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, quicklogdone:100 };
 
 function render() {
   const el = document.getElementById('app');
@@ -3115,6 +3467,8 @@ function render() {
     case 'reveal':   html += screenReveal();   break;
     case 'question': html += screenQuestion(); break;
     case 'complete': html += screenComplete(); break;
+    case 'quicklog': html += screenQuickLog(); break;
+    case 'quicklogdone': html += screenQuickLogDone(); break;
   }
   el.innerHTML = html;
 
