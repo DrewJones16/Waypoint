@@ -3144,7 +3144,14 @@ function load() {
       const diffDays = (new Date() - new Date(S.lastDate)) / 86400000;
       if (diffDays > 1.5) S.streak = 0;
     }
-  } catch(e) { /* first visit, localStorage might not be available */ }
+  } catch(e) {
+    // Corrupted or unparseable localStorage — wipe all Waypoint keys and start fresh.
+    // Silent recovery: new users see the landing screen, not an error.
+    console.warn('[Waypoint] load() failed — resetting localStorage:', e);
+    ['wp_courses','wp_year','wp_streak','wp_lastDate','wp_qstats',
+     'wp_total','wp_history','wp_milestones','wp_cov_milestones',
+     'wp_topic_last_seen','wp_nudge_dismissed'].forEach(k => localStorage.removeItem(k));
+  }
 }
 
 // ── LOGIC ─────────────────────────────────────────────────────────────────────
@@ -4063,6 +4070,29 @@ function screenQuickLogDone() {
     </div>`;
 }
 
+function screenError() {
+  const WP_KEYS = ['wp_courses','wp_year','wp_streak','wp_lastDate','wp_qstats',
+                   'wp_total','wp_history','wp_milestones','wp_cov_milestones',
+                   'wp_topic_last_seen','wp_nudge_dismissed'];
+  const el = document.getElementById('app');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="screen" style="text-align:center;padding-top:60px;">
+      <div style="font-size:36px;margin-bottom:16px;">⚠️</div>
+      <h2 style="margin-bottom:8px;">Waypoint hit a snag</h2>
+      <p style="font-size:15px;color:#8A90A8;margin-bottom:32px;line-height:1.55;">
+        Your progress might still be intact.<br>
+        Try reloading — it usually clears right up.
+      </p>
+      <button class="btn btn-primary" style="margin-bottom:12px;"
+              onclick="window.location.reload()">Try again</button>
+      <button class="btn btn-ghost"
+              onclick="${WP_KEYS.map(k => `localStorage.removeItem('${k}')`).join(';')};window.location.reload()">
+        Start fresh
+      </button>
+    </div>`;
+}
+
 // ── ACTIONS ───────────────────────────────────────────────────────────────────
 
 function go(screen) {
@@ -4418,6 +4448,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, quicklogdone:100 };
 
 function render() {
+  try {
   const el = document.getElementById('app');
   const pct = PROG[S.screen] || 0;
 
@@ -4468,6 +4499,10 @@ function render() {
       ring.style.strokeDashoffset = ring.dataset.target;
     }, 80));
   }
+  } catch(e) {
+    console.error('[Waypoint] render() failed:', e);
+    screenError();
+  }
 }
 
 function animatePct(target) {
@@ -4493,6 +4528,18 @@ window.answer       = answer;
 window.next         = next;
 window.setReminder  = setReminder;
 window.shareCoverageCard = shareCoverageCard;
+
+// ── GLOBAL ERROR BOUNDARY ─────────────────────────────────────────────────────
+// Last-resort handlers so an uncaught error never leaves the user on a blank screen.
+window.onerror = function(msg, src, line, col, err) {
+  console.error('[Waypoint] Uncaught error:', err || msg);
+  screenError();
+  return true; // suppress default browser error UI
+};
+window.onunhandledrejection = function(event) {
+  console.error('[Waypoint] Unhandled promise rejection:', event.reason);
+  screenError();
+};
 
 load();
 // Route: returning user with session history → brief; returning without history → reveal; new user → landing
