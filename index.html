@@ -6,6 +6,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Waypoint — MCAT Coverage Tracker</title>
+<script defer data-domain="drewjones16.github.io/Waypoint" src="https://plausible.io/js/script.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -3791,7 +3792,7 @@ function screenCourses() {
             </label>`).join('')}
         `;}).join('')}
       </div>
-      <button class="btn btn-primary" style="margin-top:16px;flex-shrink:0;" onclick="go('reveal')">Calculate my coverage →</button>
+      <button class="btn btn-primary" style="margin-top:16px;flex-shrink:0;" onclick="finishCourses()">Calculate my coverage →</button>
     </div>`;
 }
 
@@ -4119,6 +4120,13 @@ function selectYear(year) {
   setTimeout(() => go('courses'), 300);
 }
 
+function finishCourses() {
+  if (S.year && S.courses.size > 0) {
+    if (window.plausible) plausible('onboarding_complete');
+  }
+  go('reveal');
+}
+
 function toggleCourse(id, checked) {
   checked ? S.courses.add(id) : S.courses.delete(id);
   save();
@@ -4143,6 +4151,7 @@ function startSession() {
     go('courses');
     return;
   }
+  if (window.plausible) plausible('session_start');
   go('question');
 }
 
@@ -4158,6 +4167,7 @@ function startQuickLog(topicId) {
     go('brief');
     return;
   }
+  if (window.plausible) plausible('quicklog_start');
   go('question');
 }
 
@@ -4170,7 +4180,10 @@ function answer(i) {
   // Track per-question accuracy
   if (!S.qStats[q.id]) S.qStats[q.id] = { right: 0, wrong: 0 };
   if (correct) S.qStats[q.id].right++;
-  else         S.qStats[q.id].wrong++;
+  else {
+    S.qStats[q.id].wrong++;
+    if (window.plausible) plausible('question_wrong');
+  }
 
   render();
 }
@@ -4207,6 +4220,7 @@ function next() {
       S.lastDate = today;
     }
     save();
+    if (window.plausible) plausible('session_complete');
     go('complete');
   } else {
     render();
@@ -4244,6 +4258,7 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 async function shareCoverageCard(variant = 'coverage', btn) {
+  if (window.plausible) plausible('share_card');
   const cov   = coverage(S.courses);
   const myTopics    = TOPICS.filter(t => t.course && S.courses.has(t.course));
   const totalTopics = TOPICS.filter(t => t.course).length;
@@ -4533,6 +4548,7 @@ function animatePct(target) {
 
 window.go           = go;
 window.selectYear   = selectYear;
+window.finishCourses = finishCourses;
 window.toggleCourse = toggleCourse;
 window.toggleCat    = toggleCat;
 window.startSession = startSession;
@@ -4557,6 +4573,7 @@ load();
 // Route: returning user with session history → brief; returning without history → reveal; new user → landing
 if (S.courses.size > 0) {
   S.screen = S.sessionHistory.length > 0 ? 'brief' : 'reveal';
+  if (window.plausible) plausible('app_open');
 }
 render();
 </script>
