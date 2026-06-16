@@ -2677,6 +2677,406 @@ const QUESTIONS = [
     ans:2,
     exp:'The mole ratio between Al and Cu in the balanced equation is 2:3. With 4 moles of Al (and CuSO₄ in excess, so Al is limiting): moles Cu = 4 mol Al × (3 mol Cu / 2 mol Al) = 6 moles Cu. The balanced equation\'s coefficients always give the mole-to-mole conversion ratio between any two species in a reaction — the foundation of all stoichiometry calculations, whether converting moles to moles, moles to grams, or grams to grams (via molar mass).'
   },
+  // ── Genetics — additional batch ────────────────────────────────────────────
+  {
+    id:'b34', topic:'genetics',
+    stem:'The ABO blood group system has three alleles: I^A and I^B are codominant; i is recessive to both. A person with genotype I^A I^B has blood type:',
+    opts:['Type A','Type B','Type AB','Type O'],
+    ans:2,
+    exp:'Codominance means both alleles are fully expressed simultaneously — I^A I^B individuals display BOTH A and B surface antigens, giving blood type AB. This differs from incomplete dominance, where heterozygotes show a blended, intermediate phenotype (e.g., pink snapdragons). Only ii individuals are type O, since i is recessive to both I^A and I^B. ABO blood type is the classic MCAT example of a gene with more than two alleles (multiple allelism) combined with codominance.'
+  },
+  {
+    id:'b35', topic:'genetics',
+    stem:'A pedigree shows two unaffected parents who have an affected daughter. The trait appears in roughly equal numbers of males and females across the pedigree and often skips generations. This pattern is most consistent with:',
+    opts:['Autosomal dominant','Autosomal recessive','X-linked dominant','X-linked recessive'],
+    ans:1,
+    exp:'Two unaffected parents producing an affected child means the trait must be recessive — both parents are heterozygous (unaffected) carriers (Aa × Aa → ¼ aa affected). If this were X-linked recessive, an affected daughter (X^a X^a) would require her father to be affected (X^a Y), contradicting "unaffected parents." Skipping generations and roughly equal sex distribution are hallmark clues for autosomal recessive inheritance. Autosomal dominant traits typically appear in every generation (an affected child needs at least one affected parent).'
+  },
+  {
+    id:'b36', topic:'genetics',
+    stem:'Nondisjunction during meiosis I in an oocyte produces a gamete with 24 chromosomes instead of the normal 23. If this gamete is fertilized by a normal sperm (23 chromosomes), the resulting zygote will have:',
+    opts:['45 chromosomes — monosomy','46 chromosomes — normal','47 chromosomes — trisomy','48 chromosomes — tetrasomy'],
+    ans:2,
+    exp:'Nondisjunction is the failure of homologous chromosomes (meiosis I) or sister chromatids (meiosis II) to separate properly, producing gametes with n+1 or n−1 chromosomes instead of n. A 24-chromosome (n+1) gamete fertilized by a normal 23-chromosome (n) gamete gives 47 chromosomes total — trisomy (e.g., Trisomy 21 / Down syndrome, Trisomy 18, Trisomy 13). The complementary n−1 (22-chromosome) gamete from the same nondisjunction event would, if fertilized, produce a 45-chromosome monosomy. Maternal age is the best-established risk factor for meiotic nondisjunction.'
+  },
+  {
+    id:'b37', topic:'genetics',
+    stem:'In E. coli, the lac operon is normally repressed when lactose is absent because the lac repressor binds the operator and blocks transcription. When lactose is added to the medium, transcription of the lac genes increases primarily because:',
+    opts:['The lac repressor binds the operator more tightly, increasing repression',
+          'Allolactose binds the lac repressor, causing a conformational change that releases it from the operator',
+          'RNA polymerase becomes permanently unable to bind the promoter',
+          'The lac genes are deleted and replaced with active copies'],
+    ans:1,
+    exp:'The lac operon is an inducible operon under negative control. Without lactose, the lac repressor sits on the operator, physically blocking RNA polymerase. When lactose is present, a metabolite (allolactose) binds the repressor, causing it to change shape and detach from the operator — RNA polymerase can then transcribe lacZ, lacY, and lacA (enzymes for lactose metabolism). This is the inverse of repressible operons like trp, where binding of a corepressor (tryptophan) to an otherwise-inactive repressor ACTIVATES it, turning transcription off.'
+  },
+  {
+    id:'b38', topic:'genetics',
+    stem:'A dihybrid cross between two organisms heterozygous for two independently assorting genes (AaBb × AaBb), each showing complete dominance with no linkage or epistasis, produces offspring in the classic phenotypic ratio:',
+    opts:['1:2:1','3:1','9:3:3:1','1:1:1:1'],
+    ans:2,
+    exp:'With independent assortment, AaBb × AaBb yields 16 equally likely genotype combinations that collapse into four phenotype classes in a 9:3:3:1 ratio (9 dominant-dominant : 3 dominant-recessive : 3 recessive-dominant : 1 recessive-recessive). This follows from the product rule: P(A_) = ¾ and P(B_) = ¾, so P(A_B_) = ¾ × ¾ = 9/16. The 9:3:3:1 ratio is the two-gene analog of the monohybrid 3:1 ratio. Departures from 9:3:3:1 (e.g., 9:3:4 or 12:3:1) signal gene linkage or epistasis between the two loci.'
+  },
+  {
+    id:'b39', topic:'genetics',
+    stem:'A small group of organisms colonizes an isolated island. By chance, the founding population has a much higher frequency of a particular allele than the mainland source population, and this elevated frequency persists in island descendants for generations. This is best explained by:',
+    opts:['Natural selection favoring the allele in the new environment',
+          'The founder effect, a form of genetic drift',
+          'Ongoing gene flow from the mainland population',
+          'An unusually high mutation rate in the island population'],
+    ans:1,
+    exp:'The founder effect is a form of genetic drift in which a small founding population, by chance, carries an unrepresentative sample of the source population\'s allele frequencies. Drift has a disproportionately large effect in small populations, so chance sampling at founding can permanently shift allele frequencies in the new population. Natural selection would require evidence that the allele confers a fitness advantage in the new environment (not stated). Gene flow requires ongoing migration, which contradicts "isolated island." A changed mutation rate wouldn\'t explain an elevated frequency present from the moment of founding.'
+  },
+  // ── Statistics — additional batch 2 ────────────────────────────────────────
+  {
+    id:'s09', topic:'research',
+    stem:'A new diagnostic test correctly identifies 90 of 100 people who truly have a disease, and correctly identifies 80 of 100 people who truly do not have the disease. The sensitivity of this test is:',
+    opts:['80%','90%','10%','20%'],
+    ans:1,
+    exp:'Sensitivity = true positive rate = (true positives) / (true positives + false negatives) = the proportion of people WITH the disease who test positive = 90/100 = 90%. Specificity = true negative rate = the proportion of people WITHOUT the disease who test negative = 80/100 = 80% (the other value given). Mnemonic: a highly SeNsitive test is good for ruling OUT disease when negative ("SnNout"), and a highly SPecific test is good for ruling IN disease when positive ("SpPin"). Unlike PPV/NPV, sensitivity and specificity do not depend on disease prevalence.'
+  },
+  {
+    id:'s10', topic:'research',
+    stem:'Researchers identify 200 patients with pancreatic cancer (cases) and 200 matched patients without it (controls), then look backward at each group\'s smoking history. This study design is a:',
+    opts:['Cohort study; the appropriate measure of association is relative risk',
+          'Case-control study; the appropriate measure of association is the odds ratio',
+          'Randomized controlled trial; the appropriate measure is absolute risk reduction',
+          'Cross-sectional study; the appropriate measure is prevalence'],
+    ans:1,
+    exp:'Case-control studies start from outcome status (disease present vs. absent) and look backward (retrospectively) for prior exposures — efficient for studying rare diseases since researchers can deliberately enroll enough cases. Because cases and controls are sampled in fixed numbers rather than reflecting true population incidence, true risk can\'t be calculated directly, so the odds ratio (OR) is the appropriate association measure. Cohort studies are prospective (exposure → outcome) and yield relative risk; RCTs randomize an intervention; cross-sectional studies measure prevalence at a single point in time.'
+  },
+  {
+    id:'s11', topic:'research',
+    stem:'A study finds that people who drink more coffee have higher rates of lung cancer. However, coffee drinkers in the study also smoke cigarettes at much higher rates than non-coffee-drinkers. In this scenario, cigarette smoking is best described as a:',
+    opts:['Dependent variable','Confounding variable','Operational definition','Control variable'],
+    ans:1,
+    exp:'A confounding variable is associated with both the independent variable (coffee consumption) and the dependent variable (lung cancer) and can create or mask an apparent relationship between them. Here, smoking correlates with coffee drinking AND independently causes lung cancer, so it could fully explain the observed coffee–cancer association even if coffee itself has no causal effect. Well-designed studies address confounders through randomization, matching, or statistical adjustment. This is a textbook "correlation ≠ causation" scenario, heavily tested in MCAT research-methods passages.'
+  },
+  {
+    id:'s12', topic:'research',
+    stem:'In a randomized controlled trial of a new drug, neither the participants nor the researchers administering treatment know who is receiving the drug versus the placebo. The primary purpose of this double-blind design is to:',
+    opts:['Increase the statistical power needed to detect an effect',
+          'Eliminate the need for a control group',
+          'Reduce bias from participant expectations and from researchers\' influence on outcome assessment',
+          'Ensure the drug and placebo are chemically identical'],
+    ans:2,
+    exp:'Double-blinding addresses two sources of bias: (1) participant response bias / placebo effect, where knowing one is receiving "the real drug" can itself alter reported or measured outcomes; and (2) observer/experimenter bias, where researchers who know the group assignment might consciously or unconsciously treat participants differently or interpret results differently. A single-blind study blinds only participants. Blinding does not replace the need for a control group — it makes the comparison with that group unbiased. The placebo must look/feel identical to the drug (to enable blinding) but need not be chemically identical — it is typically inert.'
+  },
+  {
+    id:'s13', topic:'research',
+    stem:'A dataset of household incomes is strongly right-skewed, with a long tail of very high incomes. Compared to the median income, the mean income in this dataset will be:',
+    opts:['Equal to the median','Less than the median','Greater than the median','Impossible to determine without knowing the mode'],
+    ans:2,
+    exp:'In a right-skewed (positively skewed) distribution, a long tail of high values pulls the mean toward those extreme values, while the median (the middle-ranked value) is unaffected by their magnitude. So mean > median for right-skewed data. The reverse holds for left-skewed data (mean < median). In a symmetric distribution, such as a normal distribution, mean = median = mode. Because the mean is sensitive to outliers, the median is often the more representative "typical value" for skewed data like income, housing prices, or hospital length-of-stay.'
+  },
+  {
+    id:'s14', topic:'research',
+    stem:'A bathroom scale consistently reads exactly 5 pounds heavier than a person\'s true weight every single time they step on it. This scale demonstrates:',
+    opts:['High reliability, low validity','Low reliability, high validity','Low reliability, low validity','High reliability, high validity'],
+    ans:0,
+    exp:'Reliability is the consistency or reproducibility of a measurement across repeated trials. Validity is the accuracy of a measurement — whether it reflects the true value of the thing being measured. A scale that is always off by the same fixed amount gives highly consistent (reliable) readings, but those readings are systematically inaccurate (low validity). A scale that gave wildly different random readings each time would instead be unreliable. On the MCAT: a measure can be reliable without being valid, but it cannot be valid without first being reliable — reliability is a precondition for validity.'
+  },
+  // ── Physiology — additional batch 2 ────────────────────────────────────────
+  {
+    id:'p11', topic:'physio',
+    stem:'In response to dehydration, antidiuretic hormone (ADH/vasopressin) is released from the posterior pituitary. Its primary effect on the kidney is to:',
+    opts:['Decrease aquaporin insertion in the collecting duct, increasing urine volume',
+          'Increase aquaporin (AQP2) insertion in the collecting duct, increasing water reabsorption and producing concentrated urine',
+          'Increase glomerular filtration rate by dilating the afferent arteriole',
+          'Stimulate aldosterone release, which directly increases water permeability'],
+    ans:1,
+    exp:'ADH binds V2 receptors on collecting duct principal cells → cAMP signaling → AQP2 water channels inserted into the apical membrane → water is reabsorbed down its osmotic gradient into the hypertonic medullary interstitium → concentrated, low-volume urine, and plasma osmolality falls back toward normal. Without ADH (e.g., diabetes insipidus), collecting ducts stay impermeable to water, producing large volumes of dilute urine. ADH does not directly change GFR or trigger aldosterone — aldosterone is a separate RAAS hormone that primarily drives Na⁺ reabsorption (with water following secondarily).'
+  },
+  {
+    id:'p12', topic:'physio',
+    stem:'The intrinsic rhythm of the heart is normally set by the sinoatrial (SA) node. If the SA node failed but the rest of the conduction system remained intact, the heart would most likely:',
+    opts:['Stop beating entirely, since no other tissue can generate action potentials',
+          'Continue beating at a slower rate, paced by the AV node — a "backup" pacemaker with a lower intrinsic rate',
+          'Beat faster, since the AV node has a higher intrinsic rate than the SA node',
+          'Beat irregularly with no identifiable pacemaker'],
+    ans:1,
+    exp:'Cardiac conduction tissue has a hierarchy of pacemaker cells, each capable of spontaneous depolarization (automaticity) at progressively slower intrinsic rates: SA node (~60–100 bpm, normal pacemaker) > AV node (~40–60 bpm) > His-Purkinje system (~20–40 bpm). If the SA node fails, the AV node becomes the dominant pacemaker ("junctional rhythm") — slower but still organized. This hierarchy is why complete heart block doesn\'t necessarily cause cardiac arrest: a lower pacemaker takes over. The SA node\'s faster intrinsic rate is precisely why it normally sets the pace — it depolarizes first and resets the others before they can fire on their own.'
+  },
+  {
+    id:'p13', topic:'physio',
+    stem:'In skeletal muscle, an action potential triggers release of Ca²⁺ from the sarcoplasmic reticulum. The immediate next step in the sliding filament mechanism is:',
+    opts:['Ca²⁺ directly binds myosin heads, causing them to detach from actin',
+          'Ca²⁺ binds troponin on the thin filament, shifting tropomyosin to expose myosin-binding sites on actin',
+          'Ca²⁺ triggers ATP synthesis, which powers the contraction',
+          'Ca²⁺ depolarizes the sarcolemma, directly causing the muscle to shorten'],
+    ans:1,
+    exp:'Excitation-contraction coupling: action potential → T-tubule depolarization → DHP receptor conformational change → ryanodine receptor opens → Ca²⁺ floods from the SR into the cytosol → Ca²⁺ binds troponin C → tropomyosin shifts off actin\'s myosin-binding sites → myosin heads (already ATP-bound/cocked) bind actin → power stroke pulls actin filaments toward the sarcomere center (H-zone and I-band shorten; A-band stays constant). ATP powers the power stroke and is required for myosin head detachment (its absence causes rigor mortis). Relaxation occurs when the SERCA pump returns Ca²⁺ to the SR and tropomyosin re-blocks the binding sites.'
+  },
+  {
+    id:'p14', topic:'physio',
+    stem:'After a normal, relaxed exhalation, the additional volume of air that can still be voluntarily, forcefully exhaled is called the:',
+    opts:['Tidal volume','Residual volume','Expiratory reserve volume','Total lung capacity'],
+    ans:2,
+    exp:'After a normal tidal exhalation, the lungs still hold air. The portion that CAN be additionally forced out is the expiratory reserve volume (ERV). What remains after maximal exhalation — and can never be expelled — is the residual volume (RV), which keeps alveoli from collapsing. Tidal volume (TV) is the air moved during normal quiet breathing. Total lung capacity (TLC) = TV + IRV + ERV + RV, the sum of all four lung volumes. Functional residual capacity (FRC) = ERV + RV — the lung volume at rest after passive exhalation, clinically important for oxygenation reserve.'
+  },
+  {
+    id:'p15', topic:'physio',
+    stem:'Chronic stress activates the hypothalamic-pituitary-adrenal (HPA) axis: the hypothalamus releases CRH, the anterior pituitary releases ACTH, and the adrenal cortex releases cortisol. Elevated cortisol then acts on the hypothalamus and pituitary to:',
+    opts:['Further stimulate CRH and ACTH release in a positive feedback loop',
+          'Inhibit CRH and ACTH release via negative feedback, limiting further cortisol production',
+          'Have no effect on the hypothalamus or pituitary',
+          'Directly stimulate the adrenal medulla to release epinephrine'],
+    ans:1,
+    exp:'The HPA axis is a classic negative feedback loop: hypothalamus → CRH → anterior pituitary → ACTH → adrenal cortex → cortisol. Rising cortisol feeds back to inhibit both CRH (hypothalamus) and ACTH (anterior pituitary), limiting further cortisol production and keeping levels within a normal range. Chronic stress can dysregulate this feedback, contributing to sustained high cortisol (linked to immune suppression, hyperglycemia, hypertension). Negative feedback is the dominant pattern for nearly all hormone axes — positive feedback (e.g., oxytocin during labor, the LH surge in ovulation) is the exception, not the rule.'
+  },
+  {
+    id:'p16', topic:'physio',
+    stem:'A pathogen breaches the skin for the first time. Within minutes to hours, macrophages and neutrophils respond at the site without requiring any prior exposure to this specific pathogen. This rapid, non-specific response is part of:',
+    opts:['Adaptive (acquired) immunity, mediated by B and T lymphocytes',
+          'Innate immunity, which is fast-acting and lacks immunological memory',
+          'Passive immunity, acquired from maternal antibodies',
+          'Humoral immunity specific to this pathogen'],
+    ans:1,
+    exp:'Innate immunity is the body\'s first line of defense — physical barriers (skin, mucus) plus rapid cellular responses (neutrophils, macrophages, natural killer cells, complement, inflammation) that act within minutes to hours and do NOT require prior exposure or improve with repeated exposure (no memory). Adaptive immunity (B cells → antibodies/humoral immunity; T cells → cell-mediated immunity) develops more slowly on first exposure (days) but is highly specific and generates immunological memory, producing a faster, stronger response on re-exposure — the basis of vaccination. Passive immunity is the transfer of pre-formed antibodies (e.g., placental/breast-milk transfer or antitoxin injection), not a response generated by the recipient\'s own immune system.'
+  },
+  // ── Neuroscience — additional batch 2 ──────────────────────────────────────
+  {
+    id:'n11', topic:'neuro',
+    stem:'During the rising (depolarization) phase of a neuronal action potential, the membrane potential rapidly becomes more positive primarily because:',
+    opts:['Voltage-gated K⁺ channels open, allowing K⁺ to rush into the cell',
+          'Voltage-gated Na⁺ channels open, allowing Na⁺ to rush into the cell down its electrochemical gradient',
+          'The Na⁺/K⁺ ATPase pumps Na⁺ into the cell',
+          'Ligand-gated Cl⁻ channels open, allowing Cl⁻ to leave the cell'],
+    ans:1,
+    exp:'When depolarization reaches threshold (~−55 mV), voltage-gated Na⁺ channels open rapidly. Na⁺ is more concentrated outside the cell, and the inside is negative relative to outside, so Na⁺ rushes in down its electrochemical gradient — driving the membrane potential toward Na⁺\'s equilibrium potential (~+60 mV per the Nernst equation). This is the rising phase of the spike. Repolarization follows as Na⁺ channels inactivate and voltage-gated K⁺ channels open, allowing K⁺ efflux (often overshooting into hyperpolarization). The Na⁺/K⁺ ATPase maintains resting ion gradients but is far too slow to drive the millisecond-scale action potential itself.'
+  },
+  {
+    id:'n12', topic:'neuro',
+    stem:'The resting membrane potential of a typical neuron (~−70 mV) sits closer to the equilibrium potential for K⁺ than for Na⁺ primarily because:',
+    opts:['The resting membrane is far more permeable to K⁺ than to Na⁺',
+          'K⁺ is more concentrated outside the cell than inside',
+          'The Na⁺/K⁺ ATPase pumps equal numbers of Na⁺ and K⁺ across the membrane',
+          'Na⁺ channels are wide open at rest, dominating the resting potential'],
+    ans:0,
+    exp:'At rest, the neuronal membrane has many open "leak" K⁺ channels but relatively few open Na⁺ channels — permeability to K⁺ is much higher than to Na⁺. By the Goldman-Hodgkin-Katz equation, resting potential is a weighted average of each ion\'s equilibrium potential, weighted by relative permeability. Because K⁺ permeability dominates, resting potential (~−70 mV) sits close to K⁺\'s equilibrium potential (~−90 mV via Nernst) rather than Na⁺\'s (~+60 mV). K⁺ is actually more concentrated INSIDE the cell, not outside — it\'s the permeability difference, not the direction of the concentration gradient, that determines which ion dominates. The Na⁺/K⁺ ATPase maintains these gradients (3 Na⁺ out for every 2 K⁺ in) but doesn\'t directly set the resting potential\'s value.'
+  },
+  {
+    id:'n13', topic:'neuro',
+    stem:'Tapping the patellar tendon stretches the quadriceps muscle, triggering the knee-jerk reflex (the leg kicks forward). This is a monosynaptic reflex because:',
+    opts:['It involves only one type of neuron throughout the entire pathway',
+          'The sensory (afferent) neuron synapses directly onto the motor (efferent) neuron in the spinal cord, with no interneuron',
+          'It occurs entirely within the muscle, without involving the spinal cord',
+          'It requires conscious processing in the cerebral cortex'],
+    ans:1,
+    exp:'In the patellar reflex, a muscle spindle stretch receptor in the quadriceps sends a signal via a sensory (afferent) neuron directly into the spinal cord, where it synapses directly onto a motor (efferent) neuron innervating the same quadriceps muscle — just ONE synapse between sensory input and motor output, hence "monosynaptic." Most reflexes (e.g., the withdrawal reflex from a painful stimulus) are polysynaptic, involving one or more interneurons and often coordinating reciprocal inhibition of antagonist muscles. Spinal reflexes occur without requiring the brain (though the brain can modulate them) — this is why reflexes persist even after spinal cord injury above the level of the reflex arc.'
+  },
+  {
+    id:'n14', topic:'neuro',
+    stem:'During the "fight or flight" response, the sympathetic nervous system releases norepinephrine onto target organs. Which combination of effects is correct?',
+    opts:['Decreased heart rate, pupil constriction, increased digestion',
+          'Increased heart rate, pupil dilation, decreased digestive (GI) activity',
+          'Increased heart rate, pupil constriction, increased salivation',
+          'Decreased heart rate, pupil dilation, decreased respiratory rate'],
+    ans:1,
+    exp:'The sympathetic ("fight or flight") division prepares the body for acute stress: norepinephrine (and adrenal epinephrine) acting on adrenergic receptors increases heart rate and contractility (β1), dilates pupils (mydriasis, for better vision), dilates bronchioles (more airflow), and shunts blood AWAY from the GI tract toward skeletal muscle — digestion is suppressed, since "rest and digest" functions belong to the parasympathetic division. Parasympathetic activity (acetylcholine) does the opposite: decreases heart rate, constricts pupils, and stimulates digestion/salivation. These two divisions of the autonomic nervous system generally have antagonistic effects on the same target organs.'
+  },
+  {
+    id:'n15', topic:'neuro',
+    stem:'Myelin sheaths insulate axons and enable saltatory conduction, dramatically increasing action potential conduction velocity. In the central nervous system, myelin is produced by:',
+    opts:['Schwann cells, each of which myelinates one segment of one axon',
+          'Oligodendrocytes, each of which can myelinate segments of multiple axons',
+          'Astrocytes, which also help form the blood-brain barrier',
+          'Microglia, the resident immune cells of the CNS'],
+    ans:1,
+    exp:'In the CNS, oligodendrocytes form myelin — a single oligodendrocyte extends processes that wrap segments of multiple axons (even from different neurons). In the PNS, Schwann cells perform the analogous role, but each Schwann cell myelinates only one segment of one axon (1:1). Gaps between myelinated segments (nodes of Ranvier) are rich in voltage-gated Na⁺ channels — the action potential "jumps" node to node (saltatory conduction), much faster than continuous conduction along unmyelinated axons. Demyelinating diseases (multiple sclerosis — CNS, oligodendrocytes; Guillain-Barré syndrome — PNS, Schwann cells) slow or block conduction. Astrocytes support the blood-brain barrier and neuron metabolism; microglia are CNS-resident immune cells — neither produces myelin.'
+  },
+  {
+    id:'n16', topic:'neuro',
+    stem:'Parkinson\'s disease is characterized by tremor, rigidity, and bradykinesia (slowness of movement), resulting from degeneration of dopaminergic neurons in the:',
+    opts:['Cerebellum, disrupting fine motor coordination',
+          'Substantia nigra, disrupting the basal ganglia\'s control of voluntary movement',
+          'Hippocampus, disrupting memory consolidation',
+          'Broca\'s area, disrupting speech production'],
+    ans:1,
+    exp:'Parkinson\'s disease results from progressive loss of dopaminergic neurons in the substantia nigra (part of the basal ganglia), which normally project to the striatum and help facilitate intended movement while suppressing unwanted movement. Reduced dopamine disrupts this balance, producing the classic triad — resting tremor, rigidity, bradykinesia — plus postural instability. L-DOPA (a dopamine precursor that crosses the blood-brain barrier, unlike dopamine itself) replenishes striatal dopamine. The cerebellum coordinates fine motor timing and balance (damage causes ataxia, not Parkinsonism); the hippocampus underlies memory consolidation; Broca\'s area governs speech production — distinct localizations frequently tested against each other on the MCAT.'
+  },
+  // ── Thermodynamics / Gen Chem II — additional batch ────────────────────────
+  {
+    id:'th11', topic:'thermo',
+    stem:'Hess\'s Law allows calculation of ΔH for a reaction that cannot be measured directly. The law states that:',
+    opts:['ΔH is always zero for a catalyzed reaction',
+          'ΔH for any reaction equals the sum of ΔH values for reactions that algebraically add up to the target reaction',
+          'ΔH is determined by measuring changes in entropy and applying ΔG = ΔH − TΔS',
+          'ΔH equals the average of bond energies broken minus bond energies formed'],
+    ans:1,
+    exp:'Hess\'s Law: since enthalpy (H) is a state function — its change depends only on initial and final states, not the path — ΔH for any reaction can be obtained by algebraically combining known reactions that sum to the target. Rules: (1) reversing a reaction flips the sign of ΔH; (2) multiplying a reaction by a factor multiplies ΔH by the same factor. Used when a reaction cannot be measured directly (e.g., C(s) + ½O₂ → CO cannot easily be isolated from CO₂ formation). Hess\'s Law applies equally to other state functions: ΔG and ΔS can be combined the same way.'
+  },
+  {
+    id:'th12', topic:'thermo',
+    stem:'The Haber process: N₂(g) + 3H₂(g) ⇌ 2NH₃(g), ΔH = −92 kJ/mol. Increasing temperature shifts equilibrium:',
+    opts:['To the right — reactions are always faster and more productive at higher temperatures',
+          'To the left — toward reactants, because the forward reaction is exothermic and heat acts as a product',
+          'Has no effect on equilibrium position, only on reaction rate',
+          'To the right, because K always increases with temperature'],
+    ans:1,
+    exp:'Le Chatelier\'s principle applied to temperature: raising T "adds heat." For an exothermic reaction (ΔH < 0, heat is a product), adding heat shifts equilibrium LEFT toward reactants — K decreases. This is why the Haber process uses ~400–500°C (a kinetic compromise — lower T gives higher yield but slower rate; the catalyst compensates). Unlike pressure and concentration changes, temperature changes actually alter K: for exothermic reactions K decreases with T; for endothermic reactions K increases with T. This relationship is expressed by the van\'t Hoff equation.'
+  },
+  {
+    id:'th13', topic:'thermo',
+    stem:'For a reaction with ΔG° = −17.1 kJ/mol at 25°C, the equilibrium constant K is:',
+    opts:['Less than 1 (reactants favored at equilibrium)',
+          'Equal to 1 (neither side favored)',
+          'Greater than 1 (products favored at equilibrium)',
+          'Cannot be determined without knowing ΔS separately'],
+    ans:2,
+    exp:'ΔG° = −RT ln K → K = e^(−ΔG°/RT). Since ΔG° < 0, −ΔG°/RT > 0 and K = e^(positive) > 1 — products are favored at equilibrium. Key relationships to memorize: ΔG° < 0 ↔ K > 1 (products favored); ΔG° = 0 ↔ K = 1; ΔG° > 0 ↔ K < 1 (reactants favored). For this example: K = e^(17100/(8.314×298)) ≈ e^6.9 ≈ 1000 — strongly product-favored. The ΔG°–K relationship is one of the highest-yield thermodynamic connections on the MCAT: it links lab-measurable equilibrium ratios to free energy of the reaction.'
+  },
+  {
+    id:'th14', topic:'thermo',
+    stem:'On an energy diagram for an exothermic reaction, the activation energy (Ea) is defined as the energy difference between:',
+    opts:['The products and the reactants',
+          'The transition state and the reactants',
+          'The transition state and the products',
+          'The reactants and an intermediate energy well'],
+    ans:1,
+    exp:'Activation energy (Ea) = height of the energy barrier = energy of the transition state minus energy of reactants. It determines reaction rate (Arrhenius equation: k = Ae^(−Ea/RT)). ΔH for the overall reaction = products minus reactants, which is negative for an exothermic reaction. A catalyst lowers Ea for both forward and reverse reactions equally, increasing rate without changing ΔH, ΔS, ΔG, or K. The transition state is the highest-energy point on the reaction coordinate (an unstable species, not an intermediate); intermediates sit in energy "wells" between peaks and have finite lifetimes.'
+  },
+  {
+    id:'th15', topic:'thermo',
+    stem:'An electrolytic cell differs from a galvanic (voltaic) cell in that an electrolytic cell:',
+    opts:['Generates spontaneous current (ΔG < 0) via chemical reaction, like a battery',
+          'Requires external electrical energy to drive a non-spontaneous reaction (ΔG > 0, E°cell < 0)',
+          'Uses a salt bridge to transfer electrons between half-cells',
+          'Only operates with the same metal at both electrodes'],
+    ans:1,
+    exp:'Galvanic (voltaic) cell: spontaneous redox (ΔG < 0, E°cell > 0) drives current — a battery or fuel cell. Electrolytic cell: external power forces a non-spontaneous reaction (ΔG > 0, E°cell < 0) — electrolysis of water, electroplating, copper refining. In BOTH cell types: oxidation occurs at the anode, reduction at the cathode (LEO GER). The polarity convention differs: galvanic anode is negative (electrons flow out spontaneously); electrolytic anode is connected to the positive terminal of the external power supply. This distinction — and the ΔG relationship (ΔG° = −nFE°cell) — is a high-frequency MCAT trap.'
+  },
+  {
+    id:'th16', topic:'thermo',
+    stem:'Doubling [A] doubles the rate; doubling [B] quadruples the rate; doubling [C] has no effect. The overall reaction order and rate law are:',
+    opts:['First order overall; rate = k[A]',
+          'Third order overall; rate = k[A][B]²',
+          'Second order overall; rate = k[A][B]',
+          'Fourth order overall; rate = k[A][B]²[C]'],
+    ans:1,
+    exp:'Rate order in each reactant is determined experimentally from how rate responds to concentration changes. Order in A: 2^x = 2 → x = 1. Order in B: 2^y = 4 → y = 2. Order in C: 2^z = 1 → z = 0 (C not in the rate law). Rate = k[A]¹[B]² — overall 3rd order. Rate laws CANNOT be deduced from stoichiometric coefficients (except for elementary reactions). The rate constant k depends on temperature via the Arrhenius equation: k = Ae^(−Ea/RT). Rate law + half-life calculations are among the most calculation-intensive MCAT kinetics problems.'
+  },
+  // ── Sociology — additional batch ────────────────────────────────────────────
+  {
+    id:'sc11', topic:'soc',
+    stem:'Erving Goffman\'s dramaturgical theory describes social life as theatrical performance. "Impression management" refers to:',
+    opts:['Unconscious influence of stereotypes on social perception',
+          'Deliberate efforts to control how others perceive you by managing your appearance, manner, and setting in social interactions',
+          'Formal institutional rules governing professional behavior',
+          'The process of managing patients\' emotional responses during difficult medical conversations'],
+    ans:1,
+    exp:'Goffman\'s dramaturgy: social life is like theater — we perform roles on a "front stage" (public presentations, managing appearance, props, and behavior to create desired impressions) and behave differently "backstage" (out of audience view). Impression management involves selectively revealing information about ourselves. Relevant to healthcare: patients may present an idealized "compliant patient" identity; physicians manage their professional persona. Goffman also introduced the concepts of stigma (spoiled identity), total institutions (prisons, hospitals, military), and face-saving rituals — all MCAT-tested concepts.'
+  },
+  {
+    id:'sc12', topic:'soc',
+    stem:'A student from a group subject to negative academic stereotypes performs worse on a standardized test when told beforehand that "this test measures academic ability" than when told it is a non-evaluative exercise. This demonstrates:',
+    opts:['Confirmation bias — the student unconsciously seeks evidence consistent with the stereotype',
+          'Stereotype threat — awareness of a relevant negative group stereotype creates anxiety that disrupts performance',
+          'Self-handicapping — the student deliberately underperforms to have an excuse for failure',
+          'The Pygmalion effect — low teacher expectations become a self-fulfilling prophecy'],
+    ans:1,
+    exp:'Stereotype threat (Steele & Aronson, 1995): when individuals from a stereotyped group are aware that their performance might confirm a negative stereotype, the resulting anxiety and cognitive load (monitoring for stereotype-confirming behavior) reduces performance on the task itself — ironically potentially confirming the stereotype. It affects any stereotyped group (women in math, elderly on memory tests, White athletes in athletics). Interventions: growth mindset framing, emphasizing test as non-evaluative, values affirmation. Highly relevant to MCAT health equity and social psychology sections.'
+  },
+  {
+    id:'sc13', topic:'soc',
+    stem:'A person born into a low-income family achieves professional success and moves into the upper-middle class over their adult life. This change represents:',
+    opts:['Intergenerational downward mobility',
+          'Intragenerational upward mobility',
+          'Intergenerational upward mobility',
+          'Horizontal mobility'],
+    ans:1,
+    exp:'Intragenerational mobility = change in social position within one\'s OWN lifetime. Intergenerational mobility = change across GENERATIONS (comparing parents to children/grandchildren). This person starts low and moves up within their own career — intragenerational upward mobility. If we compared this person\'s status to their parents\', that would be intergenerational. Horizontal mobility = moving to a similar-status position (e.g., changing careers within the same class). Structural mobility is driven by macro-level economic change affecting an entire cohort simultaneously. All four types are directly tested on the MCAT.'
+  },
+  {
+    id:'sc14', topic:'soc',
+    stem:'G.H. Mead\'s concept of the "generalized other" refers to:',
+    opts:['A significant individual (parent, teacher) whose specific judgments directly shape behavior',
+          'The internalized composite perspective of society as a whole, which guides self-regulation in social situations',
+          'The imagined reaction of a specific peer group whose approval one seeks',
+          'The impulsive, unsocialized aspect of the self that resists social constraints'],
+    ans:1,
+    exp:'Mead\'s symbolic interactionism: the self develops through social interaction. The "I" is the spontaneous, impulsive part of self; the "Me" is the socialized, internalized self (how society sees me). The "generalized other" = the abstract standpoint of the community or society, internalized so we can regulate behavior without needing a specific person present. Cooley\'s "looking-glass self" is related: we see ourselves as reflected in others\' specific reactions — key distinction from Mead\'s abstract generalized other. Both explain how social expectations become self-regulation.'
+  },
+  {
+    id:'sc15', topic:'soc',
+    stem:'A physician unconsciously orders fewer pain tests for female patients than for male patients with identical presentations, without awareness of this differential. This best illustrates:',
+    opts:['Explicit prejudice — deliberate, conscious discrimination based on gender',
+          'Implicit bias — automatic, unconscious associations that influence behavior despite conscious egalitarian values',
+          'Institutional sexism — hospital policies that restrict women\'s access to testing',
+          'Role conflict — the physician\'s professional and personal gender attitudes clash'],
+    ans:1,
+    exp:'Implicit (unconscious) bias involves automatic attitudes and stereotypes operating below conscious awareness, shaping decisions even when the person explicitly endorses equal treatment. Measured by the Implicit Association Test (IAT). In medicine, documented implicit biases against racial/ethnic minorities, women, elderly, and individuals with obesity affect diagnosis, pain management, referral, and communication. Distinguished from explicit bias (conscious, deliberate) and structural/institutional discrimination (policy-level). Implicit bias training is a health equity intervention, though evidence on its effectiveness in changing actual behavior is mixed and debated.'
+  },
+  {
+    id:'sc16', topic:'soc',
+    stem:'The functionalist theory of stratification (Davis & Moore) argues that social inequality is beneficial because:',
+    opts:['Inequality generates class conflict that ultimately drives society toward greater equality',
+          'Unequal rewards motivate talented individuals to fill demanding, socially important roles',
+          'Stratification reflects genetically determined differences in ability and drive',
+          'Elites use ideology and force to maintain inequality in their own interest'],
+    ans:1,
+    exp:'Functionalist stratification theory (Davis & Moore, 1945): unequal pay and prestige for demanding, functionally important positions attracts and retains the most talented people in critical roles, benefiting society overall — inequality is a necessary motivational mechanism. Conflict theory (Marx, Weber) rejects this: inequality primarily serves ruling-class interests, maintained through economic power, ideology, and coercion. Symbolic interactionists focus on how class distinctions are enacted and experienced in daily interaction. Knowing all three perspectives\' central claims and major theorists is essential for MCAT P/S passages on stratification.'
+  },
+  // ── Cell Biology — additional batch ────────────────────────────────────────
+  {
+    id:'b40', topic:'cell-bio',
+    stem:'In the intrinsic (mitochondrial) pathway of apoptosis, cytochrome c is released from the mitochondria into the cytoplasm. Its immediate downstream function is to:',
+    opts:['Drive ATP synthesis in the cytoplasm via oxidative phosphorylation',
+          'Form the apoptosome with Apaf-1 and procaspase-9, initiating the caspase cascade',
+          'Activate inflammatory cytokine secretion from neighboring cells',
+          'Signal the nucleus to halt DNA replication'],
+    ans:1,
+    exp:'Intrinsic apoptosis: cellular stress → Bcl-2 family pro-apoptotic proteins (Bax, Bak) permeabilize the outer mitochondrial membrane → cytochrome c released → cytochrome c + Apaf-1 + procaspase-9 assemble the "apoptosome" → caspase-9 activation → executioner caspases (3, 6, 7) → DNA fragmentation, membrane blebbing, phagocytic engulfment without inflammation. Anti-apoptotic Bcl-2 prevents cytochrome c release — overexpressed in many cancers. Contrast with the extrinsic (death receptor) pathway: FasL/TRAIL bind death receptors → DISC formation → caspase-8 activation → converges on executioner caspases.'
+  },
+  {
+    id:'b41', topic:'cell-bio',
+    stem:'Which cell junction directly links the intermediate filaments of adjacent cells and provides mechanical strength to epithelia under stress (e.g., skin, cardiac muscle)?',
+    opts:['Tight junctions (zonula occludens) — seal the paracellular space',
+          'Desmosomes — connect intermediate filaments between neighboring cells via cadherin proteins',
+          'Gap junctions — allow direct cytoplasmic exchange of ions and small molecules',
+          'Hemidesmosomes — anchor epithelial cells to the basement membrane below'],
+    ans:1,
+    exp:'Desmosomes: transmembrane desmosomal cadherins (desmoglein, desmocollin) link to intermediate filaments (keratin in epithelia, desmin in cardiac muscle) via cytoplasmic anchor proteins (desmoplakin, plakophilin), creating a mechanically strong belt that resists tensile and shear forces. Autoantibodies against desmoglein cause pemphigus vulgaris (blistering skin disease). Tight junctions seal the paracellular space (blood-brain barrier, intestinal epithelium). Gap junctions (connexins) couple cells electrically and chemically (cardiac syncytium, hepatocytes). Hemidesmosomes connect cells to laminin in the basement membrane — not to adjacent cells.'
+  },
+  {
+    id:'b42', topic:'cell-bio',
+    stem:'A newly synthesized protein destined for secretion has a short hydrophobic signal peptide at its N-terminus. This signal peptide is first recognized by:',
+    opts:['The nuclear pore complex, directing the protein to the nucleus for processing',
+          'The signal recognition particle (SRP), which pauses translation and docks the ribosome at the rough ER membrane',
+          'The proteasome, which degrades misfolded secretory proteins in the cytoplasm',
+          'The Golgi apparatus, which receives and sorts the finished protein'],
+    ans:1,
+    exp:'Secretory protein targeting: signal peptide emerges from ribosome → bound by SRP (a ribonucleoprotein) → translation arrested → ribosome-SRP docks at SRP receptor on rough ER membrane → signal peptide threads through the Sec61 translocon → signal peptidase cleaves the signal peptide → translation resumes co-translationally into the ER lumen → protein is folded, disulfide-bonded, and N-glycosylated → packaged into COPII vesicles → Golgi (further modification and sorting) → secreted or delivered to plasma membrane. Proteins lacking a signal peptide are translated on free ribosomes and remain in the cytoplasm.'
+  },
+  {
+    id:'b43', topic:'cell-bio',
+    stem:'In a metabolic pathway A → B → C → D, high levels of the end product D inhibit the first enzyme in the pathway (A → B) by binding an allosteric site. This mechanism is called:',
+    opts:['Competitive inhibition — D acts as a substrate analog at the active site',
+          'Feedback (end-product) inhibition — the final product allosterically shuts down the first committed step',
+          'Covalent modification — D phosphorylates and inactivates the enzyme',
+          'Enzyme induction — high D levels cause transcription of the enzyme gene to increase'],
+    ans:1,
+    exp:'Feedback (end-product) inhibition: the final product of a pathway allosterically inhibits the first committed enzyme, preventing wasteful overproduction — the most common and efficient metabolic regulatory strategy. D binds an allosteric site (distinct from the active site), altering enzyme conformation and reducing activity. This is non-competitive with respect to substrate A (Vmax decreases, Km unchanged). Classic MCAT examples: ATP inhibiting phosphofructokinase-1 (glycolysis); CTP inhibiting ATCase (pyrimidine synthesis); isoleucine inhibiting threonine deaminase (amino acid synthesis). Distinct from competitive inhibition (active-site binding, raises apparent Km) and covalent modification (requires another enzyme).'
+  },
+  {
+    id:'b44', topic:'cell-bio',
+    stem:'The Na⁺/K⁺ ATPase pump moves 3 Na⁺ out of the cell and 2 K⁺ in per ATP consumed. This is an example of:',
+    opts:['Facilitated diffusion — protein-assisted movement down a concentration gradient',
+          'Primary active transport — ATP is used directly to move ions against their electrochemical gradients',
+          'Secondary active transport — ion movement is coupled to a pre-existing Na⁺ gradient',
+          'Simple diffusion — small ions cross freely through the lipid bilayer'],
+    ans:1,
+    exp:'Primary active transport uses ATP hydrolysis directly to move solutes against their electrochemical gradients. The Na⁺/K⁺ ATPase is the archetypal example — it maintains the resting membrane potential and generates the Na⁺ gradient exploited by secondary transporters throughout the body. Secondary active transport (e.g., SGLT1, the Na⁺-glucose symporter in the gut) uses the Na⁺ gradient (created by Na⁺/K⁺ ATPase) to move glucose against its concentration gradient — ATP is used indirectly. Facilitated diffusion is protein-assisted but passive/down-gradient (e.g., GLUT transporters for glucose). Simple diffusion is for small nonpolar molecules (O₂, CO₂, ethanol) through the bilayer itself.'
+  },
+  {
+    id:'b45', topic:'cell-bio',
+    stem:'Which feature of mitochondria provides the strongest evidence for the endosymbiotic theory — that mitochondria evolved from ancient bacteria engulfed by a host cell?',
+    opts:['Mitochondria contain circular DNA, 70S ribosomes, and replicate by binary fission — all bacterial characteristics',
+          'Mitochondria generate ATP by glycolysis in the cytoplasm',
+          'Mitochondria are connected to the ER via membrane contact sites',
+          'Most mitochondrial proteins are encoded by nuclear DNA and imported post-translationally'],
+    ans:0,
+    exp:'Evidence for endosymbiotic origin: (1) double membrane — inner membrane resembles the prokaryotic plasma membrane; (2) circular, non-histone-associated DNA, resembling bacterial chromosomes; (3) 70S ribosomes (like bacteria; cytoplasmic ribosomes are 80S); (4) replication by binary fission, not mitosis; (5) mtDNA sequence relatedness to α-proteobacteria (Rickettsia). Option D (nuclear-encoded proteins imported post-translationally) is true but shows integration with the host over evolution — it doesn\'t support independent bacterial origin. Chloroplasts in plant cells show the same evidence (derived from cyanobacteria). Endosymbiosis is why mitochondrial antibiotics (e.g., chloramphenicol targets 70S) can have mitochondrial side effects.'
+  },
 ];
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
