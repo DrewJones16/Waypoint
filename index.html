@@ -3338,13 +3338,19 @@ function sectionedMapHTML() {
 function sparklineHTML(history) {
   if (!history.length) return '';
   return `
-    <div style="display:flex;gap:4px;align-items:flex-end;height:28px;margin:2px 0 6px;">
-      ${history.map(s => {
-        const ratio = s.total > 0 ? s.correct / s.total : 0;
-        const h     = Math.round(ratio * 22) + 6; // 6–28px
-        const col   = ratio === 1 ? '#1D9E75' : ratio >= 0.6 ? '#5BC4A0' : '#9FE1CB';
-        return `<div title="${s.correct}/${s.total}" style="width:10px;height:${h}px;background:${col};border-radius:2px;flex-shrink:0;"></div>`;
-      }).join('')}
+    <div style="display:flex;align-items:stretch;gap:6px;margin:2px 0 2px;">
+      <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:#2E3550;letter-spacing:0.04em;flex-shrink:0;align-self:center;padding-bottom:2px;">accuracy %</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;gap:4px;align-items:flex-end;height:28px;">
+          ${history.map(s => {
+            const ratio = s.total > 0 ? s.correct / s.total : 0;
+            const h     = Math.round(ratio * 22) + 6; // 6–28px
+            const col   = ratio === 1 ? '#1D9E75' : ratio >= 0.6 ? '#5BC4A0' : '#9FE1CB';
+            return `<div title="${s.correct}/${s.total}" style="width:10px;height:${h}px;background:${col};border-radius:2px;flex-shrink:0;"></div>`;
+          }).join('')}
+        </div>
+        <div style="font-size:9px;color:#2E3550;margin-top:4px;">sessions →</div>
+      </div>
     </div>
     <div style="font-size:10px;color:#3A4060;margin-bottom:16px;">last ${history.length} session${history.length !== 1 ? 's' : ''}</div>`;
 }
@@ -3768,7 +3774,7 @@ function screenCourses() {
     <div class="screen">
       <p class="label">Your courses</p>
       <h2>Which have you completed?</h2>
-      <p style="font-size:14px;color:#555B70;margin:6px 0 16px;">Include anything finished or currently in progress.</p>
+      <p style="font-size:14px;color:#555B70;margin:6px 0 16px;">Select courses you've completed or are currently taking.</p>
       <div class="courses-scroll">
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
@@ -3968,6 +3974,11 @@ function screenComplete() {
   }
 
   // Count questions that were previously wrong and got right this session
+  const wrong = total - correct;
+  const spacedRepNote = wrong > 0
+    ? `<p style="font-size:13px;color:#555B70;margin:-8px 0 16px;line-height:1.5;">Questions you missed will come back. That's how it works.</p>`
+    : '';
+
   const fixedCount = S.answers.filter(a => {
     if (!a.correct) return false;
     const prev = S.qStats[a.qId];
@@ -3992,6 +4003,7 @@ function screenComplete() {
     <div class="screen">
       <h2>${scoreHeadline}</h2>
       <p style="margin:6px 0 16px;font-size:15px;">${scoreNote}</p>
+      ${spacedRepNote}
 
       ${fixedNote}
       ${topicInsight}
