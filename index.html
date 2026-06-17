@@ -3017,6 +3017,16 @@ const QUESTIONS = [
     ans:1,
     exp:'Functionalist stratification theory (Davis & Moore, 1945): unequal pay and prestige for demanding, functionally important positions attracts and retains the most talented people in critical roles, benefiting society overall — inequality is a necessary motivational mechanism. Conflict theory (Marx, Weber) rejects this: inequality primarily serves ruling-class interests, maintained through economic power, ideology, and coercion. Symbolic interactionists focus on how class distinctions are enacted and experienced in daily interaction. Knowing all three perspectives\' central claims and major theorists is essential for MCAT P/S passages on stratification.'
   },
+  {
+    id:'sc17', topic:'soc',
+    stem:'Robert Merton\'s strain theory (anomie theory of deviance) predicts that crime and deviance are most likely when:',
+    opts:['Social norms are overly rigid, suppressing individual expression and autonomy',
+          'Individuals internalize culturally emphasized success goals but lack access to legitimate means to achieve them',
+          'Rapid industrialization causes the collective conscience to break down, producing normlessness',
+          'Weak social bonds — reduced attachment, commitment, involvement, and belief — leave individuals without informal social controls'],
+    ans:1,
+    exp:'Merton\'s strain theory: American culture universally promotes success goals (wealth, status) but distributes legitimate means (education, stable employment) unequally. This disjunction produces "strain" and five adaptations — Conformity (accept both goals and means), Innovation (accept goals, reject means → most crime), Ritualism (reject goals, follow means mechanically), Retreatism (reject both → withdrawal, addiction), Rebellion (replace both with new goals and means). "Innovation" explains why property crime rates are highest among groups systematically blocked from legitimate opportunity structures. Distinguish Merton from: (1) Durkheim\'s original anomie — normlessness from rapid social change disrupting collective norms; (2) Hirschi\'s social bond theory — deviance from weak attachment/commitment/involvement/belief (option D); (3) Labeling theory — deviance as a social reaction that creates deviant identity. All four frameworks are MCAT-testable; matching the theorist to their mechanism is the core skill.'
+  },
   // ── Cell Biology — additional batch ────────────────────────────────────────
   {
     id:'b40', topic:'cell-bio',
@@ -3560,6 +3570,38 @@ function getMasteredTopic() {
 
 // ── SCREEN RENDERERS ──────────────────────────────────────────────────────────
 
+function sectionBarsHTML() {
+  const SECS = [
+    { label:'Bio & Biochem',  color:'#1D9E75', tids:['cell-bio','genetics','mol-bio','biochem','physio','neuro']            },
+    { label:'Chem & Physics', color:'#60A5FA', tids:['atomic','bonding','stoich','acid-base','thermo','orgo','physics']      },
+    { label:'Psych & Soc',    color:'#A78BFA', tids:['psych','soc','research']                                              },
+  ];
+  const bars = SECS.map(sec => {
+    const totalW = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t ? t.w : 0); }, 0);
+    const covW   = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t && t.course && S.courses.has(t.course) ? t.w : 0); }, 0);
+    const pct    = totalW > 0 ? Math.round(covW / totalW * 100) : 0;
+    return `<div style="margin-bottom:11px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <span style="font-size:12px;font-weight:600;color:#6B7185;">${sec.label}</span>
+        <span style="font-size:12px;font-weight:700;color:${pct > 0 ? sec.color : '#3A4060'};">${pct}%</span>
+      </div>
+      <div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${sec.color};border-radius:3px;transition:width 0.8s ease;"></div>
+      </div>
+    </div>`;
+  });
+  bars.push(`<div style="margin-bottom:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+      <span style="font-size:12px;font-weight:600;color:#6B7185;">CARS (reading)</span>
+      <span style="font-size:11px;color:#555B70;font-style:italic;">ongoing</span>
+    </div>
+    <div style="height:5px;background:rgba(245,158,11,0.1);border-radius:3px;overflow:hidden;">
+      <div style="width:100%;height:100%;background:rgba(245,158,11,0.3);border-radius:3px;"></div>
+    </div>
+  </div>`);
+  return `<div style="margin:8px 0 16px;">${bars.join('')}</div>`;
+}
+
 function screenBrief() {
   const wc        = wrongCount();
   const cov       = coverage(S.courses);
@@ -3586,6 +3628,13 @@ function screenBrief() {
   const bench = coverage(BENCHMARK_COURSES[S.year] || BENCHMARK_COURSES.freshman);
   const benchOffset = Math.round(circ * (1 - bench / 100));
   const gap = cov - bench;
+  const yearPlural = { freshman:'freshmen', sophomore:'sophomores', junior:'juniors', senior:'seniors' }[S.year] || 'your classmates';
+  let benchSentence = '';
+  if (cov > 0 && bench > 0) {
+    if (gap > 5)       benchSentence = `Most ${yearPlural} finish around ${bench}% — you're ${gap} points ahead.`;
+    else if (gap >= -3) benchSentence = `Right on track: most ${yearPlural} are around ${bench}% at this stage.`;
+    else               benchSentence = `Most ${yearPlural} reach ${bench}% — add another course to close the gap.`;
+  }
 
   // Body card
   let bodyCard;
@@ -3623,7 +3672,15 @@ function screenBrief() {
           </div>
           <span class="disp" style="font-size:14px;font-weight:600;color:#F0F2F8;">Waypoint</span>
         </div>
-        ${S.streak > 0 ? `<div class="streak-badge"><span style="font-size:14px;line-height:1;">🔥</span><span style="font-size:13px;font-weight:600;color:#C2622A;">${S.streak}</span></div>` : ''}
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${S.streak > 0 ? `<div class="streak-badge"><span style="font-size:14px;line-height:1;">🔥</span><span style="font-size:13px;font-weight:600;color:#C2622A;">${S.streak}</span></div>` : ''}
+          <button onclick="go('courses')" title="Update my courses" style="background:none;border:1px solid rgba(255,255,255,0.1);cursor:pointer;padding:6px;color:#555B70;display:flex;align-items:center;border-radius:8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px;">
@@ -3656,11 +3713,12 @@ function screenBrief() {
         </div>
       </div>
 
+      ${benchSentence ? `<p style="font-size:12px;color:#555B70;margin:-16px 0 20px;line-height:1.5;">${benchSentence}</p>` : ''}
+
       <div class="section-divider"></div>
 
-      <p class="label" style="margin-bottom:2px;">Your route</p>
-      <p class="section-caption">Each stop is a topic from your courses. Green and checked means it's covered — the rest fills in as you take more classes.</p>
-      ${journeyPathSvg()}
+      <p class="label" style="margin-bottom:6px;">MCAT section coverage</p>
+      ${sectionBarsHTML()}
 
       ${history.length > 1 ? sparklineHTML(history) : ''}
       ${milestone}
@@ -3836,12 +3894,34 @@ function screenReveal() {
 
   const milestone = milestoneCopy();
 
+  const revYearPlural = { freshman:'freshmen', sophomore:'sophomores', junior:'juniors', senior:'seniors' }[S.year] || 'classmates';
+  const revBench   = coverage(BENCHMARK_COURSES[S.year] || BENCHMARK_COURSES.freshman);
+  const revGap     = cov - revBench;
+  const benchCard  = cov > 0 && S.year ? `
+    <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.15);border-radius:10px;padding:13px 16px;margin-bottom:20px;">
+      <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">vs. typical ${revYearPlural}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:10px;color:#555B70;margin-bottom:2px;">Typical ${revYearPlural}</div>
+          <div class="disp" style="font-size:20px;font-weight:700;color:#6B7185;">${revBench}%</div>
+        </div>
+        <div style="font-size:12px;color:${revGap >= 0 ? '#1D9E75' : '#8A90A8'};font-weight:600;text-align:center;padding:0 8px;">
+          ${revGap > 0 ? `+${revGap} pts<br>ahead` : revGap === 0 ? 'right on<br>track' : `${Math.abs(revGap)} pts<br>to avg`}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:#555B70;margin-bottom:2px;">You</div>
+          <div class="disp" style="font-size:20px;font-weight:700;color:#F0F2F8;">${cov}%</div>
+        </div>
+      </div>
+    </div>` : '';
+
   return `
     <div class="screen">
       <p class="label">Your route</p>
       <h2 style="margin-bottom:5px;">${headline}</h2>
-      <p style="font-size:14px;margin-bottom:${milestone ? '14px' : '22px'};">${subhead}</p>
+      <p style="font-size:14px;margin-bottom:${milestone || benchCard ? '14px' : '22px'};">${subhead}</p>
 
+      ${benchCard}
       ${milestone}
 
       <div id="sectioned-map"></div>
@@ -4240,9 +4320,51 @@ function exitSession() {
 }
 
 function setReminder(btn) {
-  btn.textContent = '✓ Reminder set — see you tomorrow';
-  btn.disabled = true;
+  const now   = new Date();
+  const start = new Date(now);
+  start.setDate(start.getDate() + 1);
+  start.setHours(8, 0, 0, 0);
+  const end = new Date(start.getTime() + 15 * 60000);
+
+  const pad = n => String(n).padStart(2, '0');
+  const fmtLocal = d =>
+    `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Waypoint//MCAT Tracker//EN',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `DTSTART:${fmtLocal(start)}`,
+    `DTEND:${fmtLocal(end)}`,
+    'RRULE:FREQ=DAILY',
+    'SUMMARY:Waypoint — Daily MCAT Practice',
+    'DESCRIPTION:5 questions a day keeps the panic away.\\nOpen Waypoint and keep your streak going.\\nhttps://drewjones16.github.io/Waypoint/',
+    'URL:https://drewjones16.github.io/Waypoint/',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT0M',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Time for your daily Waypoint session',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'waypoint-daily.ics';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  btn.textContent = '✓ Open the file to add to Calendar';
+  btn.disabled    = true;
   btn.style.background = '#0F6E56';
+  btn.style.fontSize   = '13px';
 }
 
 // ── SHAREABLE COVERAGE CARD ─────────────────────────────────────────────────────
