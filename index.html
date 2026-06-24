@@ -1756,6 +1756,16 @@ const QUESTIONS = [
     ans:1,
     exp:'β-adrenergic receptors couple to Gₛ (stimulatory G protein). Gₛ-α subunit activates adenylyl cyclase → ATP → cAMP → PKA activation → phosphorylation of metabolic enzymes (glycogen phosphorylase kinase, hormone-sensitive lipase), ion channels, and transcription factors. Gq → PLC → IP₃/DAG pathway (used by muscarinic M1, α1-adrenergic receptors). Gi inhibits adenylyl cyclase (muscarinic M2, α2-adrenergic). Receptor tyrosine kinases (insulin, growth factors) use a completely separate pathway (RAS/MAPK or PI3K/AKT).'
   },
+  {
+    id:'bc14', topic:'biochem',
+    stem:'During prolonged fasting, the liver produces ketone bodies as an alternative fuel. Which statement correctly describes ketogenesis?',
+    opts:['Ketone bodies are synthesized in hepatocyte cytoplasm from glycerol released by lipolysis',
+          'Acetyl-CoA accumulates in the mitochondrial matrix when oxaloacetate is diverted to gluconeogenesis, driving ketone body synthesis',
+          'Ketone bodies are stored in adipose tissue and released gradually during starvation',
+          'After 3–4 days of fasting, the brain cannot use ketone bodies and depends entirely on glucose'],
+    ans:1,
+    exp:'During fasting, oxaloacetate (OAA) is diverted toward gluconeogenesis, reducing the TCA cycle\'s capacity to accept acetyl-CoA from beta-oxidation. Acetyl-CoA accumulates in the mitochondrial matrix → ketogenesis: acetoacetate, β-hydroxybutyrate, and acetone. Ketogenesis is entirely mitochondrial (not cytoplasmic). Ketone bodies are water-soluble and exported in the blood — they are not stored. After 3–4 days of fasting, the brain adapts to use β-hydroxybutyrate as its primary fuel (~60% of energy needs), sparing glucose for obligate glycolyzers (RBCs, renal medulla). Notably, the liver cannot oxidize its own ketone bodies — it lacks succinyl-CoA:acetoacetate CoA transferase (thiophorase). Skill trained: Content knowledge — ketone body metabolism and fasting physiology.'
+  },
   // ── Gen Chem II — additional ──────────────────────────────────────────────────
   {
     id:'th06', topic:'thermo',
@@ -2320,6 +2330,17 @@ const QUESTIONS = [
     ans:1,
     exp:'The passage explicitly sets up two opposing forces: Nagel\'s principled argument (equal culpability = equal blame, regardless of outcomes) and the "persistent intuition" that outcomes are morally relevant. The tension is between principled consistency and resilient human moral intuition. Option A (legal vs. moral) — both drivers are being judged morally in the passage, not legally. Option C (consequentialism vs. deontology) is related to the issue but not the specific tension the passage frames. Option D (individual vs. society) doesn\'t appear in the passage.'
   },
+  {
+    id:'cars11', topic:'cars',
+    passage:'Photographs have often been treated as transparent windows onto reality — unlike paintings, they seem to record the world rather than interpret it. Susan Sontag challenged this assumption, arguing that photographs are not neutral documents but selections: the photographer chooses a frame, a moment, and an angle, thereby constructing a perspective rather than merely capturing one. Sontag further observed that the proliferation of photographs paradoxically dulls moral response — repeated images of suffering produce not outrage but aesthetic familiarity, a process she called the "aestheticization" of atrocity. What begins as witness ends as wallpaper.',
+    stem:'Sontag\'s argument about the proliferation of photographs, as described in the passage, most closely parallels which of the following?',
+    opts:['A doctor who becomes emotionally numb to patient suffering after years of clinical exposure',
+          'A journalist who selectively quotes sources to support a predetermined narrative',
+          'A museum curator who arranges artworks to guide viewers toward a preferred interpretation',
+          'A legislator who enacts stricter regulations in response to mounting public outrage'],
+    ans:0,
+    exp:'Sontag\'s claim is that repeated exposure to disturbing images erodes emotional impact — familiarity replaces shock with aesthetic distance. Option A is the closest parallel: a doctor\'s desensitization through repeated clinical exposure mirrors the audience\'s desensitization through repeated photographic exposure. The mechanism is the same — repeated exposure diminishes the response that first exposure would provoke. Option B is about selective framing (relates to the construction argument, not desensitization). Option C is about curatorial control over interpretation, not emotional numbing. Option D is the opposite — it describes outrage increasing, not decreasing. CARS skill: identify structural parallels by matching mechanism, not surface topic.'
+  },
   // ── Biology I — Molecular Biology additional batch ──────────────────────────
   {
     id:'b26', topic:'mol-bio',
@@ -2472,6 +2493,16 @@ const QUESTIONS = [
     ans:0,
     exp:'Removing H⁺ from a neutral molecule (H₃PO₄ → H₂PO₄⁻) is easier than removing H⁺ from a species that already carries a negative charge (H₂PO₄⁻ → HPO₄²⁻), which is in turn easier than removing it from a doubly negative species (HPO₄²⁻ → PO₄³⁻). Electrostatic attraction between the departing H⁺ (positive) and the increasingly negative conjugate base makes each successive deprotonation less favorable — hence Ka1 > Ka2 > Ka3 (and pKa1 < pKa2 < pKa3). This pattern holds for all polyprotic acids and explains why polyprotic species can buffer across multiple pH ranges.'
   },
+  {
+    id:'c54', topic:'acid-base',
+    stem:'During the titration of 50 mL of 0.10 M acetic acid (pKa = 4.74) with 0.10 M NaOH, the pH at the half-equivalence point — when exactly half the acid has been neutralized — is:',
+    opts:['2.37 — half of the pKa value',
+          '4.74 — equal to the pKa of acetic acid',
+          '7.00 — the midpoint between pH 0 and 14',
+          '8.87 — halfway between the pKa and pH 14'],
+    ans:1,
+    exp:'At the half-equivalence point, exactly half the original weak acid (HA) has been converted to conjugate base (A⁻), so [HA] = [A⁻]. Henderson-Hasselbalch: pH = pKa + log([A⁻]/[HA]) = pKa + log(1) = pKa + 0 = pKa = 4.74. Three key uses of this landmark: (1) reading the titration curve — the pH at half the equivalence volume equals the pKa directly, allowing experimental pKa measurement; (2) at this point the buffer is maximally effective (equal HA and A⁻ concentrations soak up added acid or base equally well); (3) it lies at exactly half the volume of NaOH required to reach the equivalence point. Confusing "half the pKa" (option A) is a classic MCAT trap — pKa is not a linear pH value, it is a log of an equilibrium constant. Skill trained: Content knowledge — titration landmarks and Henderson-Hasselbalch equation.'
+  },
   // ── General Chemistry I — fourth additional batch (Bonding) ──────────────────
   {
     id:'c30', topic:'bonding',
@@ -2536,6 +2567,16 @@ const QUESTIONS = [
     opts:['3 < 2 < 1','1 < 2 < 3','2 < 1 < 3','1 < 3 < 2'],
     ans:1,
     exp:'General strength hierarchy of intermolecular/interparticle interactions: ion-dipole > hydrogen bonding > dipole-dipole > London dispersion forces (for comparable particle sizes). Ion-dipole interactions (like Na⁺ attracting the partial negative oxygen of water — the basis of hydration shells around dissolved ions) are strongest because a full charge interacts with a dipole. Hydrogen bonding is a particularly strong type of dipole-dipole interaction (present in water, ammonia, HF). London dispersion forces, while present in all molecules, are weakest for small nonpolar molecules like CH₄. So: London dispersion (1) < hydrogen bonding (2) < ion-dipole (3).'
+  },
+  {
+    id:'c_bond01', topic:'bonding',
+    stem:'Both CO₂ and SO₂ contain polar covalent bonds, yet CO₂ is nonpolar while SO₂ is polar. The best explanation is:',
+    opts:['CO₂ bonds are less polar than SO₂ bonds because oxygen and carbon have similar electronegativities',
+          'CO₂ is linear so the two C=O dipoles point in opposite directions and cancel; SO₂ is bent so the dipoles do not cancel and produce a net dipole moment',
+          'SO₂ has more electrons than CO₂, which always makes a molecule polar',
+          'CO₂ has resonance structures while SO₂ does not, eliminating CO₂\'s dipole'],
+    ans:1,
+    exp:'Molecular polarity depends on both bond polarity and geometry. In CO₂ (linear, 180°), the two C=O bond dipoles point in exactly opposite directions and cancel — net dipole = 0. In SO₂, the sulfur has a lone pair, giving it a bent geometry (~119°). The two S=O dipoles point in the same general direction and do not cancel, yielding a net dipole moment. This is a critical MCAT concept: identical or similar bonds + different geometry = different polarity. Other examples: BF₃ (trigonal planar, nonpolar) vs. NF₃ (trigonal pyramidal, polar); CCl₄ (tetrahedral, nonpolar) vs. CHCl₃ (asymmetric, polar). Skill trained: Content knowledge — molecular geometry, VSEPR, and molecular polarity.'
   },
   // ── General Chemistry I — fifth additional batch (Atomic Structure) ──────────
   {
@@ -2678,6 +2719,13 @@ const QUESTIONS = [
     ans:2,
     exp:'The mole ratio between Al and Cu in the balanced equation is 2:3. With 4 moles of Al (and CuSO₄ in excess, so Al is limiting): moles Cu = 4 mol Al × (3 mol Cu / 2 mol Al) = 6 moles Cu. The balanced equation\'s coefficients always give the mole-to-mole conversion ratio between any two species in a reaction — the foundation of all stoichiometry calculations, whether converting moles to moles, moles to grams, or grams to grams (via molar mass).'
   },
+  {
+    id:'c53', topic:'stoich',
+    stem:'28 g of N₂ (MM = 28 g/mol) and 9 g of H₂ (MM = 2 g/mol) react via N₂ + 3H₂ → 2NH₃. What is the maximum mass of NH₃ (MM = 17 g/mol) that can be produced?',
+    opts:['17 g','34 g','51 g','68 g'],
+    ans:1,
+    exp:'Step 1 — convert grams to moles: N₂ = 28/28 = 1 mol; H₂ = 9/2 = 4.5 mol. Step 2 — identify the limiting reagent: the reaction requires 3 mol H₂ per mol N₂. For 1 mol N₂ you need 3 mol H₂ (available: 4.5 mol — excess). For 4.5 mol H₂ you need 4.5/3 = 1.5 mol N₂ (available: 1 mol — not enough). N₂ is limiting. Step 3 — calculate yield: 1 mol N₂ × (2 mol NH₃ / 1 mol N₂) = 2 mol NH₃ × 17 g/mol = 34 g. The gram-to-mole-to-mole-to-gram chain (grams → ÷MM → moles → ×ratio → moles → ×MM → grams) is the backbone of every mass-based stoichiometry problem on the MCAT. Skill trained: Content knowledge — limiting reagent and mass stoichiometry.',
+  },
   // ── Genetics — additional batch ────────────────────────────────────────────
   {
     id:'b34', topic:'genetics',
@@ -2775,6 +2823,16 @@ const QUESTIONS = [
     opts:['High reliability, low validity','Low reliability, high validity','Low reliability, low validity','High reliability, high validity'],
     ans:0,
     exp:'Reliability is the consistency or reproducibility of a measurement across repeated trials. Validity is the accuracy of a measurement — whether it reflects the true value of the thing being measured. A scale that is always off by the same fixed amount gives highly consistent (reliable) readings, but those readings are systematically inaccurate (low validity). A scale that gave wildly different random readings each time would instead be unreliable. On the MCAT: a measure can be reliable without being valid, but it cannot be valid without first being reliable — reliability is a precondition for validity.'
+  },
+  {
+    id:'s15', topic:'research',
+    stem:'A drug company tests a new cholesterol medication in a 6-month randomized controlled trial. At baseline, the drug group has a mean LDL of 160 mg/dL; after 6 months the mean is 130 mg/dL (p < 0.001). The company concludes the drug is effective. A critic points out that participants also enrolled in a supervised diet program during the study. This critique identifies which flaw?',
+    opts:['Selection bias — the randomization was improperly conducted',
+          'A confounding variable — the diet program, not the drug, may account for the LDL reduction',
+          'A Type II error — the study failed to reject a false null hypothesis',
+          'Low internal validity due to an insufficient sample size'],
+    ans:1,
+    exp:'When participants in a drug trial simultaneously undergo another intervention (the diet program), it is impossible to isolate the drug\'s effect from the co-intervention\'s effect — the diet program is a confounding variable. This undermines internal validity: we cannot conclude the drug caused the LDL drop. True randomization controls for pre-existing differences between groups, but does not protect against confounders introduced during the study itself. A Type II error would mean missing a real effect; the study found a significant result, so that is not the issue here. Sample size affects statistical power, not confounding.'
   },
   // ── Physiology — additional batch 2 ────────────────────────────────────────
   {
@@ -2955,6 +3013,16 @@ const QUESTIONS = [
           'Fourth order overall; rate = k[A][B]²[C]'],
     ans:1,
     exp:'Rate order in each reactant is determined experimentally from how rate responds to concentration changes. Order in A: 2^x = 2 → x = 1. Order in B: 2^y = 4 → y = 2. Order in C: 2^z = 1 → z = 0 (C not in the rate law). Rate = k[A]¹[B]² — overall 3rd order. Rate laws CANNOT be deduced from stoichiometric coefficients (except for elementary reactions). The rate constant k depends on temperature via the Arrhenius equation: k = Ae^(−Ea/RT). Rate law + half-life calculations are among the most calculation-intensive MCAT kinetics problems.'
+  },
+  {
+    id:'th17', topic:'thermo',
+    stem:'A radioactive isotope has a half-life of 10 days. Starting with 80 g of the isotope, how much remains after 30 days?',
+    opts:['40 g — after one half-life',
+          '20 g — after two half-lives',
+          '10 g — after three half-lives',
+          '2.67 g — 80 g divided by 30 days'],
+    ans:2,
+    exp:'30 days / 10 days per half-life = 3 half-lives. Each half-life halves the remaining amount: 80 g → 40 g → 20 g → 10 g. For first-order processes (all radioactive decay; many drug elimination processes), the half-life formula is t½ = 0.693/k, and the amount remaining is N = N₀ × (½)^(t/t½). When time is an integer multiple of t½, repeated halving is fastest. For non-integer multiples, use N = N₀e^(−kt). The key MCAT insight: first-order half-life is CONSTANT — independent of the initial amount. This contrasts with second-order kinetics, where half-life increases as concentration falls. Content knowledge: chemical kinetics and radioactive decay.'
   },
   // ── Sociology — additional batch ────────────────────────────────────────────
   {
@@ -4512,7 +4580,7 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   // Footer
   ctx.fillStyle = '#444B62';
   ctx.font = '500 26px "Inter", sans-serif';
-  ctx.fillText('Track your own MCAT coverage → drewjones16.github.io/Waypoint', W / 2, H - 60);
+  ctx.fillText('Track your own MCAT coverage → waypointmcat.com', W / 2, H - 60);
 
   canvas.toBlob(async (blob) => {
     if (!blob) { restoreBtn(); return; }
