@@ -681,11 +681,12 @@
 
   /* ── Coverage milestone celebration ───────────────────────────────── */
   .cov-milestone-card {
-    background: linear-gradient(135deg, rgba(29,158,117,0.16), rgba(29,158,117,0.03));
-    border: 1px solid rgba(29,158,117,0.32);
-    border-radius: 12px;
-    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(29,158,117,0.30), rgba(29,158,117,0.08));
+    border: 1px solid rgba(29,158,117,0.55);
+    border-radius: 14px;
+    padding: 18px 18px 14px;
     margin-bottom: 16px;
+    box-shadow: 0 0 24px rgba(29,158,117,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
     animation: pop-in 0.4s ease both;
   }
 </style>
@@ -3256,8 +3257,9 @@ function milestoneCopy() {
   S.covMilestonesShown[m.at] = true;
   save();
   return `<div class="cov-milestone-card">
-    <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;">🎉 ${m.title}</div>
-    <p style="font-size:14px;color:#B8E8D4;line-height:1.5;margin-bottom:10px;">${m.text}</p>
+    <div style="font-size:26px;margin-bottom:10px;line-height:1;">🎉</div>
+    <div style="font-size:11px;font-weight:800;color:#4DE3AB;text-transform:uppercase;letter-spacing:0.09em;margin-bottom:6px;">${m.title}</div>
+    <p style="font-size:14px;color:#C8F0E0;line-height:1.55;margin-bottom:12px;">${m.text}</p>
     <button class="btn btn-share" style="margin-top:0;font-size:13px;padding:10px 16px;" onclick="shareCoverageCard('coverage', this)">📤 Share this</button>
   </div>`;
 }
@@ -3374,6 +3376,15 @@ function mapHTML(mini, highlightTopics = new Set()) {
 
 // ── SECTIONED MAP (reveal screen) ─────────────────────────────────────────────
 
+const TILE_NAMES = {
+  'cell-bio':'Cell Bio', 'genetics':'Genetics', 'mol-bio':'Mol. Bio',
+  'biochem':'Biochem',   'physio':'Physio',      'neuro':'Neuro',
+  'atomic':'Atomic',     'bonding':'Bonding',    'stoich':'Stoich',
+  'acid-base':'Acid-Base','thermo':'Thermo',     'orgo':'Orgo',
+  'physics':'Physics',   'psych':'Psych',        'soc':'Soc',
+  'research':'Research', 'cars':'CARS',
+};
+
 function sectionedMapHTML() {
   return MCAT_SECTIONS.map(sec => {
     const secTopics  = TOPICS.filter(t => t.mcat === sec.id);
@@ -3390,7 +3401,7 @@ function sectionedMapHTML() {
       const dc  = covered ? '#2DB88A' : '#2E3550';
       const wc  = covered ? '#1D9E75' : '#2E3550';
       return `<div style="background:${bg};border:1px solid ${bdr};border-radius:7px;padding:8px 9px;flex:1;min-width:72px;max-width:100%;overflow:hidden;">
-        <div style="font-size:10px;color:${nc};font-weight:500;line-height:1.25;overflow-wrap:break-word;word-break:break-word;">${t.name}</div>
+        <div style="font-size:10px;color:${nc};font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
           <div style="font-size:9px;color:${dc};">${covered ? '✓ ' : ''}${t.disp}</div>
           <div style="font-size:9px;font-weight:600;color:${wc};">${t.w}%</div>
@@ -3648,10 +3659,11 @@ function sectionBarsHTML() {
     const totalW = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t ? t.w : 0); }, 0);
     const covW   = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t && t.course && S.courses.has(t.course) ? t.w : 0); }, 0);
     const pct    = totalW > 0 ? Math.round(covW / totalW * 100) : 0;
+    if (pct === 0) return ''; // hide sections with no progress
     return `<div style="margin-bottom:11px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
         <span style="font-size:12px;font-weight:600;color:#6B7185;">${sec.label}</span>
-        <span style="font-size:12px;font-weight:700;color:${pct > 0 ? sec.color : '#3A4060'};">${pct}%</span>
+        <span style="font-size:12px;font-weight:700;color:${sec.color};">${pct}%</span>
       </div>
       <div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;">
         <div style="width:${pct}%;height:100%;background:${sec.color};border-radius:3px;transition:width 0.8s ease;"></div>
@@ -3977,15 +3989,15 @@ function screenReveal() {
       <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">vs. typical ${revYearPlural}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <div style="font-size:10px;color:#555B70;margin-bottom:2px;">Typical ${revYearPlural}</div>
-          <div class="disp" style="font-size:20px;font-weight:700;color:#6B7185;">${revBench}%</div>
+          <div style="font-size:10px;color:#8A90A8;margin-bottom:2px;font-weight:600;">You</div>
+          <div class="disp" style="font-size:26px;font-weight:800;color:#F0F2F8;line-height:1;">${cov}%</div>
         </div>
-        <div style="font-size:12px;color:${revGap >= 0 ? '#1D9E75' : '#8A90A8'};font-weight:600;text-align:center;padding:0 8px;">
-          ${revGap > 0 ? `+${revGap} pts<br>ahead` : revGap === 0 ? 'right on<br>track' : `${Math.abs(revGap)} pts<br>to avg`}
+        <div style="font-size:11px;color:${revGap >= 0 ? '#1D9E75' : '#8A90A8'};font-weight:600;text-align:center;padding:0 8px;">
+          ${revGap > 0 ? `+${revGap} pts<br>ahead` : revGap === 0 ? 'right on<br>track' : `${Math.abs(revGap)} pts<br>behind avg`}
         </div>
         <div style="text-align:right;">
-          <div style="font-size:10px;color:#555B70;margin-bottom:2px;">You</div>
-          <div class="disp" style="font-size:20px;font-weight:700;color:#F0F2F8;">${cov}%</div>
+          <div style="font-size:10px;color:#444B62;margin-bottom:2px;">Typical ${revYearPlural}</div>
+          <div class="disp" style="font-size:18px;font-weight:600;color:#555B70;line-height:1;">${revBench}%</div>
         </div>
       </div>
     </div>` : '';
