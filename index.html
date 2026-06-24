@@ -3704,6 +3704,12 @@ function screenBrief() {
     else               benchSentence = `Most ${yearPlural} reach ${bench}% — add another course to close the gap.`;
   }
 
+  // 79 = total weight of all course-gated MCAT content (excludes CARS at 21%)
+  const covOfCourses = cov > 0 ? Math.round(cov / 79 * 100) : 0;
+  const denomNote = cov > 0
+    ? `<p style="font-size:11px;color:#444B62;margin-top:-18px;margin-bottom:20px;line-height:1.6;">${cov}% of the full MCAT &nbsp;·&nbsp; ${covOfCourses}% of the course-based content — CARS builds on its own</p>`
+    : '';
+
   // Body card
   let bodyCard;
   if (wc >= 2) {
@@ -3781,6 +3787,7 @@ function screenBrief() {
         </div>
       </div>
 
+      ${denomNote}
       ${benchSentence ? `<p style="font-size:12px;color:#555B70;margin:-16px 0 20px;line-height:1.5;">${benchSentence}</p>` : ''}
 
       <div class="section-divider"></div>
@@ -4032,6 +4039,7 @@ function screenQuestion() {
         </div>
       </div>
 
+      ${q.topic === 'cars' ? `<p style="font-size:12px;color:#555B70;margin-bottom:8px;line-height:1.5;font-style:italic;">CARS is a reading skill that develops across all of premed — here's one while you're in practice mode.</p>` : ''}
       ${q.passage ? `<div class="cars-passage">${q.passage}</div>` : ''}
       <p class="q-stem">${q.stem}</p>
 
