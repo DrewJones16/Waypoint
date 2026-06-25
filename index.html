@@ -3778,7 +3778,7 @@ function screenBrief() {
   return `
     <div class="screen">
       <div class="brief-topbar">
-        <div style="display:flex;align-items:center;gap:8px;">
+        <button onclick="go('landing')" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
           <div style="width:30px;height:30px;background:rgba(29,158,117,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="9"/>
@@ -3787,7 +3787,7 @@ function screenBrief() {
             </svg>
           </div>
           <span class="disp" style="font-size:14px;font-weight:600;color:#F0F2F8;">Waypoint</span>
-        </div>
+        </button>
         <div style="display:flex;align-items:center;gap:8px;">
           ${S.streak > 0 ? `<div class="streak-badge"><span style="font-size:14px;line-height:1;">🔥</span><span style="font-size:13px;font-weight:600;color:#C2622A;">${S.streak}</span></div>` : ''}
           <button onclick="go('courses')" title="Update my courses" style="background:none;border:1px solid rgba(255,255,255,0.1);cursor:pointer;padding:6px;color:#555B70;display:flex;align-items:center;border-radius:8px;">
