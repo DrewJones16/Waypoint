@@ -3950,6 +3950,10 @@ function screenCourses() {
   const sections = [...new Set(COURSES.map(c => c.section))];
   return `
     <div class="screen">
+      <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#555B70;font-size:13px;margin-bottom:16px;-webkit-tap-highlight-color:transparent;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
       <p class="label">Your courses</p>
       <h2>Which have you completed?</h2>
       <p style="font-size:14px;color:#555B70;margin:6px 0 16px;">Select courses you've completed or are currently taking.</p>
