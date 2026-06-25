@@ -2424,6 +2424,16 @@ const QUESTIONS = [
     ans:1,
     exp:'Restriction enzymes (originally a bacterial defense against viral DNA) recognize specific short sequences, often palindromic (read the same 5′→3′ on both strands, e.g., GAATTC for EcoRI), and cut the DNA at or near that site. This produces fragments with either "sticky ends" (staggered cuts leaving overhangs) or "blunt ends." Because the same enzyme always cuts the same sequence, scientists can cut a plasmid and a gene of interest with the same enzyme, producing complementary sticky ends that DNA ligase can join — the basis of recombinant DNA technology.'
   },
+  {
+    id:'b34', topic:'mol-bio',
+    stem:'A researcher mutates the Shine-Dalgarno sequence of a bacterial mRNA. What is the most likely consequence?',
+    opts:['Premature termination of translation due to a stop codon',
+          'Reduced efficiency of ribosome binding and decreased translation initiation',
+          'Failure of the mRNA to be exported from the nucleus',
+          'Degradation of the mRNA by RNase H'],
+    ans:1,
+    exp:'The Shine-Dalgarno sequence is a purine-rich region (~5–10 nt upstream of the AUG start codon) on prokaryotic mRNA that base-pairs with the 16S rRNA of the 30S ribosomal subunit, correctly positioning the ribosome over the start codon. Mutating it weakens or abolishes this interaction, reducing the rate of translation initiation — the rate-limiting step in most prokaryotic translation. The other options are incorrect: premature termination requires a stop codon in the coding sequence; nuclear export is irrelevant in prokaryotes (transcription and translation are coupled); RNase H degrades RNA in RNA:DNA hybrids, not free mRNA. Skill trained: Content knowledge — prokaryotic translation initiation and ribosome structure.'
+  },
   // ── General Chemistry I — third additional batch (Acid-Base) ────────────────
   {
     id:'c23', topic:'acid-base',
@@ -3416,10 +3426,7 @@ function sectionedMapHTML() {
       const wc  = covered ? '#1D9E75' : '#2E3550';
       return `<div style="background:${bg};border:1px solid ${bdr};border-radius:7px;padding:8px 9px;flex:1;min-width:72px;max-width:100%;overflow:hidden;">
         <div style="font-size:10px;color:${nc};font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-          <div style="font-size:9px;color:${dc};">${covered ? '✓ ' : ''}${t.disp}</div>
-          <div style="font-size:9px;font-weight:600;color:${wc};">${t.w}%</div>
-        </div>
+        <div style="font-size:9px;color:${dc};margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${covered ? '✓ ' : ''}${t.disp}<span style="color:${wc};font-weight:700;"> · ${t.w}%</span></div>
       </div>`;
     }).join('');
 
@@ -3717,10 +3724,8 @@ function screenBrief() {
         <div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Do this now</div>
         <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.2;margin-bottom:8px;">5 questions on ${t.name}</div>
         <p style="font-size:13px;color:#6B7185;line-height:1.55;margin:0 0 14px;">${copy}</p>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <button class="btn btn-primary" style="padding:10px 18px;font-size:14px;margin:0;flex-shrink:0;" onclick="startQuickLog('${t.id}')">Start →</button>
-          <button style="background:none;border:none;font-size:13px;color:#444B62;cursor:pointer;padding:4px;" onclick="dismissNudge('${t.id}')">Skip for now</button>
-        </div>
+        <button class="btn btn-primary" style="padding:10px 18px;font-size:14px;margin:0;" onclick="startQuickLog('${t.id}')">Start →</button>
+        <button style="background:none;border:none;font-size:12px;color:#444B62;cursor:pointer;display:block;width:100%;text-align:center;margin-top:10px;padding:2px 0;" onclick="dismissNudge('${t.id}')">Skip for now</button>
       </div>`;
   }
 
@@ -3741,7 +3746,7 @@ function screenBrief() {
   // 79 = total weight of all course-gated MCAT content (excludes CARS at 21%)
   const covOfCourses = cov > 0 ? Math.round(cov / 79 * 100) : 0;
   const denomNote = cov > 0
-    ? `<p style="font-size:13px;color:#6B7185;margin-top:-14px;margin-bottom:20px;line-height:1.55;">You've covered <strong style="color:#8A90A8;">${covOfCourses}%</strong> of your coursework so far — and climbing.</p>`
+    ? `<p style="font-size:13px;color:#6B7185;margin-top:-14px;margin-bottom:20px;line-height:1.55;">You've covered <strong style="color:#8A90A8;">${cov}%</strong> of the MCAT so far — and climbing. <span style="color:#444B62;">(${covOfCourses}% of course-based content; CARS builds on its own.)</span></p>`
     : '';
 
   // Body card
@@ -3962,7 +3967,7 @@ function screenCourses() {
         `;}).join('')}
       </div>
       <div style="position:sticky;bottom:0;background:linear-gradient(to top,#0D0F14 70%,transparent);padding:12px 0 28px;flex-shrink:0;margin:0 -2px;padding-left:2px;padding-right:2px;">
-        ${S.courses.size > 0 ? `<p style="text-align:center;font-size:12px;color:#555B70;margin:0 0 8px;font-weight:600;letter-spacing:0.03em;">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>` : ''}
+        <p id="course-counter" style="text-align:center;font-size:12px;color:#555B70;margin:0 0 8px;font-weight:600;letter-spacing:0.03em;${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
         <button class="btn btn-primary" style="flex-shrink:0;" onclick="finishCourses()">Calculate my coverage →</button>
       </div>
     </div>`;
@@ -4332,6 +4337,24 @@ function finishCourses() {
 function toggleCourse(id, checked) {
   checked ? S.courses.add(id) : S.courses.delete(id);
   save();
+  // Update counter + section labels live without scrolling back to top
+  const n = S.courses.size;
+  const counter = document.getElementById('course-counter');
+  if (counter) {
+    counter.style.display = n > 0 ? '' : 'none';
+    counter.textContent = `${n} course${n !== 1 ? 's' : ''} selected`;
+  }
+  const course = COURSES.find(c => c.id === id);
+  if (course) {
+    const secCourses = COURSES.filter(c => c.section === course.section);
+    const allNowChecked = secCourses.every(c => S.courses.has(c.id));
+    document.querySelectorAll('.sa-btn').forEach(btn => {
+      if ((btn.getAttribute('onclick') || '').includes(`'${course.section}'`)) {
+        btn.textContent = allNowChecked ? 'Deselect all' : 'Select all';
+        btn.setAttribute('onclick', `toggleCat('${course.section}',${!allNowChecked})`);
+      }
+    });
+  }
 }
 
 function toggleCat(section, checked) {
