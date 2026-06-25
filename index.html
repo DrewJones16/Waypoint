@@ -3340,6 +3340,19 @@ function getRetentionNudge() {
   return best;
 }
 
+function getDirectiveTopic() {
+  // Prefer a retention nudge (covered topic not seen in 21+ days)
+  const nudge = getRetentionNudge();
+  if (nudge) return { topic: nudge.topic, days: nudge.days, reason: 'retention' };
+  // Otherwise suggest the highest-weight covered topic not dismissed today
+  const today = isoDate();
+  const candidates = TOPICS
+    .filter(t => t.course && S.courses.has(t.course) && S.nudgeDismissed[t.id] !== today)
+    .sort((a, b) => b.w - a.w);
+  if (candidates.length === 0) return null;
+  return { topic: candidates[0], days: null, reason: 'drill' };
+}
+
 function weeksAgo(days) {
   const w = Math.round(days / 7);
   return w <= 0 ? 'recently' : w === 1 ? '1 week ago' : `${w} weeks ago`;
@@ -3692,16 +3705,24 @@ function screenBrief() {
   const headline  = getWelcomeHeadline();
   const trendText = getTrendInsight(history);
   const milestone = getMilestone();
-  const nudge     = getRetentionNudge();
-  const nudgeHTML = nudge ? `
-    <div class="nudge-card">
-      <div class="nudge-label">Retention check</div>
-      <p>You covered <strong style="color:#F0F2F8;">${nudge.topic.name}</strong> ${weeksAgo(nudge.days)} — want a quick refresher while you remember it?</p>
-      <div class="nudge-actions">
-        <button class="nudge-btn-primary" onclick="startQuickLog('${nudge.topic.id}')">Quick refresher →</button>
-        <button class="nudge-btn-ghost" onclick="dismissNudge('${nudge.topic.id}')">Not now</button>
-      </div>
-    </div>` : '';
+  let directiveHTML = '';
+  const directive = getDirectiveTopic();
+  if (directive) {
+    const t = directive.topic;
+    const copy = directive.reason === 'retention'
+      ? `${t.name} is ${t.w}% of the exam — you covered it ${weeksAgo(directive.days)}. Most premeds won't revisit this until test prep. Staying sharp now is the edge.`
+      : `${t.name} is ${t.w}% of the exam. Most premeds don't think about this until year 3 — every session you do now is an edge they won't have.`;
+    directiveHTML = `
+      <div style="background:linear-gradient(135deg,rgba(29,158,117,0.14),rgba(29,158,117,0.04));border:1px solid rgba(29,158,117,0.32);border-radius:14px;padding:18px 18px 16px;margin-bottom:24px;">
+        <div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Do this now</div>
+        <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.2;margin-bottom:8px;">5 questions on ${t.name}</div>
+        <p style="font-size:13px;color:#6B7185;line-height:1.55;margin:0 0 14px;">${copy}</p>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="btn btn-primary" style="padding:10px 18px;font-size:14px;margin:0;flex-shrink:0;" onclick="startQuickLog('${t.id}')">Start →</button>
+          <button style="background:none;border:none;font-size:13px;color:#444B62;cursor:pointer;padding:4px;" onclick="dismissNudge('${t.id}')">Skip for now</button>
+        </div>
+      </div>`;
+  }
 
   // SVG ring
   const r = 38, circ = Math.round(2 * Math.PI * r);
@@ -3770,6 +3791,8 @@ function screenBrief() {
         </div>
       </div>
 
+      ${directiveHTML}
+
       <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px;">
         <div style="position:relative;flex-shrink:0;width:88px;height:88px;">
           <svg width="88" height="88" viewBox="0 0 88 88" style="transform:rotate(-90deg);position:absolute;inset:0;">
@@ -3805,7 +3828,7 @@ function screenBrief() {
 
       <div class="section-divider"></div>
 
-      <p class="label" style="margin-bottom:6px;">MCAT section coverage</p>
+      <p class="label" style="margin-bottom:6px;">Your edge so far</p>
       ${sectionBarsHTML()}
 
       ${history.length > 1 ? sparklineHTML(history) : ''}
@@ -3813,7 +3836,6 @@ function screenBrief() {
 
       <div class="section-divider"></div>
 
-      ${nudgeHTML}
       ${bodyCard}
 
       <button class="btn btn-primary" onclick="startSession()">Keep building the edge →</button>
