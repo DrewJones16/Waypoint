@@ -3426,7 +3426,10 @@ function sectionedMapHTML() {
       const wc  = covered ? '#1D9E75' : '#2E3550';
       return `<div style="background:${bg};border:1px solid ${bdr};border-radius:7px;padding:8px 9px;flex:1;min-width:72px;max-width:100%;overflow:hidden;">
         <div style="font-size:10px;color:${nc};font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
-        <div style="font-size:9px;color:${dc};margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${covered ? '✓ ' : ''}${t.disp}<span style="color:${wc};font-weight:700;"> · ${t.w}%</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+          <div style="font-size:9px;color:${dc};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${covered ? '✓ ' : ''}${t.disp}</div>
+          <div style="font-size:9px;font-weight:700;color:${wc};flex-shrink:0;margin-left:4px;">${t.w}%</div>
+        </div>
       </div>`;
     }).join('');
 
@@ -3434,7 +3437,7 @@ function sectionedMapHTML() {
       <div style="margin-bottom:22px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6B7185;text-transform:uppercase;letter-spacing:0.05em;"><span style="display:inline-flex;color:#1D9E75;">${sectionIcon(sec.id)}</span>${sec.short}</div>
-          <div style="font-size:11px;color:${hasAny ? '#1D9E75' : '#2E3550'};">${secCovered > 0 ? secCovered + '/' : ''}${secTotal}%</div>
+          <div style="font-size:11px;color:${hasAny ? '#1D9E75' : '#3A4060'};">${secCovered}/${secTotal}%</div>
         </div>
         <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:10px;overflow:hidden;">
           <div class="sec-bar-fill" data-w="${secPct}" style="height:100%;width:0%;background:#1D9E75;border-radius:2px;transition:width 1.2s ease;"></div>
@@ -3950,7 +3953,7 @@ function screenCourses() {
       <p class="label">Your courses</p>
       <h2>Which have you completed?</h2>
       <p style="font-size:14px;color:#555B70;margin:6px 0 16px;">Select courses you've completed or are currently taking.</p>
-      <div class="courses-scroll">
+      <div class="courses-scroll" style="padding-bottom:80px;">
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
           const allChecked = secCourses.every(c => S.courses.has(c.id));
@@ -4323,8 +4326,7 @@ function go(screen) {
 function selectYear(year) {
   S.year = year;
   save();
-  render(); // show selection briefly
-  setTimeout(() => go('courses'), 300);
+  go('courses');
 }
 
 function finishCourses() {
