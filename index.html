@@ -3787,7 +3787,7 @@ function screenBrief() {
       ? `You're covering ${t.name} right now — drill a quick question while it's fresh.`
       : directive.reason === 'retention'
         ? `${t.name} is ${t.w}% of the exam — you covered it ${weeksAgo(directive.days)}. Most premeds won't revisit this until test prep. Staying sharp now is the edge.`
-        : `${t.name} is ${t.w}% of the exam. Most premeds don't think about this until year 3 — every session you do now is an edge they won't have.`;
+        : `${t.name} is ${t.w}% of the exam. Do this now and widen your lead — every session builds an edge that compounds.`;
     directiveHTML = `
       <div style="background:linear-gradient(135deg,rgba(29,158,117,0.14),rgba(29,158,117,0.04));border:1px solid rgba(29,158,117,0.32);border-radius:14px;padding:18px 18px 16px;margin-bottom:24px;">
         <div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Do this now</div>
@@ -3930,7 +3930,8 @@ function screenLanding() {
         <span class="app-brand-name">Waypoint</span>
       </div>
 
-      <h1 style="font-size:32px;font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:#F0F2F8;margin-bottom:14px;">You've been studying for the MCAT since Bio&nbsp;I.</h1>
+      <h1 style="font-size:32px;font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:#F0F2F8;margin-bottom:10px;">You've been studying for the MCAT since Bio&nbsp;I.</h1>
+      <p style="font-size:16px;font-weight:600;color:#4DE3AB;line-height:1.4;margin-bottom:12px;letter-spacing:-0.01em;">While your classmates wait until junior year, you're already building your edge.</p>
       <p style="font-size:15px;color:#6B7185;line-height:1.7;margin-bottom:26px;">Most classmates don't realize it until year 3. Waypoint plots your coursework onto a route through the exam, so coverage grows every semester — and year 3 is review, not panic.</p>
 
       <div class="landing-example">
@@ -3944,6 +3945,22 @@ function screenLanding() {
           <div style="height:100%;width:10%;background:#1D9E75;border-radius:3px;box-shadow:0 0 6px rgba(29,158,117,0.6);"></div>
         </div>
         <div style="font-size:12px;color:#3A4060;">10% of the MCAT covered. One class in.</div>
+      </div>
+
+      <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:14px 16px;margin-bottom:20px;">
+        <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">See where you stand vs. your class</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:10px;color:#8A90A8;margin-bottom:2px;font-weight:600;">You</div>
+            <div class="disp" style="font-size:26px;font-weight:800;color:#F0F2F8;line-height:1;">45%</div>
+          </div>
+          <div style="font-size:11px;color:#1D9E75;font-weight:700;text-align:center;padding:0 10px;line-height:1.3;">+3 pts<br>ahead</div>
+          <div style="text-align:right;">
+            <div style="font-size:10px;color:#444B62;margin-bottom:2px;">Typical sophomore</div>
+            <div class="disp" style="font-size:18px;font-weight:600;color:#555B70;line-height:1;">42%</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#3A4060;margin-top:10px;">Based on courses covered — this is what Waypoint shows you live.</div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:36px;">
@@ -3985,7 +4002,7 @@ function screenLanding() {
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="go('year')" style="font-size:15px;font-weight:600;letter-spacing:-0.01em;">See how much you've already covered →</button>
+      <button class="btn btn-primary" onclick="go('year')" style="font-size:15px;font-weight:600;letter-spacing:-0.01em;">Start building your edge →</button>
       <a href="https://form.typeform.com/to/YC2tTVYd" target="_blank" rel="noopener" class="btn btn-ghost" style="display:block;text-align:center;margin-top:10px;text-decoration:none;">Get notified about new features</a>
       <p style="text-align:center;font-size:12px;color:#333B52;margin-top:10px;">Free · no account · 2 minutes</p>
     </div>`;
