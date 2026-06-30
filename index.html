@@ -796,13 +796,13 @@ const TAB_ICONS = {
   log:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`,
 };
 
-const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklogdone', 'complete'];
+const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete'];
 
 function tabBarHTML() {
   const tabs = [
     { id: 'brief',   label: 'Home',  icon: TAB_ICONS.home,  match: ['brief', 'complete'] },
     { id: 'reveal',  label: 'Route', icon: TAB_ICONS.route, match: ['reveal'] },
-    { id: 'quicklog',label: 'Log',   icon: TAB_ICONS.log,   match: ['quicklog', 'quicklogdone'] },
+    { id: 'quicklog',label: 'Log',   icon: TAB_ICONS.log,   match: ['quicklog', 'quicklog-subtopic', 'quicklogdone'] },
   ];
   return `<div class="tab-bar">
     ${tabs.map(t => `
@@ -1087,6 +1087,160 @@ const TWISTS = {
   'cars09': 'Your professor asks what Barthes\' argument is. The MCAT asks what it "most directly implies" — a downstream inference two steps removed from the text, testing whether you can follow the logic to an unstated consequence.',
   'cars10': 'Your professor asks you to summarize the passage\'s main idea. The MCAT asks you to identify the central tension — the organizing conceptual conflict that gives the passage its structure — which requires understanding what the passage is doing, not just what it says.',
   'cars11': 'Your professor asks what Sontag argues about photographs. The MCAT asks which scenario parallels the argument structure — requiring you to abstract the logic from the specific content and map it onto an entirely new domain.',
+};
+
+// ── SYLLABUS SYNC: subtopic definitions per MCAT topic ───────────────────────
+// Each entry: { id, label } — shown in the subtopic picker after a topic is chosen.
+// "All of [topic]" is always appended automatically.
+const SUBTOPICS = {
+  'cell-bio':  [{ id:'signaling',   label:'Cell Signaling'      },
+                { id:'membranes',   label:'Membranes & Transport'},
+                { id:'organelles',  label:'Organelles'           },
+                { id:'cell-cycle',  label:'Cell Cycle & Apoptosis'}],
+  'genetics':  [{ id:'mendelian',       label:'Mendelian Genetics'     },
+                { id:'linkage',         label:'Linkage & Recombination' },
+                { id:'mutations',       label:'Mutations & Nondisjunction'},
+                { id:'gene-expression', label:'Gene Expression & Epigenetics'}],
+  'mol-bio':   [{ id:'replication',      label:'DNA Replication'        },
+                { id:'transcription',    label:'Transcription & RNA Processing'},
+                { id:'translation',      label:'Translation'             },
+                { id:'gene-regulation',  label:'Gene Regulation'         }],
+  'biochem':   [{ id:'amino-acids', label:'Amino Acids & Proteins'},
+                { id:'enzymes',     label:'Enzyme Kinetics'       },
+                { id:'metabolism',  label:'Metabolism (TCA, ETC)' },
+                { id:'lipids',      label:'Lipids & Membranes'    }],
+  'physio':    [{ id:'cardiovascular', label:'Cardiovascular'   },
+                { id:'respiratory',   label:'Respiratory'        },
+                { id:'renal',         label:'Renal & Endocrine'  },
+                { id:'muscle',        label:'Muscle Physiology'  }],
+  'neuro':     [{ id:'action-potential', label:'Action Potentials'    },
+                { id:'synaptic',         label:'Synaptic Transmission' },
+                { id:'ans',              label:'Autonomic Nervous System'},
+                { id:'brain',            label:'Brain & Behavior'      }],
+  'thermo':    [{ id:'enthalpy',     label:'Enthalpy & Hess\'s Law'   },
+                { id:'entropy',      label:'Entropy & Phase Changes'   },
+                { id:'gibbs',        label:'Gibbs Free Energy'         },
+                { id:'equilibrium',  label:'Equilibrium & Le Chatelier\'s'}],
+  'atomic':    [{ id:'quantum',        label:'Quantum Numbers & Orbitals'},
+                { id:'electron-config',label:'Electron Configuration'   },
+                { id:'periodic-trends',label:'Periodic Trends'          }],
+  'bonding':   [{ id:'imf',           label:'Intermolecular Forces'  },
+                { id:'polarity',      label:'Polarity & Geometry'     },
+                { id:'hybridization', label:'Hybridization & Bond Types'}],
+  'stoich':    [{ id:'moles',     label:'Moles & Conversions'     },
+                { id:'solutions', label:'Solutions & Concentration' },
+                { id:'gas-laws',  label:'Gas Laws'                 },
+                { id:'reactions', label:'Limiting Reagent & Yield' }],
+  'acid-base': [{ id:'ph-buffers', label:'pH & Buffers'       },
+                { id:'weak-acids', label:'Weak Acids & Bases'  },
+                { id:'titrations', label:'Titrations'           },
+                { id:'salts',      label:'Salts & Hydrolysis'   }],
+  'orgo':      [{ id:'stereochemistry', label:'Stereochemistry'         },
+                { id:'reactions',       label:'Reactions & Mechanisms'  },
+                { id:'spectroscopy',    label:'Spectroscopy (IR, NMR)'  },
+                { id:'nomenclature',    label:'Nomenclature & Structure' }],
+  'physics':   [{ id:'kinematics', label:'Kinematics & Forces'},
+                { id:'fluids',     label:'Fluids & Pressure'  },
+                { id:'circuits',   label:'Circuits & Electricity'},
+                { id:'optics',     label:'Optics & Waves'     }],
+  'psych':     [{ id:'learning',     label:'Learning & Conditioning'},
+                { id:'memory',       label:'Memory'                 },
+                { id:'social',       label:'Social Psychology'      },
+                { id:'disorders',    label:'Disorders & Personality'},
+                { id:'development',  label:'Development'            }],
+  'soc':       [{ id:'stratification',   label:'Stratification & Mobility'},
+                { id:'identity',         label:'Identity & Culture'       },
+                { id:'institutions',     label:'Institutions & Norms'     },
+                { id:'health-disparities',label:'Health Disparities'      }],
+  'research':  [{ id:'study-design', label:'Study Design'   },
+                { id:'statistics',   label:'Statistics'      },
+                { id:'bias',         label:'Bias & Error'    }],
+};
+
+// ── SYLLABUS SYNC: per-question subtopic tags ─────────────────────────────────
+// Maps question ID → subtopicId within its parent topic.
+// Questions not listed here fall through to "All of [topic]".
+const SUBTOPIC_TAGS = {
+  // Cell Biology
+  'b01':'signaling',   'b05':'signaling',  'b23':'signaling', 'b43':'signaling',
+  'b02':'membranes',   'b11':'membranes',  'b18':'membranes', 'b41':'membranes', 'b44':'membranes',
+  'b16':'organelles',  'b17':'organelles', 'b42':'organelles','b45':'organelles',
+  'b12':'cell-cycle',  'b25':'cell-cycle', 'b40':'cell-cycle',
+  // Genetics
+  'b06':'mendelian',   'b07':'mendelian',  'b08':'mendelian',  'b13':'mendelian',
+  'b19':'mendelian',   'b20':'mendelian',  'b34':'mendelian',  'b35':'mendelian', 'b38':'mendelian', 'b39':'mendelian',
+  'b14':'linkage',     'b24':'linkage',
+  'b36':'mutations',
+  'b37':'gene-expression', 'b31':'gene-expression',
+  // Molecular Biology
+  'b10':'replication', 'b26':'replication','b27':'replication','b32':'replication','b33':'replication',
+  'b09':'transcription','b21':'transcription',
+  'b15':'translation', 'b28':'translation','b29':'translation',
+  'b22':'gene-regulation','b30':'gene-regulation',
+  // Biochemistry
+  'bc06':'amino-acids','bc08':'amino-acids','bc11':'amino-acids',
+  'bc01':'enzymes',    'bc02':'enzymes',
+  'bc03':'metabolism', 'bc04':'metabolism','bc05':'metabolism','bc07':'metabolism','bc10':'metabolism','bc12':'metabolism','bc13':'metabolism','bc14':'metabolism',
+  'bc09':'lipids',
+  // Physiology
+  'p01':'cardiovascular','p05':'cardiovascular','p06':'cardiovascular','p12':'cardiovascular','p17':'cardiovascular',
+  'p04':'respiratory',   'p09':'respiratory',   'p10':'respiratory',   'p14':'respiratory',
+  'p02':'renal',         'p03':'renal',          'p07':'renal',         'p08':'renal',         'p11':'renal', 'p15':'renal','p16':'renal',
+  'p13':'muscle',
+  // Neuroscience
+  'n03':'action-potential','n09':'action-potential','n11':'action-potential','n12':'action-potential','n13':'action-potential','n15':'action-potential',
+  'n06':'synaptic',        'n10':'synaptic',         'n16':'synaptic',
+  'n01':'ans',             'n02':'ans',               'n14':'ans',
+  'n04':'brain',           'n05':'brain',             'n07':'brain',  'n08':'brain','n17':'brain',
+  // Thermodynamics
+  'th05':'enthalpy',   'th11':'enthalpy',  'th14':'enthalpy',
+  'th02':'entropy',    'th07':'entropy',   'th09':'entropy',   'th10':'entropy', 'th17':'entropy',
+  'th01':'gibbs',      'th13':'gibbs',
+  'th04':'equilibrium','th06':'equilibrium','th08':'equilibrium','th12':'equilibrium','th15':'equilibrium','th16':'equilibrium','th03':'equilibrium',
+  // Atomic Structure
+  'c07':'quantum',     'c37':'quantum',    'c40':'quantum',    'c44':'quantum',
+  'c06':'electron-config','c41':'electron-config','c43':'electron-config',
+  'c13':'periodic-trends','c17':'periodic-trends','c22':'periodic-trends','c38':'periodic-trends','c39':'periodic-trends','c42':'periodic-trends',
+  // Bonding
+  'c12':'imf',  'c33':'imf',  'c34':'imf',  'c36':'imf', 'c04':'imf',
+  'c03':'polarity','c16':'polarity','c20':'polarity','c30':'polarity',
+  'c31':'hybridization','c32':'hybridization','c35':'hybridization',
+  // Stoichiometry
+  'c48':'moles',  'c50':'moles',  'c51':'moles',  'c52':'moles',
+  'c09':'solutions','c10':'solutions','c45':'solutions','c49':'solutions',
+  'c14':'gas-laws','c47':'gas-laws',
+  'c08':'reactions','c19':'reactions','c46':'reactions','c53':'reactions',
+  // Acid-Base
+  'c01':'ph-buffers','c02':'ph-buffers','c11':'ph-buffers','c28':'ph-buffers',
+  'c15':'weak-acids','c18':'weak-acids','c23':'weak-acids','c24':'weak-acids','c27':'weak-acids','c29':'weak-acids',
+  'c21':'titrations','c26':'titrations','c54':'titrations',
+  'c25':'salts',
+  // Organic Chemistry
+  'og08':'stereochemistry','og12':'stereochemistry','og15':'stereochemistry',
+  'og01':'reactions','og02':'reactions','og03':'reactions','og04':'reactions','og05':'reactions','og09':'reactions',
+  'og10':'reactions','og14':'reactions','og16':'reactions','og17':'reactions','og18':'reactions','og19':'reactions','og20':'reactions',
+  'og06':'spectroscopy','og13':'spectroscopy',
+  'og07':'nomenclature','og11':'nomenclature',
+  // Physics
+  'phy01':'kinematics','phy02':'kinematics','phy04':'kinematics','phy11':'kinematics','phy12':'kinematics',
+  'phy03':'fluids',    'phy08':'fluids',
+  'phy05':'circuits',  'phy10':'circuits',
+  'phy06':'optics',    'phy07':'optics',   'phy09':'optics',  'phy13':'optics',
+  // Psychology
+  'py01':'learning','py02':'learning','py07':'learning','py08':'learning',
+  'py04':'memory',  'py13':'memory',
+  'py05':'social',  'py12':'social',
+  'py06':'disorders','py09':'disorders','py11':'disorders',
+  'py03':'development','py10':'development',
+  // Sociology
+  'sc01':'stratification','sc06':'stratification','sc09':'stratification','sc13':'stratification','sc16':'stratification','sc17':'stratification',
+  'sc03':'identity',      'sc04':'identity',       'sc07':'identity',      'sc11':'identity',      'sc14':'identity',
+  'sc02':'institutions',  'sc10':'institutions',
+  'sc05':'health-disparities','sc08':'health-disparities','sc12':'health-disparities','sc15':'health-disparities',
+  // Research
+  's02':'study-design','s07':'study-design','s09':'study-design','s10':'study-design',
+  's01':'statistics',  's03':'statistics',  's04':'statistics',  's05':'statistics','s06':'statistics','s08':'statistics','s13':'statistics',
+  's11':'bias',        's12':'bias',         's14':'bias',        's15':'bias',
 };
 
 const QUESTIONS = [
@@ -3515,7 +3669,8 @@ const S = {
   milestonesShown: {}, // {10: true, 50: true, ...} — so milestone banners only show once
   covMilestonesShown: {}, // {15: true, 22: true, ...} — coverage-% milestone banners
   topicLastSeen: {}, // {topicId: 'YYYY-MM-DD'} — last date the user engaged with this topic (session or quick-log)
-  quickLog: null, // { topicId } while a quick-log session is active
+  quickLog: null,      // { topicId, subtopicId, subtopicFallback } while a quick-log session is active
+  quickLogTopic: null, // topicId chosen in step 1, waiting for subtopic pick
   nudgeDismissed: {}, // {topicId: 'YYYY-MM-DD'} — nudge for this topic dismissed on this date
 };
 
@@ -4069,8 +4224,9 @@ function screenBrief() {
         <div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Do this now</div>
         <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.2;margin-bottom:8px;">5 questions on ${t.name}</div>
         <p style="font-size:13px;color:#6B7185;line-height:1.55;margin:0 0 14px;">${copy}</p>
-        <button class="btn btn-primary" style="padding:10px 18px;font-size:14px;margin:0;" onclick="startQuickLog('${t.id}')">Start →</button>
-        <button style="background:none;border:none;font-size:12px;color:#444B62;cursor:pointer;display:block;width:100%;text-align:center;margin-top:10px;padding:2px 0;" onclick="dismissNudge('${t.id}')">Skip for now</button>
+        <button class="btn btn-primary" style="padding:10px 18px;font-size:14px;margin:0;" onclick="startQuickLog('${t.id}', null)">Start →</button>
+        <button style="background:none;border:none;font-size:13px;color:#2DB88A;cursor:pointer;display:block;width:100%;text-align:left;margin-top:12px;padding:4px 0;-webkit-tap-highlight-color:transparent;" onclick="go('quicklog')">📚 Study what's on my syllabus this week →</button>
+        <button style="background:none;border:none;font-size:12px;color:#444B62;cursor:pointer;display:block;width:100%;text-align:center;margin-top:6px;padding:2px 0;" onclick="dismissNudge('${t.id}')">Skip for now</button>
       </div>`;
   }
 
@@ -4455,6 +4611,7 @@ function screenQuestion() {
         </div>
       </div>
 
+      ${S.quickLog && S.quickLog.subtopicFallback ? `<div style="font-size:12px;color:#555B70;background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 12px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.06);">Not enough subtopic questions yet — showing all ${TOPICS.find(t=>t.id===S.quickLog.topicId)?.name||''} questions.</div>` : ''}
       ${q.topic === 'cars' ? `<p style="font-size:12px;color:#555B70;margin-bottom:8px;line-height:1.5;font-style:italic;">CARS is a reading skill that develops across all of premed — here's one while you're in practice mode.</p>` : ''}
       ${q.passage ? `<div class="cars-passage">${q.passage}</div>` : ''}
       <p class="q-stem">${q.stem}</p>
@@ -4627,7 +4784,7 @@ function screenQuickLog() {
   if (!myTopics.length) {
     return `
       <div class="screen">
-        <p class="label">Just learned this?</p>
+        <p class="label">Syllabus Sync</p>
         <h2 style="margin-bottom:5px;">No courses selected yet</h2>
         <p style="font-size:14px;margin-bottom:20px;">Add your courses first so we know what topics to pull questions from.</p>
         <button class="btn btn-primary" onclick="go('courses')">Add my courses</button>
@@ -4636,30 +4793,89 @@ function screenQuickLog() {
 
   return `
     <div class="screen">
-      <p class="label">Just learned this?</p>
-      <h2 style="margin-bottom:5px;">What did you cover in lecture today?</h2>
-      <p style="font-size:14px;margin-bottom:20px;">Pick a topic and we'll pull a couple MCAT-style questions on it right now — while it's fresh.</p>
+      <p class="label">Syllabus Sync</p>
+      <h2 style="margin-bottom:5px;">What are you covering right now?</h2>
+      <p style="font-size:14px;margin-bottom:20px;">Pick a topic and we'll let you drill down to exactly what's on your syllabus this week.</p>
 
       <div>
-        ${myTopics.map(t => `
-          <button class="topic-pick-btn" onclick="startQuickLog('${t.id}')">
+        ${myTopics.map(t => {
+          const hasSubs = SUBTOPICS[t.id] && SUBTOPICS[t.id].length > 0;
+          return `
+          <button class="topic-pick-btn" onclick="${hasSubs ? `pickQuickLogTopic('${t.id}')` : `startQuickLog('${t.id}', null)`}">
             <span class="q-tag ${sectionTag(t.mcat)}">${sectionIcon(t.mcat)}${t.disp}</span>
             <span class="tp-name">${t.name}</span>
+            <span class="tp-arrow">${hasSubs ? '›' : '→'}</span>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function screenQuickLogSubtopic() {
+  const topicId = S.quickLogTopic;
+  const topic   = topicId && TOPICS.find(t => t.id === topicId);
+  if (!topic) { go('quicklog'); return ''; }
+
+  const subs = SUBTOPICS[topicId] || [];
+
+  // Pre-compute counts so we can show how many questions each subtopic has
+  const allTopicQs = QUESTIONS.filter(q => q.topic === topicId);
+  const subCounts  = {};
+  subs.forEach(s => {
+    subCounts[s.id] = allTopicQs.filter(q => (q.subtopic || SUBTOPIC_TAGS[q.id]) === s.id).length;
+  });
+
+  return `
+    <div class="screen">
+      <button onclick="go('quicklog')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#555B70;font-size:13px;margin-bottom:16px;-webkit-tap-highlight-color:transparent;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+      <p class="label">Syllabus Sync</p>
+      <h2 style="margin-bottom:5px;">${topic.name}</h2>
+      <p style="font-size:14px;margin-bottom:20px;">What are you covering in class right now? We'll focus questions on exactly that unit.</p>
+
+      <div>
+        ${subs.map(sub => {
+          const count = subCounts[sub.id] || 0;
+          const enoughQs = count >= 3;
+          return `
+          <button class="topic-pick-btn" onclick="startQuickLog('${topicId}', '${sub.id}')">
+            <span style="flex:1;text-align:left;">
+              <span class="tp-name">${sub.label}</span>
+              <span style="display:block;font-size:11px;color:${enoughQs ? '#3A4060' : '#555B70'};margin-top:1px;">${count} question${count !== 1 ? 's' : ''}</span>
+            </span>
             <span class="tp-arrow">→</span>
-          </button>`).join('')}
+          </button>`;
+        }).join('')}
+
+        <button class="topic-pick-btn" style="border-color:rgba(255,255,255,0.05);opacity:0.7;" onclick="startQuickLog('${topicId}', null)">
+          <span class="tp-name" style="color:#6B7185;">All of ${topic.name}</span>
+          <span style="font-size:11px;color:#3A4060;margin-left:auto;margin-right:8px;">${allTopicQs.length} questions</span>
+          <span class="tp-arrow" style="color:#3A4060;">→</span>
+        </button>
       </div>
     </div>`;
 }
 
 function screenQuickLogDone() {
-  const topic   = TOPICS.find(t => t.id === (S.quickLog && S.quickLog.topicId));
+  const ql      = S.quickLog;
+  const topic   = TOPICS.find(t => t.id === (ql && ql.topicId));
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
+
+  // Find the subtopic label if one was used
+  let subtopicLabel = '';
+  if (ql && ql.subtopicId && !ql.subtopicFallback && topic) {
+    const sub = (SUBTOPICS[topic.id] || []).find(s => s.id === ql.subtopicId);
+    if (sub) subtopicLabel = sub.label;
+  }
 
   return `
     <div class="screen">
       <p class="label">Logged</p>
-      <h2 style="margin-bottom:5px;">${topic ? topic.name : 'Topic'} — done.</h2>
+      <h2 style="margin-bottom:4px;">${topic ? topic.name : 'Topic'} — done.</h2>
+      ${subtopicLabel ? `<p style="font-size:13px;color:#4DE3AB;margin-bottom:10px;font-weight:600;">${subtopicLabel}</p>` : ''}
       <p style="font-size:15px;margin-bottom:20px;">${correct}/${total} correct. While it's still fresh in your head is exactly when this sticks best.</p>
 
       <button class="btn btn-primary" onclick="go('brief')">Back to my route</button>
@@ -4759,19 +4975,40 @@ function startSession() {
   go('question');
 }
 
-// "Just learned this" quick-log — 2-3 questions on a single topic, right now
-function startQuickLog(topicId) {
-  const pool = QUESTIONS.filter(q => q.topic === topicId).sort(() => Math.random() - 0.5);
+function pickQuickLogTopic(topicId) {
+  S.quickLogTopic = topicId;
+  go('quicklog-subtopic');
+}
+
+// "Syllabus Sync" quick-log — 3 questions on a topic (optionally filtered to a subtopic)
+function startQuickLog(topicId, subtopicId) {
+  S.quickLogTopic = null; // clear topic-picker state
+  const allPool = QUESTIONS.filter(q => q.topic === topicId);
+  let pool = allPool;
+  let subtopicFallback = false;
+
+  if (subtopicId) {
+    const filtered = allPool.filter(q => (q.subtopic || SUBTOPIC_TAGS[q.id]) === subtopicId);
+    if (filtered.length >= 3) {
+      pool = filtered;
+    } else {
+      // Not enough questions for this subtopic — fall back to the whole topic
+      pool = allPool;
+      subtopicFallback = true;
+    }
+  }
+
+  pool = pool.sort(() => Math.random() - 0.5);
   S.session  = pool.slice(0, Math.min(3, pool.length));
   S.idx      = 0;
   S.answers  = [];
   S.answered = null;
-  S.quickLog = { topicId };
+  S.quickLog = { topicId, subtopicId: subtopicId || null, subtopicFallback };
   if (!S.session.length) {
     go('brief');
     return;
   }
-  if (window.plausible) plausible('quicklog_start');
+  if (window.plausible) plausible('quicklog_start', { props: { subtopic: subtopicId || 'all' } });
   go('question');
 }
 
@@ -4836,10 +5073,11 @@ function exitSession() {
     const ok = confirm("Leave this session? It won't count toward today's streak unless you finish.");
     if (!ok) return;
   }
-  S.session  = [];
-  S.idx      = 0;
-  S.answered = null;
-  S.quickLog = null;
+  S.session      = [];
+  S.idx          = 0;
+  S.answered     = null;
+  S.quickLog     = null;
+  S.quickLogTopic = null;
   go('brief');
 }
 
@@ -5118,7 +5356,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, quicklogdone:100 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100 };
 
 function render() {
   try {
@@ -5134,8 +5372,9 @@ function render() {
     case 'reveal':   html += screenReveal();   break;
     case 'question': html += screenQuestion(); break;
     case 'complete': html += screenComplete(); break;
-    case 'quicklog': html += screenQuickLog(); break;
-    case 'quicklogdone': html += screenQuickLogDone(); break;
+    case 'quicklog':          html += screenQuickLog();         break;
+    case 'quicklog-subtopic': html += screenQuickLogSubtopic(); break;
+    case 'quicklogdone':      html += screenQuickLogDone();     break;
   }
 
   const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
