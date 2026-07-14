@@ -4291,7 +4291,7 @@ function topicRetention(tid) {
   return { tid, topic, status, total, pct: Math.round(pct * 100), days };
 }
 
-function retentionSummary() {
+function retentionSummary(excludeId = null) {
   const states = TOPICS
     .filter(t => t.course && S.courses.has(t.course))
     .map(t => topicRetention(t.id))
@@ -4301,8 +4301,11 @@ function retentionSummary() {
   const fading = practiced.filter(s => s.status === 'fading');
   const shaky  = practiced.filter(s => s.status === 'shaky');
   // The single best thing to refresh: weakest accuracy first, then most time-decayed.
-  const action = shaky.slice().sort((a, b) => a.pct - b.pct)[0]
-              || fading.slice().sort((a, b) => (b.days || 0) - (a.days || 0))[0]
+  // excludeId lets the caller skip a topic that's already being actioned elsewhere
+  // (the "Do this now" directive) so we never show two CTAs for the same topic.
+  const pick = arr => arr.filter(s => s.tid !== excludeId);
+  const action = pick(shaky).sort((a, b) => a.pct - b.pct)[0]
+              || pick(fading).sort((a, b) => (b.days || 0) - (a.days || 0))[0]
               || null;
   return { practiced, sharp, fading, shaky, action };
 }
@@ -4315,12 +4318,18 @@ function masteryRefresh(tid) {
 }
 
 function stayingSharpHTML() {
-  const { practiced, sharp, fading, shaky, action } = retentionSummary();
+  // Exclude whatever the "Do this now" directive is already surfacing so the two
+  // surfaces never show a duplicate CTA for the same topic (status here, action there).
+  const directive = getDirectiveTopic();
+  const directiveId = directive ? directive.topic.id : null;
+  const { practiced, sharp, fading, shaky, action } = retentionSummary(directiveId);
   if (practiced.length < 2) return ''; // not enough practice to say anything honest yet
   const slipping = fading.length + shaky.length;
 
   let body;
-  if (action) {
+  if (slipping === 0) {
+    body = `<p style="font-size:13px;color:#6B7185;line-height:1.55;margin:0;">All <strong style="color:#4DE3AB;">${sharp.length} topic${sharp.length !== 1 ? 's' : ''}</strong> you've practiced are holding strong. That's what walking in ready actually feels like.</p>`;
+  } else {
     const chips = [...shaky, ...fading].slice(0, 3).map(s => {
       const color = s.status === 'shaky' ? '#F08060' : '#F5B36A';
       return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#8A90A8;background:rgba(255,255,255,0.04);border-radius:8px;padding:4px 9px;"><span style="width:6px;height:6px;border-radius:50%;background:${color};"></span>${s.topic.name}</span>`;
@@ -4328,12 +4337,13 @@ function stayingSharpHTML() {
     const lead = sharp.length > 0
       ? `<strong style="color:#4DE3AB;">${sharp.length} topic${sharp.length !== 1 ? 's' : ''}</strong> still sharp. <strong style="color:#F5B36A;">${slipping}</strong> starting to fade.`
       : `<strong style="color:#F5B36A;">${slipping} topic${slipping !== 1 ? 's' : ''}</strong> could use a quick refresh.`;
+    const cta = action
+      ? `<button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="masteryRefresh('${action.tid}')">Lock ${action.topic.name} back in — 5 questions →</button>`
+      : `<p style="font-size:12px;color:#555B70;line-height:1.5;margin:0;">Your top one to refresh is already queued up top in Do this now.</p>`;
     body = `
       <p style="font-size:13px;color:#8A90A8;line-height:1.55;margin:0 0 10px;">${lead}</p>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${chips}</div>
-      <button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="masteryRefresh('${action.tid}')">Lock ${action.topic.name} back in — 5 questions →</button>`;
-  } else {
-    body = `<p style="font-size:13px;color:#6B7185;line-height:1.55;margin:0;">All <strong style="color:#4DE3AB;">${sharp.length} topic${sharp.length !== 1 ? 's' : ''}</strong> you've practiced are holding strong. That's what walking in ready actually feels like.</p>`;
+      ${cta}`;
   }
 
   return `
