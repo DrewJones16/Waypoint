@@ -851,6 +851,7 @@ const TWISTS = {
   'b20': 'Your professor tests epistasis by definition. The MCAT gives a dihybrid cross with a non-standard phenotypic ratio (e.g., 12:3:1) and asks what type of gene interaction explains it — you work backward from the ratio to identify the epistatic pattern.',
   'b24': 'Your professor tests that 1 cM = 1% recombination. The MCAT gives you counts of parental and recombinant offspring from a testcross and asks you to calculate map distance — applying the concept to raw experimental counts rather than a formula.',
   'b34': 'Your professor tests ABO blood type rules directly. The MCAT gives a disputed paternity case with blood type data and asks which man could be the father — applying inheritance logic to a real-world scenario where the answer isn\'t given by a standard Punnett square.',
+  'b46': 'Your professor tests what the Shine-Dalgarno sequence does. The MCAT gives a mutant bacterial mRNA with an altered ribosome-binding region and asks what happens to translation and why — reasoning from the disrupted 16S rRNA base-pairing to reduced initiation, not reciting the definition.',
   'b35': 'Your professor tests pedigree analysis rules. The MCAT gives a complex pedigree and asks you to identify the most likely inheritance pattern, evaluate which patterns can be definitively ruled out, and explain your reasoning — multi-step deduction, not pattern matching.',
   'b36': 'Your professor tests the definition of nondisjunction. The MCAT gives a patient with trisomy 21 who has a parent with a balanced translocation and asks whether the chromosomal abnormality arose from nondisjunction or translocation — distinguishing mechanisms from clinical data.',
   'b37': 'Your professor tests lac operon regulation in isolation. The MCAT gives a bacterium with a mutation in adenylate cyclase (low cAMP even without glucose) and asks how this affects lac operon expression — applying regulatory logic through a second-order mutation.',
@@ -1010,6 +1011,14 @@ const TWISTS = {
   'py11': 'Your professor tests Big Five trait definitions. The MCAT gives a study showing that conscientiousness predicts medication adherence and asks which personality trait would be most relevant to predict a patient\'s follow-through on a treatment plan — applying trait psychology to a clinical outcome.',
   'py12': 'Your professor tests the attribution dimensions (internal/external, stable/unstable, global/specific). The MCAT gives a patient\'s self-explanation after a health setback and asks whether this is an internal, stable, global attribution — applying the framework to identify a maladaptive attributional style.',
   'py13': 'Your professor tests which sleep stage produces dreaming. The MCAT gives an EEG tracing from a sleep study and asks which stage shows paradoxical (desynchronized) brain activity — reading graphical physiological data to identify the sleep stage rather than recalling the definition.',
+  'py14': 'Your professor tests the definition of the fundamental attribution error. The MCAT gives a clinical vignette where a provider judges a patient\'s missed appointments as "irresponsible" and asks which attributional bias is at work and how it could distort care — applying the bias to a real interaction, not naming it.',
+  'py15': 'Your professor tests the names of the three classic emotion theories. The MCAT describes an experiment that manipulates physiological arousal and social context separately and asks which theory the pattern of results supports — reasoning from data to theory instead of matching a label.',
+  'py16': 'Your professor tests the definition of the availability heuristic. The MCAT gives data showing people overestimate rare, dramatic causes of death relative to common ones and asks which cognitive shortcut explains the distortion — identifying the heuristic from behavioral evidence.',
+  'py17': 'Your professor tests who conducted the obedience studies and the headline shock percentage. The MCAT varies the conditions — authority proximity, peer models, setting — and asks which manipulation would most change obedience and why — reasoning about situational forces rather than recalling the study.',
+  'py18': 'Your professor tests the definition of cognitive dissonance. The MCAT gives a health-behavior scenario and asks which route to dissonance reduction the person is using and what attitude change it predicts — applying the theory to forecast behavior.',
+  'py19': 'Your professor tests lists of sympathetic vs. parasympathetic functions. The MCAT gives a patient\'s vitals and symptoms during a stress response and asks which autonomic division and neurotransmitters are responsible — inferring the pathway from clinical signs.',
+  'py20': 'Your professor tests the definition of the absolute threshold. The MCAT gives an experiment where an observer\'s hit and false-alarm rates shift with incentives and asks whether sensitivity or the response criterion changed — separating d-prime from bias in real data.',
+  'py21': 'Your professor tests the four reinforcement schedules by definition. The MCAT gives a real behavioral pattern (a slot machine, or a parent who sometimes gives in to tantrums) and asks which schedule is operating and why the behavior resists extinction — mapping the scenario to the schedule.',
   // ─ Sociology ─
   'sc01': 'Your professor tests the definitions of caste vs. class systems. The MCAT gives a global health passage describing a stratification system and asks which sociological concept best characterizes the observed inequality — applying classification to a novel social context.',
   'sc02': 'Your professor tests Durkheim, functionalism, and conflict theory by name. The MCAT gives a health behavior passage and asks which sociological perspective would frame addiction as a structural problem rather than individual moral failure — applying theory to a clinical scenario.',
@@ -1237,6 +1246,9 @@ const SUBTOPIC_TAGS = {
   'py05':'social',  'py12':'social',
   'py06':'disorders','py09':'disorders','py11':'disorders',
   'py03':'development','py10':'development',
+  'py14':'social','py17':'social','py18':'social',
+  'py16':'memory',
+  'py21':'learning',
   // Sociology
   'sc01':'stratification','sc06':'stratification','sc09':'stratification','sc13':'stratification','sc16':'stratification','sc17':'stratification',
   'sc03':'identity',      'sc04':'identity',       'sc07':'identity',      'sc11':'identity',      'sc14':'identity',
@@ -2410,6 +2422,86 @@ const QUESTIONS = [
     ans:2,
     exp:'REM (Rapid Eye Movement) sleep: paradoxically active EEG (desynchronized, low-amplitude, high-frequency — like wakefulness), rapid eye movements, and active muscle paralysis (atonia, preventing acting out dreams). Most vivid narrative dreams occur in REM. REM duration increases toward morning. Stage 3 (SWS): delta waves, deep sleep, physical restoration, growth hormone release. Stage 2: memory consolidation via sleep spindles. REM deprivation → REM rebound on recovery nights. Both SWS and REM are essential for memory consolidation.'
   },
+  {
+    id:'py14', topic:'psych',
+    stem:'An observer watches a stranger trip on the sidewalk and concludes the person is clumsy, giving no weight to the uneven pavement. This tendency to overattribute others\' behavior to disposition rather than situation is:',
+    opts:['Self-serving bias',
+          'The fundamental attribution error',
+          'The just-world hypothesis',
+          'In-group favoritism'],
+    ans:1,
+    exp:'The fundamental attribution error is the tendency to overattribute others\' behavior to internal, dispositional causes while underweighting situational factors. Self-serving bias is attributing one\'s OWN successes to internal causes and failures to external ones. The just-world hypothesis is the belief that people get what they deserve. In-group favoritism is preferential treatment of one\'s own group. Note the actor-observer asymmetry: we tend to excuse our own behavior situationally but judge others dispositionally.'
+  },
+  {
+    id:'py15', topic:'psych',
+    stem:'According to the Schachter-Singer two-factor theory, emotional experience requires:',
+    opts:['Physiological arousal that directly produces the emotion with no interpretation',
+          'Physiological arousal plus a cognitive label for that arousal based on context',
+          'A cognitive appraisal that fully precedes any physiological change',
+          'Arousal and emotion triggered simultaneously but independently'],
+    ans:1,
+    exp:'The Schachter-Singer two-factor theory holds that emotion = physiological arousal + a cognitive interpretation (label) of that arousal using situational cues. The James-Lange theory says emotion arises directly from bodily arousal (we feel afraid because we tremble) — arousal without interpretation. The Cannon-Bard theory says arousal and emotion occur simultaneously and independently. The idea that appraisal fully precedes physiology reflects Lazarus\'s appraisal theory. The classic demonstration: identical adrenaline-induced arousal is labeled as different emotions depending on the social context.'
+  },
+  {
+    id:'py16', topic:'psych',
+    stem:'After repeated news coverage of shark attacks, beachgoers dramatically overestimate the likelihood of being attacked. This judgment error is best explained by:',
+    opts:['The representativeness heuristic',
+          'The availability heuristic',
+          'Confirmation bias',
+          'The framing effect'],
+    ans:1,
+    exp:'The availability heuristic estimates the probability of an event by how easily instances come to mind. Vivid, recent, emotionally charged events (shark attacks) are disproportionately memorable, inflating perceived frequency. The representativeness heuristic judges probability by similarity to a prototype, often ignoring base rates. Confirmation bias is seeking evidence that supports existing beliefs. The framing effect is when logically equivalent information presented differently changes choices. Here the mechanism is ease of recall — availability.'
+  },
+  {
+    id:'py17', topic:'psych',
+    stem:'In Milgram\'s obedience experiments, which change to the setup most strongly REDUCED participants\' obedience?',
+    opts:['Increasing the monetary payment for completing the study',
+          'Having the experimenter issue orders by telephone from another room',
+          'Placing the learner in a separate room so they could not be seen or heard',
+          'Running the study at a prestigious university'],
+    ans:1,
+    exp:'Obedience dropped sharply when the legitimate authority was made less present — for example, when the experimenter gave orders remotely by phone rather than in person. Obedience also fell when the learner was closer and more visible, and when a disobedient peer modeled refusal. Obedience was HIGHER when the learner was less visible and when the setting was prestigious. Payment was a small flat fee and did not drive obedience. The core driver was the perceived legitimacy and proximity of authority.'
+  },
+  {
+    id:'py18', topic:'psych',
+    stem:'A heavy smoker dismisses new research linking smoking to cancer as "probably exaggerated" and keeps smoking. According to cognitive dissonance theory, this is best explained as:',
+    opts:['Reducing the discomfort of conflicting cognitions by devaluing the threatening information',
+          'Classical extinction of a conditioned response',
+          'The mere-exposure effect increasing liking through familiarity',
+          'Downward social comparison with sicker individuals'],
+    ans:0,
+    exp:'Cognitive dissonance is the discomfort of holding conflicting cognitions ("I smoke" vs. "smoking causes cancer"). People reduce it by changing a cognition — here, discrediting the research rather than quitting. Other routes to reduce dissonance include changing the behavior (quitting) or adding consonant cognitions ("my grandfather smoked and lived to 90"). Extinction is a conditioning concept. The mere-exposure effect concerns liking from repeated exposure. Downward social comparison — comparing oneself with those worse off — is a different mechanism.'
+  },
+  {
+    id:'py19', topic:'psych',
+    stem:'During an acute panic attack, which set of changes is mediated by the sympathetic nervous system?',
+    opts:['Increased salivation, increased digestive motility, and pupil constriction',
+          'Increased heart rate, pupil dilation, and epinephrine release from the adrenal medulla',
+          'Decreased heart rate, bronchoconstriction, and bladder contraction',
+          'Increased insulin secretion and increased blood flow to the gut'],
+    ans:1,
+    exp:'The sympathetic nervous system drives the "fight-or-flight" response: increased heart rate and contractility, pupil dilation (mydriasis), bronchodilation, inhibited digestion and salivation, and stimulation of the adrenal medulla to release epinephrine and norepinephrine. The other options describe parasympathetic ("rest-and-digest") actions — increased salivation and digestion, pupil constriction, decreased heart rate, bronchoconstriction, and bladder contraction. Recognizing the pattern of signs lets you identify the division responsible.'
+  },
+  {
+    id:'py20', topic:'psych',
+    stem:'Signal detection theory improves on the classical notion of a fixed absolute threshold mainly by:',
+    opts:['Assuming detection depends only on the physical intensity of the stimulus',
+          'Separating an observer\'s sensitivity from their decision criterion (response bias)',
+          'Defining the threshold as the intensity detected 100% of the time',
+          'Eliminating the influence of background noise on perception'],
+    ans:1,
+    exp:'Signal detection theory distinguishes sensitivity (d-prime, the true ability to tell signal from noise) from the response criterion (the willingness to report "yes"), which is shaped by expectations, motivation, and payoffs. It treats detection as a decision made against a background of noise, not a fixed sensory limit. The classical absolute threshold is defined as the intensity detected 50% of the time (not 100%) and ignores response bias. Example: a radiologist rewarded for catching tumors lowers their criterion, raising both hits and false alarms with no change in true sensitivity.'
+  },
+  {
+    id:'py21', topic:'psych',
+    stem:'Which reinforcement schedule typically produces behavior that is MOST resistant to extinction?',
+    opts:['Continuous reinforcement',
+          'Fixed-interval',
+          'Fixed-ratio',
+          'Variable-ratio'],
+    ans:3,
+    exp:'Variable-ratio schedules reinforce after an unpredictable number of responses (e.g., a slot machine), producing high, steady response rates and the greatest resistance to extinction — because the learner cannot easily detect that reinforcement has stopped. Continuous reinforcement extinguishes fastest once the reward ends. Fixed schedules produce characteristic post-reinforcement pauses. This is why gambling is so persistent, and why intermittently giving in to a child\'s tantrum makes it harder to extinguish.'
+  },
   // ── Sociology — additional ────────────────────────────────────────────────────
   {
     id:'sc06', topic:'soc',
@@ -2890,7 +2982,7 @@ const QUESTIONS = [
     exp:'Restriction enzymes (originally a bacterial defense against viral DNA) recognize specific short sequences, often palindromic (read the same 5′→3′ on both strands, e.g., GAATTC for EcoRI), and cut the DNA at or near that site. This produces fragments with either "sticky ends" (staggered cuts leaving overhangs) or "blunt ends." Because the same enzyme always cuts the same sequence, scientists can cut a plasmid and a gene of interest with the same enzyme, producing complementary sticky ends that DNA ligase can join — the basis of recombinant DNA technology.'
   },
   {
-    id:'b34', topic:'mol-bio',
+    id:'b46', topic:'mol-bio',
     stem:'A researcher mutates the Shine-Dalgarno sequence of a bacterial mRNA. What is the most likely consequence?',
     opts:['Premature termination of translation due to a stop codon',
           'Reduced efficiency of ribosome binding and decreased translation initiation',
