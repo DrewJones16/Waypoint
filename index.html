@@ -4205,6 +4205,120 @@ function sectionBarsHTML() {
   return `<div style="margin:8px 0 16px;">${bars.join('')}</div>`;
 }
 
+// ── TWIST OF THE DAY ──────────────────────────────────────────────────────────
+// Surfaces Waypoint's single most differentiated asset — the professor-vs-MCAT
+// "Twist" — on the Home screen, rotating once per day. A real reason to return
+// that delivers genuine insight, not a manipulative streak. Twists otherwise only
+// appear after answering a question deep inside a session.
+function twistTextFor(q) {
+  return q ? (q.twist || TWISTS[q.id] || '') : '';
+}
+
+// Twists follow the shape "Your professor tests X. The MCAT ..." — split into the
+// two sides of the contrast the whole product is built on.
+function splitTwist(text) {
+  const marker = '. The MCAT';
+  const strip = s => { s = s.replace(/^Your professor\s+/i, '').trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
+  const i = text.indexOf(marker);
+  if (i === -1) return { cls: strip(text), exam: '' };
+  let exam = text.slice(i + 2).trim().replace(/^The MCAT\s+/, '');
+  exam = exam.charAt(0).toUpperCase() + exam.slice(1);
+  return { cls: strip(text.slice(0, i + 1).trim()), exam };
+}
+
+// Deterministic pick: stable within a calendar day, rotates day to day. Prefers
+// topics the student has already covered; falls back to a teaser if none yet.
+function getDailyTwist() {
+  const covered = new Set(TOPICS.filter(t => t.course === null || (t.course && S.courses.has(t.course))).map(t => t.id));
+  let pool = QUESTIONS.filter(q => covered.has(q.topic) && twistTextFor(q));
+  const teaser = pool.length === 0;
+  if (teaser) pool = QUESTIONS.filter(q => twistTextFor(q));
+  if (!pool.length) return null;
+  pool = pool.slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const seed = isoDate().replace(/-/g, '');
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const q = pool[h % pool.length];
+  return { q, topic: TOPICS.find(t => t.id === q.topic), text: twistTextFor(q), teaser };
+}
+
+function dailyTwistHTML() {
+  const d = getDailyTwist();
+  if (!d) return '';
+  const { topic, text, teaser } = d;
+  const parts = splitTwist(text);
+  const tag = topic ? `<span class="q-tag ${sectionTag(topic.mcat)}">${sectionIcon(topic.mcat)}${topic.disp}</span>` : '';
+  const body = parts.exam ? `
+        <div style="margin-bottom:11px;">
+          <div style="font-size:10px;font-weight:700;color:#555B70;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">In class</div>
+          <p style="font-size:13px;color:#A8ADC4;line-height:1.5;margin:0;">${parts.cls}</p>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">On the MCAT</div>
+          <p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${parts.exam}</p>
+        </div>`
+    : `<p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${text}</p>`;
+  const drill = (topic && !teaser)
+    ? `<div style="display:flex;align-items:center;gap:18px;margin-top:14px;flex-wrap:wrap;">
+         <button style="background:none;border:none;font-size:13px;color:#A78BFA;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="twistDrill('${topic.id}')">Drill ${topic.name} while it's fresh →</button>
+         <button style="background:none;border:none;font-size:13px;color:#6B7185;font-weight:600;cursor:pointer;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="shareTwistCard(this)">Share</button>
+       </div>`
+    : '';
+  return `
+      <div style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.26);border-radius:14px;padding:16px 18px;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
+          <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;">Today's MCAT Twist</div>
+          ${tag}
+        </div>
+        ${body}${drill}
+      </div>`;
+}
+
+// Drill straight from the daily Twist — tracked separately so we can measure
+// whether surfacing the Twist on Home actually drives practice.
+function twistDrill(topicId) {
+  if (window.plausible) plausible('twist_of_day_drill', { props: { topic: topicId } });
+  startQuickLog(topicId, null);
+}
+
+// Curated, beginner-relatable twists for the landing page — a cold visitor has no
+// courses selected, so we show an intro-bio example anyone recognizes (never a
+// scary advanced one). Rotates daily so repeat visitors see something fresh.
+const SHOWCASE_TWISTS = ['b02', 'b06', 'b38', 'b44'];
+function getShowcaseTwist() {
+  const pool = SHOWCASE_TWISTS.map(id => QUESTIONS.find(q => q.id === id)).filter(q => q && twistTextFor(q));
+  if (!pool.length) return null;
+  const seed = isoDate().replace(/-/g, '');
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const q = pool[h % pool.length];
+  return { q, topic: TOPICS.find(t => t.id === q.topic), text: twistTextFor(q) };
+}
+
+// Landing-page showcase of the Twist — the differentiator, shown before signup so a
+// stranger sees the magic that no competitor offers.
+function landingTwistHTML() {
+  const d = getShowcaseTwist();
+  if (!d) return '';
+  const parts = splitTwist(d.text);
+  if (!parts.exam) return '';
+  return `
+      <div style="margin-bottom:20px;">
+        <div style="font-size:10px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">The part no one warns you about</div>
+        <div style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.26);border-radius:12px;padding:16px 18px;">
+          <div style="margin-bottom:11px;">
+            <div style="font-size:10px;font-weight:700;color:#555B70;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">In class</div>
+            <p style="font-size:13px;color:#A8ADC4;line-height:1.5;margin:0;">${parts.cls}</p>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">On the MCAT</div>
+            <p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${parts.exam}</p>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#555B70;line-height:1.6;margin-top:10px;">Waypoint shows you this gap for every topic you cover — so on test day, the twist is never a surprise.</p>
+      </div>`;
+}
+
 function screenBrief() {
   const wc        = wrongCount();
   const cov       = coverage(S.courses);
@@ -4337,6 +4451,8 @@ function screenBrief() {
       ${denomNote}
       ${benchSentence ? `<p style="font-size:12px;color:#555B70;margin:-16px 0 20px;line-height:1.5;">${benchSentence}</p>` : ''}
 
+      ${dailyTwistHTML()}
+
       <div class="section-divider"></div>
 
       <p class="label" style="margin-bottom:6px;">Your edge so far</p>
@@ -4399,6 +4515,8 @@ function screenLanding() {
         </div>
         <div style="font-size:11px;color:#3A4060;margin-top:10px;">Based on courses covered — this is what Waypoint shows you live.</div>
       </div>
+
+      ${landingTwistHTML()}
 
       <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:36px;">
         <div class="lf-row">
@@ -5326,6 +5444,130 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   }, 'image/png');
 }
 
+// ── SHAREABLE TWIST CARD ────────────────────────────────────────────────────────
+// Turns Waypoint's most-loved asset into a word-of-mouth loop: an image of the
+// professor-vs-MCAT contrast, sized for stories/feeds. Reuses roundRect,
+// wrapCanvasText, showToast and the same share/download fallback as the coverage card.
+async function shareTwistCard(btn) {
+  if (window.plausible) plausible('twist_share');
+  const d = getDailyTwist();
+  if (!d) { showToast('No twist to share yet — add a course first.'); return; }
+  const parts   = splitTwist(d.text);
+  const clsText  = parts.cls || d.text;
+  const examText = parts.exam || d.text;
+
+  let btnLabel;
+  if (btn) { btnLabel = btn.textContent; btn.disabled = true; btn.textContent = 'Preparing…'; }
+  const restoreBtn = () => { if (btn) { btn.disabled = false; btn.textContent = btnLabel; } };
+
+  const W = 1080, H = 1350;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  try {
+    await Promise.all([
+      document.fonts.load('700 44px "Space Grotesk"'),
+      document.fonts.load('600 30px "Inter"'),
+      document.fonts.load('400 40px "Inter"'),
+      document.fonts.load('700 30px "Inter"'),
+    ]);
+  } catch (e) { /* fall back to default fonts */ }
+
+  // Background + purple glow (twist accent)
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#0B0D14');
+  bg.addColorStop(1, '#100E1C');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W * 0.82, H * 0.12, 0, W * 0.82, H * 0.12, W * 0.75);
+  glow.addColorStop(0, 'rgba(139,92,246,0.26)');
+  glow.addColorStop(1, 'rgba(139,92,246,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+  // Branding
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1D9E75';
+  ctx.font = '700 40px "Space Grotesk", sans-serif';
+  ctx.fillText('Waypoint', 72, 108);
+  ctx.fillStyle = '#A78BFA';
+  ctx.font = '600 30px "Inter", sans-serif';
+  ctx.fillText('The MCAT Twist', 72, 152);
+  if (d.topic) {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#6B7185';
+    ctx.font = '600 28px "Inter", sans-serif';
+    ctx.fillText(d.topic.name.toUpperCase(), W - 72, 120);
+  }
+
+  // Panel geometry + adaptive font sizing so long twists always fit
+  const margin = 72, panelW = W - margin * 2, innerW = panelW - 68;
+  let fs = 40, lh = 56, clsLines = [], examLines = [];
+  const labelBlock = 60, padTop = 44, padBottom = 34, gap = 44;
+  for (const size of [42, 38, 34, 30, 26]) {
+    ctx.font = `400 ${size}px "Inter", sans-serif`;
+    clsLines  = wrapCanvasText(ctx, clsText, innerW);
+    examLines = wrapCanvasText(ctx, examText, innerW);
+    const h = size * 1.4;
+    const p1 = padTop + labelBlock + clsLines.length * h + padBottom;
+    const p2 = padTop + labelBlock + examLines.length * h + padBottom;
+    if (p1 + gap + p2 <= 900) { fs = size; lh = Math.round(size * 1.4); break; }
+    fs = size; lh = Math.round(size * 1.4);
+  }
+
+  const drawPanel = (y, label, labelColor, lines, textColor, fillColor, strokeColor) => {
+    const h = padTop + labelBlock + lines.length * lh + padBottom;
+    ctx.fillStyle = fillColor;
+    roundRect(ctx, margin, y, panelW, h, 24); ctx.fill();
+    ctx.strokeStyle = strokeColor; ctx.lineWidth = 2;
+    roundRect(ctx, margin, y, panelW, h, 24); ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = labelColor;
+    ctx.font = '700 26px "Inter", sans-serif';
+    ctx.fillText(label, margin + 34, y + padTop + 10);
+    ctx.fillStyle = textColor;
+    ctx.font = `400 ${fs}px "Inter", sans-serif`;
+    lines.forEach((line, i) => ctx.fillText(line, margin + 34, y + padTop + labelBlock + i * lh));
+    return y + h;
+  };
+
+  let y = 250;
+  y = drawPanel(y, 'IN CLASS', '#8A90A8', clsLines, '#C0C4D8', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.09)');
+  y = drawPanel(y + gap, 'ON THE MCAT', '#A78BFA', examLines, '#DCD3FF', 'rgba(139,92,246,0.10)', 'rgba(139,92,246,0.4)');
+
+  // Tagline
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8A90A8';
+  ctx.font = '600 34px "Inter", sans-serif';
+  ctx.fillText('The gap no one tells premeds about.', W / 2, Math.min(y + 90, H - 150));
+
+  // Footer
+  ctx.fillStyle = '#555B70';
+  ctx.font = '500 26px "Inter", sans-serif';
+  ctx.fillText('See the twist on every topic → waypointmcat.com', W / 2, H - 64);
+
+  canvas.toBlob(async (blob) => {
+    if (!blob) { restoreBtn(); return; }
+    const file = new File([blob], 'waypoint-twist.png', { type: 'image/png' });
+    const shareText = 'The MCAT tests your classes differently than your professor does. Waypoint maps the gap.';
+    const shareUrl = 'https://waypointmcat.com';
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'The MCAT Twist', text: shareText }); restoreBtn(); return; }
+      catch (e) { if (e.name === 'AbortError') { restoreBtn(); return; } }
+    }
+    if (navigator.share) {
+      try { await navigator.share({ title: 'The MCAT Twist', text: shareText, url: shareUrl }); restoreBtn(); return; }
+      catch (e) { if (e.name === 'AbortError') { restoreBtn(); return; } }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'waypoint-twist.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Image saved — attach it to your post!');
+    restoreBtn();
+  }, 'image/png');
+}
+
 // Lightweight toast notification — no dependencies, fades in/out on its own.
 function showToast(msg) {
   const existing = document.getElementById('wp-toast');
@@ -5446,6 +5688,7 @@ window.answer       = answer;
 window.next         = next;
 window.setReminder  = setReminder;
 window.shareCoverageCard = shareCoverageCard;
+window.shareTwistCard = shareTwistCard;
 
 // ── GLOBAL ERROR BOUNDARY ─────────────────────────────────────────────────────
 // Last-resort handlers so an uncaught error never leaves the user on a blank screen.
