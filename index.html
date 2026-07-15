@@ -1034,6 +1034,7 @@ const TWISTS = {
   'sc12': 'Your professor tests the definition of stereotype threat. The MCAT gives an experimental study where a stigmatized group performs worse when group membership is made salient and asks which concept explains the finding — identifying stereotype threat from experimental evidence.',
   'sc13': 'Your professor tests definitions of intergenerational vs. intragenerational mobility. The MCAT gives a sociological passage and asks which type of mobility is demonstrated when a person\'s occupation changes across their own career vs. compared to their parents.',
   'sc14': 'Your professor tests G.H. Mead\'s "generalized other." The MCAT gives a child development scenario and asks at which stage of Mead\'s role-taking sequence the child develops awareness of societal expectations — applying Mead\'s developmental stages to a behavioral description.',
+  'c_bond01': 'Your professor tests the definition of a polar bond. The MCAT gives two molecules with identical bond types but different shapes (CO₂ vs. SO₂) and asks which is polar and why — reasoning from molecular geometry to the net dipole, not from bond polarity alone.',
   'sc15': 'Your professor tests implicit vs. explicit bias. The MCAT gives clinical decision-making data showing systematic disparities that the physicians deny holding consciously and asks whether this is better explained by implicit or explicit bias.',
   'sc16': 'Your professor tests functionalist vs. conflict theory of stratification. The MCAT gives a passage on income inequality and asks which sociological theory would argue that inequality is functional and which would frame it as exploitation — applying competing frameworks to the same data.',
   'sc17': 'Your professor tests Merton\'s strain theory. The MCAT gives crime rate data from an economically depressed neighborhood and asks which theory predicts elevated deviance when cultural goals (wealth) are blocked by lack of legitimate means — applying strain theory to a policy-relevant scenario.',
@@ -4416,13 +4417,16 @@ function twistTextFor(q) {
 // Twists follow the shape "Your professor tests X. The MCAT ..." — split into the
 // two sides of the contrast the whole product is built on.
 function splitTwist(text) {
-  const marker = '. The MCAT';
   const strip = s => { s = s.replace(/^Your professor\s+/i, '').trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
-  const i = text.indexOf(marker);
-  if (i === -1) return { cls: strip(text), exam: '' };
-  let exam = text.slice(i + 2).trim().replace(/^The MCAT\s+/, '');
+  // Tolerant boundary: a period, an optional closing quote (straight or curly), then
+  // "The MCAT". Handles quoted terms like Mead's "generalized other." where the period
+  // sits inside the quote — which an exact indexOf('. The MCAT') silently missed.
+  const m = text.match(/\.\s*(["'\u201C\u201D\u2018\u2019]?)\s*The MCAT\s+/);
+  if (!m) return { cls: strip(text), exam: '' };
+  const cls = strip((text.slice(0, m.index + 1) + (m[1] || '')).trim());
+  let exam = text.slice(m.index + m[0].length).trim();
   exam = exam.charAt(0).toUpperCase() + exam.slice(1);
-  return { cls: strip(text.slice(0, i + 1).trim()), exam };
+  return { cls, exam };
 }
 
 // Deterministic pick: stable within a calendar day, rotates day to day. Prefers
