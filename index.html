@@ -4289,22 +4289,35 @@ function getMasteredTopic() {
 function topicRetention(tid) {
   const topic = TOPICS.find(t => t.id === tid);
   if (!topic || !topic.course || !S.courses.has(topic.course)) return null;
-  let right = 0, wrong = 0;
-  QUESTIONS.forEach(q => { if (q.topic === tid) { const s = S.qStats[q.id]; if (s) { right += s.right; wrong += s.wrong; } } });
+  let right = 0, wrong = 0, recentR = 0, recentSeen = 0;
+  QUESTIONS.forEach(q => {
+    if (q.topic !== tid) return;
+    const s = S.qStats[q.id];
+    if (!s) return;
+    right += s.right; wrong += s.wrong;
+    if (s.last !== undefined) { recentSeen++; if (s.last) recentR++; } // most-recent outcome per question
+  });
   const total = right + wrong;
-  if (total < 2) return { tid, topic, status: 'untested', total, pct: null, days: null };
-  const pct  = right / total;
+  // Need a real sample before any verdict — a 2/3 start shouldn't earn a mastery call.
+  const MIN = 4;
+  if (total < MIN) return { tid, topic, status: 'untested', total, pct: null, days: null };
+  const lifetime = right / total;
+  // Recency: fraction of practiced questions whose MOST RECENT answer was correct.
+  // Blended with lifetime so a rough first week can be redeemed by genuine improvement
+  // (the exact gain the product exists to produce) instead of dragging forever.
+  const recent = recentSeen ? recentR / recentSeen : lifetime;
+  const eff = 0.5 * lifetime + 0.5 * recent;
   const seen = S.topicLastSeen[tid];
   const days = seen ? Math.floor((Date.now() - new Date(seen)) / 86400000) : null;
-  // Expanding-interval spacing: strongly-owned topics (many correct reps, high
-  // accuracy) decay slower, so we don't cry "fading" over something you clearly know.
-  const strong = right >= 6 && pct >= 0.85;
+  // Expanding-interval spacing: strongly-owned topics decay slower.
+  const strong = eff >= 0.9 && total >= 6;
   const fadeAt = strong ? 21 : 10;
   let status;
-  if (pct < 0.6) status = 'shaky';
-  else if (days !== null && days >= fadeAt) status = 'fading';
-  else status = 'sharp';
-  return { tid, topic, status, total, pct: Math.round(pct * 100), days };
+  if (eff < 0.7)                            status = 'shaky';   // not reliable yet
+  else if (eff < 0.8)                       status = 'fading';  // borderline — worth a refresh
+  else if (days !== null && days >= fadeAt) status = 'fading';  // time-decayed
+  else                                      status = 'sharp';   // >=80% and recent
+  return { tid, topic, status, total, pct: Math.round(eff * 100), days };
 }
 
 function retentionSummary(excludeId = null) {
@@ -4316,6 +4329,7 @@ function retentionSummary(excludeId = null) {
   const sharp  = practiced.filter(s => s.status === 'sharp');
   const fading = practiced.filter(s => s.status === 'fading');
   const shaky  = practiced.filter(s => s.status === 'shaky');
+  const untested = states.filter(s => s.status === 'untested');
   // The single best thing to refresh: weakest accuracy first, then most time-decayed.
   // excludeId lets the caller skip a topic that's already being actioned elsewhere
   // (the "Do this now" directive) so we never show two CTAs for the same topic.
@@ -4323,7 +4337,7 @@ function retentionSummary(excludeId = null) {
   const action = pick(shaky).sort((a, b) => a.pct - b.pct)[0]
               || pick(fading).sort((a, b) => (b.days || 0) - (a.days || 0))[0]
               || null;
-  return { practiced, sharp, fading, shaky, action };
+  return { practiced, sharp, fading, shaky, untested, action };
 }
 
 // Refresh a slipping topic straight from the retention card — tracked so we can
@@ -4338,13 +4352,25 @@ function stayingSharpHTML() {
   // surfaces never show a duplicate CTA for the same topic (status here, action there).
   const directive = getDirectiveTopic();
   const directiveId = directive ? directive.topic.id : null;
-  const { practiced, sharp, fading, shaky, action } = retentionSummary(directiveId);
+  const { practiced, sharp, fading, shaky, untested, action } = retentionSummary(directiveId);
   if (practiced.length < 2) return ''; // not enough practice to say anything honest yet
   const slipping = fading.length + shaky.length;
 
   let body;
   if (slipping === 0) {
-    body = `<p style="font-size:13px;color:#6B7185;line-height:1.55;margin:0;">All <strong style="color:#4DE3AB;">${sharp.length} topic${sharp.length !== 1 ? 's' : ''}</strong> you've practiced are holding strong. That's what walking in ready actually feels like.</p>`;
+    // Everything practiced is holding — but be honest about what's NOT yet tested,
+    // and make that the next action rather than implying blanket readiness.
+    const sN = sharp.length;
+    const held = `<strong style="color:#4DE3AB;">${sN} topic${sN !== 1 ? 's' : ''}</strong> you've practiced ${sN !== 1 ? 'are' : 'is'} holding strong`;
+    if (untested.length > 0) {
+      const pickU = untested.filter(s => s.tid !== directiveId).sort((a, b) => b.topic.w - a.topic.w)[0];
+      const tail = pickU
+        ? `<button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="masteryRefresh('${pickU.tid}')">Test ${pickU.topic.name} — see where you stand →</button>`
+        : `<p style="font-size:12px;color:#555B70;line-height:1.5;margin:0;">Your next one to test is queued up top in Do this now.</p>`;
+      body = `<p style="font-size:13px;color:#8A90A8;line-height:1.55;margin:0 0 10px;">The ${held}. <strong style="color:#8A90A8;">${untested.length}</strong> covered topic${untested.length !== 1 ? 's' : ''} haven't been tested yet.</p>${tail}`;
+    } else {
+      body = `<p style="font-size:13px;color:#6B7185;line-height:1.55;margin:0;">Every topic you've covered is practiced and holding strong. That's genuinely walking-in-ready — keep it warm.</p>`;
+    }
   } else {
     const chips = [...shaky, ...fading].slice(0, 3).map(s => {
       const color = s.status === 'shaky' ? '#F08060' : '#F5B36A';
@@ -5353,6 +5379,7 @@ function answer(i) {
     S.qStats[q.id].wrong++;
     if (window.plausible) plausible('question_wrong');
   }
+  S.qStats[q.id].last = correct ? 1 : 0; // most-recent outcome — powers recency weighting
 
   render();
 }
