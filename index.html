@@ -4448,7 +4448,7 @@ function getDailyTwist() {
 function dailyTwistHTML() {
   const d = getDailyTwist();
   if (!d) return '';
-  const { topic, text, teaser } = d;
+  const { q, topic, text, teaser } = d;
   const parts = splitTwist(text);
   const tag = topic ? `<span class="q-tag ${sectionTag(topic.mcat)}">${sectionIcon(topic.mcat)}${topic.disp}</span>` : '';
   const body = parts.exam ? `
@@ -4463,7 +4463,7 @@ function dailyTwistHTML() {
     : `<p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${text}</p>`;
   const drill = (topic && !teaser)
     ? `<div style="display:flex;align-items:center;gap:18px;margin-top:14px;flex-wrap:wrap;">
-         <button style="background:none;border:none;font-size:13px;color:#A78BFA;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="twistDrill('${topic.id}')">Drill ${topic.name} while it's fresh →</button>
+         <button style="background:none;border:none;font-size:13px;color:#A78BFA;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="twistDrill('${topic.id}', '${q.id}')">Drill ${topic.name} while it's fresh →</button>
          <button style="background:none;border:none;font-size:13px;color:#6B7185;font-weight:600;cursor:pointer;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="shareTwistCard(this)">Share</button>
        </div>`
     : '';
@@ -4479,9 +4479,9 @@ function dailyTwistHTML() {
 
 // Drill straight from the daily Twist — tracked separately so we can measure
 // whether surfacing the Twist on Home actually drives practice.
-function twistDrill(topicId) {
+function twistDrill(topicId, qId) {
   if (window.plausible) plausible('twist_of_day_drill', { props: { topic: topicId } });
-  startQuickLog(topicId, null);
+  startQuickLog(topicId, null, qId || null);
 }
 
 // Curated, beginner-relatable twists for the landing page — a cold visitor has no
@@ -5303,7 +5303,7 @@ function pickQuickLogTopic(topicId) {
 }
 
 // "Syllabus Sync" quick-log — 3 questions on a topic (optionally filtered to a subtopic)
-function startQuickLog(topicId, subtopicId) {
+function startQuickLog(topicId, subtopicId, leadQId) {
   S.quickLogTopic = null; // clear topic-picker state
   const allPool = QUESTIONS.filter(q => q.topic === topicId);
   let pool = allPool;
@@ -5321,6 +5321,12 @@ function startQuickLog(topicId, subtopicId) {
   }
 
   pool = pool.sort(() => Math.random() - 0.5);
+  // If a specific question was teased (e.g. the daily Twist), lead with it so the
+  // drill delivers exactly what the card promised, then continue into the topic.
+  if (leadQId) {
+    const lead = allPool.find(q => q.id === leadQId);
+    if (lead) pool = [lead, ...pool.filter(q => q.id !== leadQId)];
+  }
   S.session  = pool.slice(0, Math.min(3, pool.length));
   S.idx      = 0;
   S.answers  = [];
