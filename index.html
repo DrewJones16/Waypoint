@@ -4120,20 +4120,35 @@ function journeyPathSvg() {
 // ── BRIEF SCREEN HELPERS ──────────────────────────────────────────────────────
 
 function getWelcomeHeadline() {
+  // Self-referential only — this line never makes a comparative claim (that lives in
+  // benchStance, which actually knows the student's coverage vs. the benchmark).
   const streak  = S.streak;
   const history = S.sessionHistory;
-  if (streak === 0 && history.length > 0) return 'The edge is still there. Keep building.';
-  if (streak <= 1 && history.length <= 1) return 'Day one. Most classmates haven\'t started yet.';
-  if (streak === 2)  return "Day 2. You're already ahead.";
-  if (streak === 3)  return 'Day 3. The gap is growing.';
-  if (streak === 4)  return 'Day 4. This is what getting ahead looks like.';
-  if (streak === 5)  return 'Day 5. Most year-3 classmates wish they\'d started here.';
-  if (streak === 6)  return 'Day 6. Six days of compound interest.';
-  if (streak === 7)  return "One week. You've built something real.";
-  if (streak === 14) return 'Two weeks in. The gap between you and your future classmates is widening.';
-  if (streak === 30) return "Day 30. You're building an edge most classmates never get.";
-  if (streak > 30)   return `Day ${streak}. Keep compounding.`;
-  return `Day ${streak}. Still ahead.`;
+  if (streak === 0 && history.length > 0) return 'Pick up where you left off.';
+  if (streak <= 1 && history.length <= 1) return 'Day one. Your route starts here.';
+  if (streak === 2)  return 'Day 2. The habit is forming.';
+  if (streak === 3)  return 'Day 3. Three sessions in.';
+  if (streak === 4)  return 'Day 4. This is what consistent looks like.';
+  if (streak === 5)  return 'Day 5. Five days of compounding.';
+  if (streak === 6)  return 'Day 6. Momentum is real now.';
+  if (streak === 7)  return "One week straight. That's real.";
+  if (streak === 14) return 'Two weeks in. This is a routine now.';
+  if (streak === 30) return 'Day 30. A month of steady progress.';
+  if (streak > 30)   return `Day ${streak}. Still going.`;
+  return `Day ${streak}. Keep it rolling.`;
+}
+
+// One source of truth for "how am I doing vs. the typical student at my year."
+// Every surface (Home ring, Home sentence, Route card) reads THIS — so they can
+// never contradict each other, and none of them ever says "behind".
+function benchStance(cov, bench, plural) {
+  const gap = cov - bench;
+  if (gap > 5)   return { tier:'ahead',    gap, ringLabel:`+${gap} ahead`, ringColor:'#1D9E75',
+                          sentence:`Most ${plural} are around ${bench}% at this stage — you're ${gap} points ahead.` };
+  if (gap >= -5) return { tier:'ontrack',  gap, ringLabel:'on pace', ringColor:'#8A90A8',
+                          sentence:`Right on pace — most ${plural} are around ${bench}% at this stage.` };
+  return           { tier:'building', gap, ringLabel:'keep going', ringColor:'#8A90A8',
+                          sentence:`You're early on your route — adding another course is the fastest way to fill it in.` };
 }
 
 function getTrendInsight(history) {
@@ -4521,7 +4536,7 @@ function screenBrief() {
       ? `You're covering ${t.name} right now — drill a quick question while it's fresh.`
       : directive.reason === 'retention'
         ? `${t.name} is ${t.w}% of the exam — you covered it ${weeksAgo(directive.days)}. Most premeds won't revisit this until test prep. Staying sharp now is the edge.`
-        : `${t.name} is ${t.w}% of the exam. Do this now and widen your lead — every session builds an edge that compounds.`;
+        : `${t.name} is ${t.w}% of the exam. Do this now — every session turns a class you've already taken into MCAT points you keep.`;
     directiveHTML = `
       <div style="background:linear-gradient(135deg,rgba(29,158,117,0.14),rgba(29,158,117,0.04));border:1px solid rgba(29,158,117,0.32);border-radius:14px;padding:18px 18px 16px;margin-bottom:24px;">
         <div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Do this now</div>
@@ -4540,12 +4555,8 @@ function screenBrief() {
   const benchOffset = Math.round(circ * (1 - bench / 100));
   const gap = cov - bench;
   const yearPlural = { freshman:'freshmen', sophomore:'sophomores', junior:'juniors', senior:'seniors' }[S.year] || 'your classmates';
-  let benchSentence = '';
-  if (cov > 0 && bench > 0) {
-    if (gap > 5)       benchSentence = `Most ${yearPlural} finish around ${bench}% — you're ${gap} points ahead.`;
-    else if (gap >= -3) benchSentence = `Right on track: most ${yearPlural} are around ${bench}% at this stage.`;
-    else               benchSentence = `Most ${yearPlural} reach ${bench}% — add another course to close the gap.`;
-  }
+  const stance = benchStance(cov, bench, yearPlural);
+  const benchSentence = (cov > 0 && bench > 0) ? stance.sentence : '';
 
   // 79 = total weight of all course-gated MCAT content (excludes CARS at 21%)
   const covOfCourses = cov > 0 ? Math.round(cov / 79 * 100) : 0;
@@ -4617,11 +4628,9 @@ function screenBrief() {
           </svg>
           <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
             <div class="disp" style="font-size:20px;font-weight:700;color:#F0F2F8;line-height:1;">${cov}%</div>
-            ${gap > 0
-              ? `<div style="font-size:10px;color:#1D9E75;margin-top:3px;font-weight:600;">+${gap} ahead</div>`
-              : gap === 0
-                ? `<div style="font-size:10px;color:#444B62;margin-top:3px;">on avg</div>`
-                : `<div style="font-size:10px;color:#555B70;margin-top:3px;">${Math.abs(gap)}pt to avg</div>`
+            ${(cov > 0 && bench > 0)
+              ? `<div style="font-size:10px;color:${stance.ringColor};margin-top:3px;font-weight:${stance.tier === 'ahead' ? '600' : '500'};">${stance.ringLabel}</div>`
+              : ''
             }
           </div>
         </div>
@@ -4852,6 +4861,7 @@ function screenReveal() {
   const revYearPlural = { freshman:'freshmen', sophomore:'sophomores', junior:'juniors', senior:'seniors' }[S.year] || 'classmates';
   const revBench   = coverage(BENCHMARK_COURSES[S.year] || BENCHMARK_COURSES.freshman);
   const revGap     = cov - revBench;
+  const revStance  = benchStance(cov, revBench, revYearPlural);
   const benchCard  = cov > 0 && S.year ? `
     <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.15);border-radius:10px;padding:13px 16px;margin-bottom:20px;">
       <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">vs. typical ${revYearPlural}</div>
@@ -4860,8 +4870,8 @@ function screenReveal() {
           <div style="font-size:10px;color:#8A90A8;margin-bottom:2px;font-weight:600;">You</div>
           <div class="disp" style="font-size:26px;font-weight:800;color:#F0F2F8;line-height:1;">${cov}%</div>
         </div>
-        <div style="font-size:11px;color:${revGap >= 0 ? '#1D9E75' : '#8A90A8'};font-weight:600;text-align:center;padding:0 8px;">
-          ${revGap > 0 ? `+${revGap} pts<br>ahead` : revGap === 0 ? 'right on<br>track' : `${Math.abs(revGap)} pts<br>behind avg`}
+        <div style="font-size:11px;color:${revStance.ringColor};font-weight:600;text-align:center;padding:0 8px;">
+          ${revStance.ringLabel}
         </div>
         <div style="text-align:right;">
           <div style="font-size:10px;color:#444B62;margin-bottom:2px;">Typical ${revYearPlural}</div>
