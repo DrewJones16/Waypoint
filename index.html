@@ -741,6 +741,120 @@
   .report-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .report-reasons button { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #8A90A8; font-size: 12px; font-family: inherit; padding: 5px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .report-reasons button:hover { background: rgba(255,255,255,0.07); color: #C0C4D8; }
+
+  /* ── Desktop presentation (>=768px; mobile <=430px untouched) ─────── */
+  .dt-rail { display: none; }
+
+  @media (min-width: 768px) {
+    body {
+      background:
+        radial-gradient(1100px 700px at 14% -6%, rgba(29,158,117,0.09), transparent 62%),
+        radial-gradient(1000px 720px at 86% 106%, rgba(167,139,250,0.075), transparent 60%),
+        radial-gradient(720px 480px at 88% -8%, rgba(167,139,250,0.035), transparent 65%),
+        radial-gradient(720px 480px at 10% 108%, rgba(29,158,117,0.04), transparent 65%),
+        #08090C;
+      background-attachment: fixed;
+    }
+    /* Faint dot-grid "map" texture behind the app column */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1.6px);
+      background-size: 26px 26px;
+      -webkit-mask-image: radial-gradient(120% 90% at 50% 42%, #000 25%, transparent 75%);
+      mask-image: radial-gradient(120% 90% at 50% 42%, #000 25%, transparent 75%);
+    }
+    #app {
+      border-left-color: rgba(255,255,255,0.09);
+      border-right-color: rgba(255,255,255,0.09);
+      box-shadow:
+        0 0 90px rgba(0,0,0,0.85),
+        0 0 180px rgba(0,0,0,0.55),
+        -60px 0 140px -60px rgba(29,158,117,0.14),
+        60px 0 140px -60px rgba(167,139,250,0.12);
+    }
+    .tab-bar {
+      border-left: 1px solid rgba(255,255,255,0.09);
+      border-right: 1px solid rgba(255,255,255,0.09);
+    }
+  }
+
+  @media (min-width: 1160px) {
+    .dt-rail {
+      display: block;
+      position: fixed;
+      top: 50%;
+      z-index: 1;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+      animation: dt-rail-in 0.9s ease 0.2s both;
+    }
+    @keyframes dt-rail-in {
+      from { opacity: 0; transform: translateY(calc(-50% + 10px)); }
+      to   { opacity: 1; transform: translateY(-50%); }
+    }
+    .dt-rail-left {
+      right: calc(50% + 267px);
+      width: 320px;
+      text-align: right;
+    }
+    .dt-rail-right {
+      left: calc(50% + 267px);
+      width: 280px;
+    }
+    .dt-mark { margin-bottom: 14px; }
+    .dt-wordmark {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      font-size: 27px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #F0F2F8;
+      margin-bottom: 10px;
+    }
+    .dt-tagline {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #6B7185;
+      margin-bottom: 18px;
+    }
+    .dt-tagline em { font-style: normal; color: #4DE3AB; }
+    .dt-sub {
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: #444B62;
+      max-width: 250px;
+      margin-left: auto;
+    }
+    .dt-step { display: flex; align-items: center; gap: 12px; }
+    .dt-step-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(29,158,117,0.8);
+      background: rgba(29,158,117,0.15);
+      flex-shrink: 0;
+    }
+    .dt-step.done .dt-step-dot {
+      background: #1D9E75;
+      border-color: #1D9E75;
+      box-shadow: 0 0 10px rgba(29,158,117,0.5);
+    }
+    .dt-step-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: #555B70;
+      letter-spacing: 0.01em;
+    }
+    .dt-step-link {
+      width: 1px;
+      height: 30px;
+      margin: 4px 0 4px 4px;
+      border-left: 1px dashed rgba(255,255,255,0.14);
+    }
+  }
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://plausible.io/js/pa-UBHkY0Tyi1miYukuXz21K.js"></script>
@@ -751,6 +865,25 @@
 </head>
 <body>
 <div id="app"></div>
+
+<!-- Desktop-only brand rails (siblings of #app; never re-rendered; hidden <1160px) -->
+<div class="dt-rail dt-rail-left" aria-hidden="true">
+  <svg class="dt-mark" width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="17" cy="17" r="15" stroke="rgba(29,158,117,0.45)" stroke-width="1.5"/>
+    <circle cx="17" cy="17" r="9.5" stroke="rgba(77,227,171,0.3)" stroke-width="1" stroke-dasharray="3 4"/>
+    <circle cx="17" cy="17" r="4.5" fill="#1D9E75"/>
+  </svg>
+  <div class="dt-wordmark">Waypoint</div>
+  <div class="dt-tagline">Your classes are <em>already</em> MCAT prep.</div>
+  <div class="dt-sub">Waypoint maps your coursework onto the exam &mdash; and flags where the test bends what your professor taught.</div>
+</div>
+<div class="dt-rail dt-rail-right" aria-hidden="true">
+  <div class="dt-step done"><span class="dt-step-dot"></span><span class="dt-step-text">Take your classes</span></div>
+  <div class="dt-step-link"></div>
+  <div class="dt-step"><span class="dt-step-dot"></span><span class="dt-step-text">See how the MCAT bends them</span></div>
+  <div class="dt-step-link"></div>
+  <div class="dt-step"><span class="dt-step-dot"></span><span class="dt-step-text">Watch your coverage climb</span></div>
+</div>
 
 <script>
 // ── DATA ─────────────────────────────────────────────────────────────────────
