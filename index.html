@@ -6,6 +6,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Waypoint — MCAT Coverage Tracker</title>
+<meta name="description" content="Your college coursework is already MCAT prep. Waypoint maps it onto the exam so you get ahead years early — and shows you how the test bends what your professor taught.">
+<!-- Open Graph / social preview -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Waypoint">
+<meta property="og:title" content="Waypoint — Get ahead on the MCAT with the classes you're already taking">
+<meta property="og:description" content="Your coursework is already MCAT prep. Waypoint maps it onto the exam — and shows you how the test bends what your professor taught.">
+<meta property="og:url" content="https://waypointmcat.com">
+<meta property="og:image" content="https://waypointmcat.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Waypoint — Get ahead on the MCAT with the classes you're already taking">
+<meta name="twitter:description" content="Your coursework is already MCAT prep. Waypoint maps it onto the exam.">
+<meta name="twitter:image" content="https://waypointmcat.com/og-image.png">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -719,6 +733,14 @@
     box-shadow: 0 0 24px rgba(29,158,117,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
     animation: pop-in 0.4s ease both;
   }
+  /* Report-a-question affordance (question screen) */
+  .report-q { margin: -4px 0 16px; }
+  .report-q summary { list-style: none; cursor: pointer; font-size: 12px; color: #3A4060; padding: 4px 0; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: center; gap: 5px; }
+  .report-q summary::-webkit-details-marker { display: none; }
+  .report-q summary:hover { color: #555B70; }
+  .report-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .report-reasons button { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #8A90A8; font-size: 12px; font-family: inherit; padding: 5px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .report-reasons button:hover { background: rgba(255,255,255,0.07); color: #C0C4D8; }
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://plausible.io/js/pa-UBHkY0Tyi1miYukuXz21K.js"></script>
@@ -4784,6 +4806,7 @@ function screenLanding() {
       <button class="btn btn-primary" onclick="go('year')" style="font-size:15px;font-weight:600;letter-spacing:-0.01em;">See how far ahead you already are →</button>
       <a href="https://form.typeform.com/to/YC2tTVYd" target="_blank" rel="noopener" class="btn btn-ghost" style="display:block;text-align:center;margin-top:10px;text-decoration:none;">Get notified about new features</a>
       <p style="text-align:center;font-size:12px;color:#333B52;margin-top:10px;">Free · no account · 2 minutes</p>
+      <p style="text-align:center;font-size:11px;color:#2E3550;margin-top:22px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
     </div>`;
 }
 
@@ -4988,6 +5011,15 @@ function screenQuestion() {
           <div style="font-size:10px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">The MCAT Twist</div>
           <p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${q.twist || TWISTS[q.id]}</p>
         </div>` : ''}
+        <details class="report-q">
+          <summary>⚑ Report a problem with this question</summary>
+          <div class="report-reasons">
+            <button type="button" onclick="reportQuestion('${q.id}', 'Wrong answer', this)">Wrong answer</button>
+            <button type="button" onclick="reportQuestion('${q.id}', 'Typo or error', this)">Typo or error</button>
+            <button type="button" onclick="reportQuestion('${q.id}', 'Confusing wording', this)">Confusing wording</button>
+            <button type="button" onclick="reportQuestion('${q.id}', 'Other', this)">Other</button>
+          </div>
+        </details>
         <button class="btn btn-primary" onclick="next()">
           ${S.idx + 1 < S.session.length ? 'Next question →' : 'See my results →'}
         </button>` : ''}
@@ -5800,6 +5832,18 @@ async function shareTwistCard(btn) {
   }, 'image/png');
 }
 
+// ── REPORT A QUESTION ─────────────────────────────────────────────────────────
+// Opens a Typeform prefilled with the question id + reason (hidden fields qid,
+// reason), and fires a Plausible event so report volume is visible in analytics.
+const REPORT_FORM_URL = 'https://form.typeform.com/to/ouYxpVal';
+function reportQuestion(qId, reason, btn) {
+  if (window.plausible) plausible('question_report', { props: { id: qId, reason } });
+  const url = `${REPORT_FORM_URL}?qid=${encodeURIComponent(qId)}&reason=${encodeURIComponent(reason)}`;
+  window.open(url, '_blank', 'noopener');
+  const d = btn && btn.closest('details'); if (d) d.open = false;
+  showToast('Thanks — opening the report form.');
+}
+
 // Lightweight toast notification — no dependencies, fades in/out on its own.
 function showToast(msg) {
   const existing = document.getElementById('wp-toast');
@@ -5921,6 +5965,7 @@ window.next         = next;
 window.setReminder  = setReminder;
 window.shareCoverageCard = shareCoverageCard;
 window.shareTwistCard = shareTwistCard;
+window.reportQuestion = reportQuestion;
 
 // ── GLOBAL ERROR BOUNDARY ─────────────────────────────────────────────────────
 // Last-resort handlers so an uncaught error never leaves the user on a blank screen.
