@@ -1073,11 +1073,14 @@ const COURSES = [
 ];
 
 // Typical premed course set by year — used to compute benchmark coverage
+// Grounded in the standard premed course sequence (Gen Chem + Bio yr1; Orgo +
+// Psych/Soc yr2; Physics + Biochem yr3; all prereqs before the junior-spring MCAT).
+// These are what a typical course load covers — NOT a survey of real students.
 const BENCHMARK_COURSES = {
-  freshman:  new Set(['bio1', 'gc1']),
-  sophomore: new Set(['bio1', 'bio2', 'gc1', 'gc2', 'oc1']),
-  junior:    new Set(['bio1', 'bio2', 'gc1', 'gc2', 'oc1', 'oc2', 'ph1', 'biochem', 'psych']),
-  senior:    new Set(['bio1', 'bio2', 'gc1', 'gc2', 'oc1', 'oc2', 'biochem', 'ph1', 'ph2', 'psych', 'stats']),
+  freshman:  new Set(['bio1', 'gc1', 'gc2']),                                                        // ~24%
+  sophomore: new Set(['bio1', 'bio2', 'gc1', 'gc2', 'oc1', 'oc2', 'psych']),                          // ~53%
+  junior:    new Set(['bio1', 'bio2', 'gc1', 'gc2', 'oc1', 'oc2', 'ph1', 'biochem', 'psych', 'soc']), // ~72%
+  senior:    new Set(['bio1', 'bio2', 'gc1', 'gc2', 'oc1', 'oc2', 'ph1', 'ph2', 'biochem', 'psych', 'soc', 'stats']), // ~79%
 };
 
 // weights sum to 100; bio1 + gc1 + stats = 24
@@ -4483,12 +4486,12 @@ function getWelcomeHeadline() {
 // One source of truth for "how am I doing vs. the typical student at my year."
 // Every surface (Home ring, Home sentence, Route card) reads THIS — so they can
 // never contradict each other, and none of them ever says "behind".
-function benchStance(cov, bench, plural) {
+function benchStance(cov, bench, year) {
   const gap = cov - bench;
   if (gap > 5)   return { tier:'ahead',    gap, ringLabel:`+${gap} ahead`, ringColor:'#1D9E75',
-                          sentence:`Most ${plural} are around ${bench}% at this stage — you're ${gap} points ahead.` };
+                          sentence:`A standard ${year} course load covers about ${bench}% — you're ${gap} points ahead of that.` };
   if (gap >= -5) return { tier:'ontrack',  gap, ringLabel:'on pace', ringColor:'#8A90A8',
-                          sentence:`Right on pace — most ${plural} are around ${bench}% at this stage.` };
+                          sentence:`Right on pace with a standard ${year} course load (~${bench}%).` };
   return           { tier:'building', gap, ringLabel:'keep going', ringColor:'#8A90A8',
                           sentence:`You're early on your route — adding another course is the fastest way to fill it in.` };
 }
@@ -4968,8 +4971,8 @@ function screenBrief() {
   const bench = coverage(BENCHMARK_COURSES[S.year] || BENCHMARK_COURSES.freshman);
   const benchOffset = Math.round(circ * (1 - bench / 100));
   const gap = cov - bench;
-  const yearPlural = { freshman:'freshmen', sophomore:'sophomores', junior:'juniors', senior:'seniors' }[S.year] || 'your classmates';
-  const stance = benchStance(cov, bench, yearPlural);
+  const yearAdj = { freshman:'freshman', sophomore:'sophomore', junior:'junior', senior:'senior' }[S.year] || 'premed';
+  const stance = benchStance(cov, bench, yearAdj);
   const benchSentence = (cov > 0 && bench > 0) ? stance.sentence : '';
 
   // Courses map to 79% of the exam; CARS is the other 21% — a skill, not a topic to unlock.
@@ -5409,13 +5412,13 @@ function screenReveal() {
 
   const milestone = milestoneCopy();
 
-  const revYearPlural = { freshman:'freshmen', sophomore:'sophomores', junior:'juniors', senior:'seniors' }[S.year] || 'classmates';
+  const revYearAdj = { freshman:'freshman', sophomore:'sophomore', junior:'junior', senior:'senior' }[S.year] || 'premed';
   const revBench   = coverage(BENCHMARK_COURSES[S.year] || BENCHMARK_COURSES.freshman);
   const revGap     = cov - revBench;
-  const revStance  = benchStance(cov, revBench, revYearPlural);
+  const revStance  = benchStance(cov, revBench, revYearAdj);
   const benchCard  = cov > 0 && S.year ? `
     <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.15);border-radius:10px;padding:13px 16px;margin-bottom:20px;">
-      <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">vs. typical ${revYearPlural}</div>
+      <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">vs. a standard ${revYearAdj} load</div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:10px;color:#8A90A8;margin-bottom:2px;font-weight:600;">You</div>
@@ -5425,7 +5428,7 @@ function screenReveal() {
           ${revStance.ringLabel}
         </div>
         <div style="text-align:right;">
-          <div style="font-size:10px;color:#444B62;margin-bottom:2px;">Typical ${revYearPlural}</div>
+          <div style="font-size:10px;color:#444B62;margin-bottom:2px;">Standard ${revYearAdj} load</div>
           <div class="disp" style="font-size:18px;font-weight:600;color:#555B70;line-height:1;">${revBench}%</div>
         </div>
       </div>
