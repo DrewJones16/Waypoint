@@ -4904,10 +4904,9 @@ function screenBrief() {
   const stance = benchStance(cov, bench, yearPlural);
   const benchSentence = (cov > 0 && bench > 0) ? stance.sentence : '';
 
-  // 79 = total weight of all course-gated MCAT content (excludes CARS at 21%)
-  const covOfCourses = cov > 0 ? Math.round(cov / 79 * 100) : 0;
+  // Courses map to 79% of the exam; CARS is the other 21% — a skill, not a topic to unlock.
   const denomNote = cov > 0
-    ? `<p style="font-size:13px;color:#6B7185;margin-top:-14px;margin-bottom:20px;line-height:1.55;">You've covered <strong style="color:#8A90A8;">${cov}%</strong> of the MCAT so far — and climbing. <span style="color:#444B62;">(${covOfCourses}% of course-based content; CARS builds on its own.)</span></p>`
+    ? `<p style="font-size:13px;color:#6B7185;margin-top:-14px;margin-bottom:20px;line-height:1.55;">You've covered <strong style="color:#8A90A8;">${cov}%</strong> of the MCAT so far — and climbing. <span style="color:#444B62;">Your courses map to 79% of the exam; the other 21% is CARS — a reading skill you build in every session, not a topic to unlock.</span></p>`
     : '';
 
   // Body card
@@ -6203,10 +6202,8 @@ function syncDesktopShell() {
 
   const note = document.getElementById('dt-ring-note');
   if (note) {
-    // 79 = total weight of course-gated content (CARS, 21%, builds on its own)
-    const covOfCourses = cov > 0 ? Math.round(cov / 79 * 100) : 0;
     note.innerHTML = cov > 0
-      ? `<strong>${cov}%</strong> of the exam so far — <strong>${covOfCourses}%</strong> of your course-based content.`
+      ? `<strong>${cov}%</strong> of the exam so far. Your courses map to 79%; CARS (21%) is a reading skill you build all along.`
       : 'Set up your route to see coverage climb.';
   }
 
