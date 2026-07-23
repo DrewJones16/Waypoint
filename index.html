@@ -1094,8 +1094,10 @@ const TOPICS = [
   { id:'stoich',   name:'Stoichiometry',     w:2,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
   { id:'acid-base',name:'Acid-base',         w:2,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
   { id:'thermo',   name:'Thermodynamics',    w:4,  course:'gc2',   disp:'Gen Chem II', mcat:'cp'   },
-  { id:'orgo',     name:'Org. chemistry',    w:8,  course:'oc1',   disp:'Orgo I',      mcat:'cp'   },
-  { id:'physics',  name:'Physics',           w:7,  course:'ph1',   disp:'Physics I',   mcat:'cp'   },
+  { id:'orgo',     name:'Org. chem I',       w:4,  course:'oc1',   disp:'Orgo I',      mcat:'cp'   },
+  { id:'orgo2',    name:'Org. chem II',      w:4,  course:'oc2',   disp:'Orgo II',     mcat:'cp'   },
+  { id:'physics',  name:'Physics I',         w:4,  course:'ph1',   disp:'Physics I',   mcat:'cp'   },
+  { id:'physics2', name:'Physics II',        w:3,  course:'ph2',   disp:'Physics II',  mcat:'cp'   },
   { id:'psych',    name:'Psychology',        w:11, course:'psych', disp:'Psych',       mcat:'ps'   },
   { id:'soc',      name:'Sociology',         w:7,  course:'soc',   disp:'Soc',         mcat:'ps'   },
   { id:'research', name:'Research methods',  w:4,  course:'stats', disp:'Statistics',  mcat:'ps'   },
@@ -1477,12 +1479,13 @@ const SUBTOPICS = {
                 { id:'titrations', label:'Titrations'           },
                 { id:'salts',      label:'Salts & Hydrolysis'   }],
   'orgo':      [{ id:'stereochemistry', label:'Stereochemistry'         },
-                { id:'reactions',       label:'Reactions & Mechanisms'  },
+                { id:'reactions',       label:'Reactions & Mechanisms'  }],
+  'orgo2':     [{ id:'reactions',       label:'Reactions & Mechanisms'  },
                 { id:'spectroscopy',    label:'Spectroscopy (IR, NMR)'  },
                 { id:'nomenclature',    label:'Nomenclature & Structure' }],
   'physics':   [{ id:'kinematics', label:'Kinematics & Forces'},
-                { id:'fluids',     label:'Fluids & Pressure'  },
-                { id:'circuits',   label:'Circuits & Electricity'},
+                { id:'fluids',     label:'Fluids & Pressure'  }],
+  'physics2':  [{ id:'circuits',   label:'Circuits & Electricity'},
                 { id:'optics',     label:'Optics & Waves'     }],
   'psych':     [{ id:'learning',     label:'Learning & Conditioning'},
                 { id:'memory',       label:'Memory'                 },
@@ -2041,7 +2044,7 @@ const QUESTIONS = [
   },
   // ── Organic Chemistry ─────────────────────────────────────────────────────────
   {
-    id:'og01', topic:'orgo',
+    id:'og01', topic:'orgo2',
     stem:'Which functional group is characteristic of a carboxylic acid, and what is its approximate pKa range?',
     opts:['–OH (hydroxyl); pKa ~16',
           '–COOH (carboxyl); pKa ~4–5',
@@ -2071,7 +2074,7 @@ const QUESTIONS = [
     exp:'Markovnikov\'s rule: H adds to the carbon with more H atoms (forming the more stable carbocation). For isobutylene: H⁺ adds to the =CH₂ end → tertiary carbocation at C2 (more stable than primary) → Br⁻ attacks C2 → 2-bromo-2-methylpropane. The key is carbocation stability: tertiary > secondary > primary. Anti-Markovnikov products arise under radical (peroxide) conditions.'
   },
   {
-    id:'og04', topic:'orgo',
+    id:'og04', topic:'orgo2',
     stem:'NaBH₄ is added to a ketone, followed by aqueous workup. What is the product?',
     opts:['A primary alcohol',
           'A secondary alcohol',
@@ -2081,7 +2084,7 @@ const QUESTIONS = [
     exp:'NaBH₄ is a mild hydride reducing agent. It delivers H⁻ to the electrophilic carbonyl carbon of a ketone, producing a secondary alcohol after aqueous workup. Aldehydes → primary alcohols; ketones → secondary alcohols. LiAlH₄ is a stronger reducing agent (also reduces esters, carboxylic acids). Oxidizing agents (KMnO₄, CrO₃) do the reverse — convert alcohols to carbonyls.'
   },
   {
-    id:'og05', topic:'orgo',
+    id:'og05', topic:'orgo2',
     stem:'Benzene undergoes bromination in the presence of FeBr₃. The mechanism is electrophilic aromatic substitution (EAS), not addition, because:',
     opts:['Addition is too fast for aromatic compounds',
           'Substitution preserves the aromatic pi system, which provides ~36 kcal/mol of stabilization',
@@ -2091,7 +2094,7 @@ const QUESTIONS = [
     exp:'Benzene\'s aromatic pi system (6 delocalized electrons, cyclic, planar, Hückel 4n+2) provides ~36 kcal/mol resonance stabilization. Addition reactions would permanently destroy this aromaticity. Substitution regenerates the aromatic ring after the electrophile adds to the arenium ion intermediate. This thermodynamic preference for aromaticity drives EAS in benzene and all aromatic rings.'
   },
   {
-    id:'og06', topic:'orgo',
+    id:'og06', topic:'orgo2',
     stem:'In ¹H NMR, a proton adjacent to a carbonyl group (e.g., –CH₂–C=O) appears at higher chemical shift (downfield) relative to an alkyl proton. This is because:',
     opts:['The carbonyl shields nearby protons by donating electron density',
           'The electron-withdrawing carbonyl deshields nearby protons, reducing electron density around them',
@@ -2101,7 +2104,7 @@ const QUESTIONS = [
     exp:'Electron-withdrawing groups (carbonyls, halogens, oxygens) pull electron density away from neighboring protons, deshielding them — they experience more of the applied magnetic field and resonate at higher frequency (downfield, higher δ). Alkyl protons are shielded by electron-donating C–H and C–C groups (δ ~0.9–1.5 ppm). Carbonyl-adjacent protons appear ~2–2.5 ppm. Aromatic protons appear ~7–8 ppm.'
   },
   {
-    id:'og07', topic:'orgo',
+    id:'og07', topic:'orgo2',
     stem:'At physiological pH 7.4, a simple amino acid (pKa₁ ~2, pKa₂ ~9) primarily exists as:',
     opts:['Fully protonated: H₂N⁺–CHR–COOH',
           'Zwitterion: H₃N⁺–CHR–COO⁻',
@@ -2150,21 +2153,21 @@ const QUESTIONS = [
     exp:'Horizontal and vertical motions are independent. Vertical (free fall): h = ½gt² → 20 = ½(10)t² → t² = 4 → t = 2 s. Horizontal: x = v₀t = 10 × 2 = 20 m. Initial vertical velocity = 0 for horizontal throws. Horizontal velocity stays constant (no horizontal force). This two-step process — find time from vertical, use time for horizontal — applies to all projectile problems.'
   },
   {
-    id:'phy05', topic:'physics',
+    id:'phy05', topic:'physics2',
     stem:'Three resistors (2 Ω, 4 Ω, 6 Ω) are connected in parallel. The equivalent resistance is approximately:',
     opts:['12 Ω','4 Ω','1.1 Ω','0.25 Ω'],
     ans:2,
     exp:'Parallel: 1/Req = 1/2 + 1/4 + 1/6 = 6/12 + 3/12 + 2/12 = 11/12. Req = 12/11 ≈ 1.09 Ω. Parallel resistance is always less than the smallest resistor. Contrast with series: Req = 2 + 4 + 6 = 12 Ω. In parallel circuits, voltage is constant across each branch; current divides. In series, current is constant; voltage divides. These rules, plus P = IV = I²R = V²/R, cover most MCAT circuits.'
   },
   {
-    id:'phy06', topic:'physics',
+    id:'phy06', topic:'physics2',
     stem:'A sound wave traveling through air enters water. Which property of the wave remains unchanged at the boundary?',
     opts:['Wavelength','Speed','Frequency','Amplitude'],
     ans:2,
     exp:'Frequency is invariant when a wave crosses a boundary — wave crests arrive and leave the interface at the same rate regardless of medium. Speed changes (sound is faster in denser/stiffer media: ~340 m/s in air, ~1500 m/s in water). Wavelength changes proportionally (λ = v/f; since f is constant and v increases, λ increases in water). This principle applies universally to all wave types including light.'
   },
   {
-    id:'phy07', topic:'physics',
+    id:'phy07', topic:'physics2',
     stem:'A concave mirror has focal length 10 cm. An object is placed 30 cm in front of it. Where does the image form?',
     opts:['7.5 cm in front (real)','15 cm in front (real)','15 cm behind (virtual)','At infinity'],
     ans:1,
@@ -2626,14 +2629,14 @@ const QUESTIONS = [
     exp:'Strong, bulky bases favor E2 over SN2: the bulkiness prevents backside attack (SN2 requires unhindered access to carbon) but allows abstraction of an accessible β-proton. E2 is concerted (antiperiplanar H and LG), requires a strong base, and produces an alkene. Secondary substrates with strong, bulky base → E2 predominates. Weak, small nucleophile + secondary substrate at high temperature → E1. Weak nucleophile + tertiary substrate → SN1/E1. Strong small nucleophile + primary substrate → SN2.'
   },
   {
-    id:'og10', topic:'orgo',
+    id:'og10', topic:'orgo2',
     stem:'In nucleophilic acyl substitution, which carboxylic acid derivative is MOST reactive?',
     opts:['Amide (–CONH₂)','Ester (–COOR)','Acid anhydride (–CO–O–CO–)','Acid chloride (–COCl)'],
     ans:3,
     exp:'Reactivity order: acid chloride > anhydride > ester > amide (least reactive). The leaving group ability determines reactivity: Cl⁻ > carboxylate > alkoxide > NH₂⁻. Acid chlorides are highly reactive (Cl is an excellent leaving group) and are used in synthesis but not found naturally. Amides are most stable — the nitrogen lone pair donates into the C=O, reducing electrophilicity (resonance stabilization). Amide bonds in proteins are stabilized by this resonance — they\'re planar and resist nucleophilic attack.'
   },
   {
-    id:'og11', topic:'orgo',
+    id:'og11', topic:'orgo2',
     stem:'Primary amines (R–NH₂) are basic because:',
     opts:['The nitrogen lone pair accepts a proton (Brønsted-Lowry base) or donates electrons (Lewis base)',
           'The N–H bonds are easily ionized to release H⁺ (Brønsted acid behavior)',
@@ -2650,7 +2653,7 @@ const QUESTIONS = [
     exp:'A racemic mixture (50:50 enantiomers) is optically inactive — the equal and opposite rotations cancel exactly. (+) enantiomer: +15°; (−) enantiomer: −15°; equimolar mixture: 0° net rotation. Optical purity/enantiomeric excess (ee): ee = |%major − %minor|. Racemic: ee = 0%. Optically pure: ee = 100%. Drug chirality matters: enantiomers can differ dramatically in biological activity, metabolism, and toxicity (e.g., thalidomide).'
   },
   {
-    id:'og13', topic:'orgo',
+    id:'og13', topic:'orgo2',
     stem:'Which statement correctly distinguishes aldehydes from ketones?',
     opts:['Aldehydes (–CHO) can be oxidized to carboxylic acids; ketones (C=O flanked by two carbons) resist mild oxidation',
           'Ketones are more reactive than aldehydes toward nucleophilic addition',
@@ -2661,14 +2664,14 @@ const QUESTIONS = [
   },
   // ── Physics — additional ──────────────────────────────────────────────────────
   {
-    id:'phy09', topic:'physics',
+    id:'phy09', topic:'physics2',
     stem:'A convex (converging) lens has focal length 20 cm. An object is placed 60 cm from the lens. Where does the image form?',
     opts:['15 cm, same side as object (virtual)','30 cm, opposite side (real)','60 cm, opposite side (real)','At infinity'],
     ans:1,
     exp:'Thin lens equation: 1/f = 1/do + 1/di → 1/20 = 1/60 + 1/di → 1/di = 1/20 − 1/60 = 2/60 → di = 30 cm. Positive di: real image, opposite side of lens. m = −di/do = −30/60 = −0.5 (inverted, reduced). Convex lens: object beyond 2f → real, inverted, reduced. Object between f and 2f → real, inverted, enlarged. Object inside f → virtual, upright, enlarged (magnifying glass). Sign convention: real images (di > 0) are on the transmission side; virtual images (di < 0) are on the same side as the object.'
   },
   {
-    id:'phy10', topic:'physics',
+    id:'phy10', topic:'physics2',
     stem:'Two point charges (+2 µC and +3 µC) are separated by 3 cm. The separation is tripled to 9 cm. The electrostatic force between them becomes:',
     opts:['9× larger','3× smaller','9× smaller','Unchanged'],
     ans:2,
@@ -2689,7 +2692,7 @@ const QUESTIONS = [
     exp:'Torque: τ = rF sin θ. Force is perpendicular (θ = 90°, sin 90° = 1): τ = 0.5 m × 10 N = 5 N·m. Torque is the rotational analog of force. Greater lever arm → greater torque → easier rotation. If the force were applied at 30° to the wrench, τ = 0.5 × 10 × sin 30° = 2.5 N·m. For equilibrium: Στ = 0 and ΣF = 0. The principle of moments (longer arms → greater mechanical advantage) explains why long handles make fastening easier.'
   },
   {
-    id:'phy13', topic:'physics',
+    id:'phy13', topic:'physics2',
     stem:'MRI machines exploit which physical phenomenon?',
     opts:['Nuclear fission of hydrogen atoms in tissue',
           'Nuclear magnetic resonance — H nuclei absorb and re-emit radiofrequency energy at characteristic frequencies in a magnetic field',
@@ -3059,7 +3062,7 @@ const QUESTIONS = [
     exp:'Optical activity requires a chiral center — a carbon with four different substituents. Butanal (CH₃CH₂CH₂CHO): no chiral center. 2-methylpropanal: the carbonyl C has only H, =O, and two equivalent CH₃ groups — not chiral. 2-butanone: symmetric around the ketone. An optically active C₄H₈O aldehyde would require a carbon bearing four different groups (e.g., –H, –CH₃, –CHO, –CH₂– attached differently). On the MCAT, identifying whether a candidate structure has a chiral center is the core skill tested.'
   },
   {
-    id:'og16', topic:'orgo',
+    id:'og16', topic:'orgo2',
     stem:'Benzene reacts with Br₂ in the presence of FeBr₃. What type of reaction occurs and what is the organic product?',
     opts:['Addition — cyclohexyl dibromide',
           'Electrophilic aromatic substitution — bromobenzene + HBr',
@@ -3069,7 +3072,7 @@ const QUESTIONS = [
     exp:'Benzene undergoes electrophilic aromatic substitution (EAS), not addition, because addition would destroy the aromatic ring\'s stabilizing delocalization. FeBr₃ is a Lewis acid catalyst that activates Br₂ → Br⁺ (electrophile) → attacks the ring → sigma complex (arenium ion/Wheland intermediate) → proton loss restores aromaticity → bromobenzene + HBr. The driving force is restoration of aromaticity. EAS includes halogenation, nitration, sulfonation, Friedel-Crafts alkylation/acylation — all share the same mechanism.'
   },
   {
-    id:'og17', topic:'orgo',
+    id:'og17', topic:'orgo2',
     stem:'Why are aldehydes generally more reactive toward nucleophilic addition than ketones?',
     opts:['Aldehydes have a lower molecular weight, making them more accessible',
           'The carbonyl carbon of an aldehyde is less hindered (only one alkyl group) and is more electrophilic than a ketone\'s carbonyl carbon (two alkyl groups)',
@@ -3079,7 +3082,7 @@ const QUESTIONS = [
     exp:'Nucleophilic addition to a carbonyl requires attack at the carbonyl carbon. Aldehydes (RCHO) have one H and one R group — less steric hindrance and less electron donation to the carbonyl C than ketones (RCOR\'), which have two alkyl groups. Alkyl groups are electron-donating (inductive effect), making the carbonyl carbon of ketones less electrophilic (less positive). Combined: aldehydes are less hindered AND more electrophilic → react faster with nucleophiles. This explains why aldehydes oxidize easily but ketones do not (Tollens\'/Fehling\'s tests distinguish them).'
   },
   {
-    id:'og18', topic:'orgo',
+    id:'og18', topic:'orgo2',
     stem:'Listed in order of decreasing reactivity toward nucleophilic acyl substitution: acid chlorides > anhydrides > esters > carboxylic acids > amides. Which is the LEAST reactive?',
     opts:['Acid chlorides','Anhydrides','Esters','Amides'],
     ans:3,
@@ -3096,7 +3099,7 @@ const QUESTIONS = [
     exp:'E2 is a concerted, bimolecular elimination: base removes the beta-H at the same time the leaving group departs — they must be anti-periplanar (180° dihedral angle) for proper orbital overlap. This geometry requirement makes E2 stereospecific: different diastereomers of the substrate give different alkene products. Anti-periplanar = anti addition (H and LG depart from opposite faces). In cyclohexanes, this requires both H and LG to be diaxial. E1 goes through a carbocation (no geometric requirement). E2 prefers secondary/tertiary substrates with strong, bulky bases.'
   },
   {
-    id:'og20', topic:'orgo',
+    id:'og20', topic:'orgo2',
     stem:'The Diels-Alder reaction between a diene and a dienophile requires the diene to be in which conformation?',
     opts:['s-trans — the two double bonds on opposite sides',
           's-cis — the two double bonds on the same side, allowing concerted [4+2] cycloaddition',
@@ -4330,8 +4333,8 @@ const TILE_NAMES = {
   'cell-bio':'Cell Bio', 'genetics':'Genetics', 'mol-bio':'Mol. Bio',
   'biochem':'Biochem',   'physio':'Physio',      'neuro':'Neuro',
   'atomic':'Atomic',     'bonding':'Bonding',    'stoich':'Stoich',
-  'acid-base':'Acid-Base','thermo':'Thermo',     'orgo':'Orgo',
-  'physics':'Physics',   'psych':'Psych',        'soc':'Soc',
+  'acid-base':'Acid-Base','thermo':'Thermo',     'orgo':'Orgo I',   'orgo2':'Orgo II',
+  'physics':'Physics I', 'physics2':'Physics II', 'psych':'Psych',   'soc':'Soc',
   'research':'Research', 'cars':'CARS',
 };
 
@@ -4404,7 +4407,7 @@ function sparklineHTML(history) {
 // Curriculum order — roughly the order a premed encounters these topics
 const PATH_ORDER = [
   'cars','cell-bio','genetics','mol-bio','atomic','bonding','stoich','acid-base',
-  'physio','neuro','thermo','orgo','physics','psych','soc','research','biochem'
+  'physio','neuro','thermo','orgo','orgo2','physics','physics2','psych','soc','research','biochem'
 ];
 
 function pathNodes() {
@@ -4526,12 +4529,14 @@ const TOPIC_SKILL = {
   'physio':    'Systems thinking — trace the effect of one change through an entire biological system.',
   'neuro':     'Pathway tracing — from stimulus to response, through every synapse and structure.',
   'orgo':      'Mechanism prediction — given a structure and conditions, predict what happens and why.',
+  'orgo2':     'Structure-to-outcome reasoning — predict carbonyl/aromatic reactivity and read spectra, not memorized products.',
   'thermo':    'Conceptual math — what does a ΔG value actually mean for whether a reaction proceeds?',
   'atomic':    'Trend reasoning — connecting periodic table position to predictable atomic behavior.',
   'bonding':   'Structure-to-property reasoning — going from a molecule\'s shape to its physical behavior.',
   'stoich':    'Quantitative translation — converting between moles, mass, volume, and particles without losing the thread.',
   'acid-base': 'Equilibrium reasoning — which direction does the system shift, and what drives it?',
   'physics':   'Principle application — taking a physical law and applying it to something unfamiliar.',
+  'physics2':  'Principle application — apply circuits, waves, optics, and E&M laws to an unfamiliar setup.',
   'psych':     'Theory recognition — which framework best explains this behavior or outcome?',
   'soc':       'Critical analysis — how does social structure shape this individual\'s situation?',
   'research':  'Data interpretation — what does this result actually prove, and what does it leave open?',
@@ -4546,12 +4551,14 @@ const TOPIC_CRUNCH = {
   'physio':   'Half of USMLE Step 1 is physiology. Year-3 classmates spend weeks here.',
   'neuro':    'Notoriously hard to self-study. Most classmates cram it the month before the exam.',
   'orgo':     'Year-3 classmates re-learn mechanisms for weeks. You already have this.',
+  'orgo2':    'Carbonyls, aromatics, and spectra — the orgo most premeds fear. You\'re ahead on it.',
   'thermo':   'A classic year-3 crunch topic. You\'re handling it years ahead of schedule.',
   'atomic':   'Foundational Gen Chem — most classmates haven\'t touched periodic trends since freshman year.',
   'bonding':  'A Gen Chem cornerstone that resurfaces all over Orgo and Biochem. You\'re ahead of schedule.',
   'stoich':   'The math most premeds get rusty on by year 3. You\'re keeping it sharp early.',
   'acid-base':'One of the highest-tested MCAT topics — most classmates forget it after Gen Chem.',
   'physics':  'Most premeds ignore physics until 6 weeks out. Not you.',
+  'physics2': 'E&M and optics trip up most test-takers. You\'re building it early.',
   'psych':    'The section most students leave until last. You\'re practicing it now.',
   'soc':      'Year-3 classmates typically see Sociology for the first time in MCAT prep.',
   'research': 'Research design appears throughout the MCAT — and consistently surprises people.',
@@ -4739,7 +4746,7 @@ function stayingSharpHTML() {
 function sectionBarsHTML() {
   const SECS = [
     { label:'Bio & Biochem',  color:'#1D9E75', tids:['cell-bio','genetics','mol-bio','biochem','physio','neuro']            },
-    { label:'Chem & Physics', color:'#60A5FA', tids:['atomic','bonding','stoich','acid-base','thermo','orgo','physics']      },
+    { label:'Chem & Physics', color:'#60A5FA', tids:['atomic','bonding','stoich','acid-base','thermo','orgo','orgo2','physics','physics2']      },
     { label:'Psych & Soc',    color:'#A78BFA', tids:['psych','soc','research']                                              },
   ];
   const bars = SECS.map(sec => {
