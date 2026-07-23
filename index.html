@@ -742,8 +742,9 @@
   .report-reasons button { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #8A90A8; font-size: 12px; font-family: inherit; padding: 5px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .report-reasons button:hover { background: rgba(255,255,255,0.07); color: #C0C4D8; }
 
-  /* ── Desktop presentation (>=768px; mobile <=430px untouched) ─────── */
-  .dt-rail { display: none; }
+  /* ── Desktop shell — mobile (<=767px) is 100% untouched by everything below.
+     768px+  : branded backdrop + framed app column.
+     1000px+ : persistent left dashboard rail (real nav + live coverage). ─────── */
 
   @media (min-width: 768px) {
     body {
@@ -761,12 +762,15 @@
       position: fixed;
       inset: 0;
       pointer-events: none;
+      z-index: 0;
       background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1.6px);
       background-size: 26px 26px;
       -webkit-mask-image: radial-gradient(120% 90% at 50% 42%, #000 25%, transparent 75%);
       mask-image: radial-gradient(120% 90% at 50% 42%, #000 25%, transparent 75%);
     }
     #app {
+      position: relative;
+      z-index: 1;
       border-left-color: rgba(255,255,255,0.09);
       border-right-color: rgba(255,255,255,0.09);
       box-shadow:
@@ -781,79 +785,173 @@
     }
   }
 
-  @media (min-width: 1160px) {
-    .dt-rail {
-      display: block;
+  /* Persistent desktop dashboard rail — sibling of #app, hidden below 1000px */
+  .dt-shell { display: none; }
+
+  @media (min-width: 1000px) {
+    /* Reserve the rail's width on the left; #app stays flex-centered in the
+       space that remains, so the reading column is anchored to real app chrome
+       instead of floating in a void. */
+    body { padding-left: 280px; }
+
+    .dt-shell {
+      display: flex;
+      flex-direction: column;
       position: fixed;
-      top: 50%;
-      z-index: 1;
-      pointer-events: none;
-      user-select: none;
-      -webkit-user-select: none;
-      animation: dt-rail-in 0.9s ease 0.2s both;
-    }
-    @keyframes dt-rail-in {
-      from { opacity: 0; transform: translateY(calc(-50% + 10px)); }
-      to   { opacity: 1; transform: translateY(-50%); }
-    }
-    .dt-rail-left {
-      right: calc(50% + 267px);
-      width: 320px;
-      text-align: right;
-    }
-    .dt-rail-right {
-      left: calc(50% + 267px);
+      top: 0;
+      left: 0;
+      bottom: 0;
       width: 280px;
+      z-index: 5;
+      padding: 30px 26px 26px;
+      background:
+        linear-gradient(180deg, rgba(20,23,31,0.72), rgba(10,12,16,0.82)),
+        rgba(10,12,16,0.6);
+      backdrop-filter: blur(18px) saturate(1.1);
+      -webkit-backdrop-filter: blur(18px) saturate(1.1);
+      border-right: 1px solid rgba(255,255,255,0.07);
+      box-shadow: 40px 0 120px -60px rgba(0,0,0,0.9);
+      overflow-y: auto;
+      animation: dt-shell-in 0.7s cubic-bezier(0.22,1,0.36,1) 0.05s both;
     }
-    .dt-mark { margin-bottom: 14px; }
-    .dt-wordmark {
+    @keyframes dt-shell-in {
+      from { opacity: 0; transform: translateX(-14px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Brand */
+    .dt-brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-align: left;
+      margin-bottom: 28px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .dt-brand-mark {
+      width: 38px; height: 38px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(29,158,117,0.14);
+      border: 1px solid rgba(29,158,117,0.28);
+      border-radius: 11px;
+    }
+    .dt-brand-name {
+      display: block;
       font-family: 'Space Grotesk', -apple-system, sans-serif;
-      font-size: 27px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #F0F2F8;
-      margin-bottom: 10px;
+      font-size: 19px; font-weight: 700; letter-spacing: -0.02em;
+      color: #F0F2F8; line-height: 1;
     }
-    .dt-tagline {
-      font-size: 15px;
-      line-height: 1.6;
-      color: #6B7185;
-      margin-bottom: 18px;
+    .dt-brand-sub {
+      display: block;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.11em;
+      text-transform: uppercase; color: #555B70; margin-top: 5px;
     }
-    .dt-tagline em { font-style: normal; color: #4DE3AB; }
-    .dt-sub {
-      font-size: 12.5px;
-      line-height: 1.65;
-      color: #444B62;
-      max-width: 250px;
-      margin-left: auto;
+
+    /* Nav */
+    .dt-nav { display: flex; flex-direction: column; gap: 4px; }
+    .dt-nav-item {
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; padding: 10px 12px;
+      background: none; border: 1px solid transparent; border-radius: 10px;
+      cursor: pointer; text-align: left;
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      color: #7A8099;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
     }
-    .dt-step { display: flex; align-items: center; gap: 12px; }
-    .dt-step-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      border: 1.5px solid rgba(29,158,117,0.8);
-      background: rgba(29,158,117,0.15);
-      flex-shrink: 0;
+    .dt-nav-item svg { flex-shrink: 0; }
+    .dt-nav-item:hover { background: rgba(255,255,255,0.04); color: #C0C4D8; }
+    .dt-nav-item.active {
+      background: rgba(29,158,117,0.12);
+      border-color: rgba(29,158,117,0.3);
+      color: #4DE3AB;
     }
-    .dt-step.done .dt-step-dot {
-      background: #1D9E75;
-      border-color: #1D9E75;
-      box-shadow: 0 0 10px rgba(29,158,117,0.5);
+
+    .dt-divider {
+      height: 1px; background: rgba(255,255,255,0.07);
+      margin: 22px 2px;
     }
-    .dt-step-text {
-      font-size: 13px;
-      font-weight: 600;
-      color: #555B70;
-      letter-spacing: 0.01em;
+
+    /* Coverage dashboard */
+    .dt-dash-label {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #1D9E75; margin-bottom: 15px;
     }
-    .dt-step-link {
-      width: 1px;
-      height: 30px;
-      margin: 4px 0 4px 4px;
-      border-left: 1px dashed rgba(255,255,255,0.14);
+    .dt-ring-wrap {
+      display: flex; align-items: center; gap: 15px; margin-bottom: 20px;
     }
+    .dt-ring { position: relative; width: 92px; height: 92px; flex-shrink: 0; }
+    .dt-ring svg { transform: rotate(-90deg); }
+    .dt-ring-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .dt-ring-pct {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      font-size: 25px; font-weight: 700; color: #F0F2F8; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .dt-ring-pct .u { font-size: 13px; color: #6B7185; }
+    .dt-ring-cap { font-size: 10px; color: #555B70; margin-top: 3px; letter-spacing: 0.04em; }
+    .dt-ring-note { font-size: 12px; line-height: 1.5; color: #6B7185; }
+    .dt-ring-note strong { color: #8A90A8; font-weight: 600; }
+
+    /* MCAT section mini-bars */
+    .dt-secs { display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
+    .dt-sec-row { display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; align-items: center; }
+    .dt-sec-name { font-size: 12px; font-weight: 600; color: #8A90A8; }
+    .dt-sec-pct { font-size: 11px; font-weight: 700; color: #555B70; font-variant-numeric: tabular-nums; }
+    .dt-sec-track {
+      grid-column: 1 / -1; height: 5px; border-radius: 3px;
+      background: rgba(255,255,255,0.06); overflow: hidden;
+    }
+    .dt-sec-fill {
+      height: 100%; border-radius: 3px; width: 0;
+      transition: width 0.9s cubic-bezier(0.22,1,0.36,1);
+    }
+
+    /* Streak / answered stats */
+    .dt-stats-row { display: flex; gap: 10px; }
+    .dt-stat {
+      flex: 1; padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+    }
+    .dt-stat-num {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      font-size: 20px; font-weight: 700; color: #F0F2F8; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .dt-stat-num.streak { color: #F5B36A; }
+    .dt-stat-cap { font-size: 10px; color: #555B70; margin-top: 5px; letter-spacing: 0.03em; }
+
+    /* Pre-onboarding (no courses yet) */
+    .dt-setup-hint { display: none; }
+    .dt-shell.dt-empty .dt-dash { display: none; }
+    .dt-shell.dt-empty .dt-setup-hint {
+      display: block;
+      margin-top: 24px; padding: 16px;
+      background: rgba(29,158,117,0.06);
+      border: 1px solid rgba(29,158,117,0.18);
+      border-radius: 12px;
+      font-size: 12.5px; line-height: 1.55; color: #6B7185;
+    }
+    .dt-setup-hint strong { color: #4DE3AB; font-weight: 600; }
+
+    /* Footer ethos */
+    .dt-foot { margin-top: auto; padding-top: 24px; }
+    .dt-foot-line { font-size: 12.5px; line-height: 1.55; color: #555B70; }
+    .dt-foot-line em { font-style: normal; color: #4DE3AB; }
+
+    /* On desktop the rail replaces the bottom tab bar */
+    .tab-bar { display: none; }
+    #app.has-tabbar .screen { padding-bottom: 48px; }
   }
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
@@ -866,24 +964,80 @@
 <body>
 <div id="app"></div>
 
-<!-- Desktop-only brand rails (siblings of #app; never re-rendered; hidden <1160px) -->
-<div class="dt-rail dt-rail-left" aria-hidden="true">
-  <svg class="dt-mark" width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="17" cy="17" r="15" stroke="rgba(29,158,117,0.45)" stroke-width="1.5"/>
-    <circle cx="17" cy="17" r="9.5" stroke="rgba(77,227,171,0.3)" stroke-width="1" stroke-dasharray="3 4"/>
-    <circle cx="17" cy="17" r="4.5" fill="#1D9E75"/>
-  </svg>
-  <div class="dt-wordmark">Waypoint</div>
-  <div class="dt-tagline">Your classes are <em>already</em> MCAT prep.</div>
-  <div class="dt-sub">Waypoint maps your coursework onto the exam &mdash; and flags where the test bends what your professor taught.</div>
-</div>
-<div class="dt-rail dt-rail-right" aria-hidden="true">
-  <div class="dt-step done"><span class="dt-step-dot"></span><span class="dt-step-text">Take your classes</span></div>
-  <div class="dt-step-link"></div>
-  <div class="dt-step"><span class="dt-step-dot"></span><span class="dt-step-text">See how the MCAT bends them</span></div>
-  <div class="dt-step-link"></div>
-  <div class="dt-step"><span class="dt-step-dot"></span><span class="dt-step-text">Watch your coverage climb</span></div>
-</div>
+<!-- Persistent desktop dashboard rail (sibling of #app; never re-rendered; hidden <1000px).
+     Live values are populated by syncDesktopShell() on every render(). -->
+<aside class="dt-shell dt-empty" aria-hidden="true">
+  <button class="dt-brand" onclick="go('landing')">
+    <span class="dt-brand-mark">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><polyline points="12 8 12 12 14.5 14.5"/><circle cx="12" cy="12" r="1.2" fill="#1D9E75" stroke="none"/>
+      </svg>
+    </span>
+    <span>
+      <span class="dt-brand-name">Waypoint</span>
+      <span class="dt-brand-sub">MCAT Coverage</span>
+    </span>
+  </button>
+
+  <nav class="dt-nav">
+    <button class="dt-nav-item" data-nav="brief" onclick="go('brief')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+      <span>Home base</span>
+    </button>
+    <button class="dt-nav-item" data-nav="reveal" onclick="go('reveal')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>
+      <span>Your route</span>
+    </button>
+    <button class="dt-nav-item" data-nav="quicklog" onclick="go('quicklog')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+      <span>Quick log</span>
+    </button>
+  </nav>
+
+  <div class="dt-setup-hint">Pick your year and courses to <strong>map your coverage</strong> &mdash; Waypoint turns the classes you&rsquo;ve already taken into MCAT points.</div>
+
+  <div class="dt-dash">
+    <div class="dt-divider"></div>
+    <div class="dt-dash-label">Exam coverage</div>
+    <div class="dt-ring-wrap">
+      <div class="dt-ring">
+        <svg width="92" height="92" viewBox="0 0 92 92">
+          <circle cx="46" cy="46" r="34" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
+          <circle id="dt-ring-fill" cx="46" cy="46" r="34" fill="none" stroke="#1D9E75" stroke-width="7" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6" style="transition:stroke-dashoffset 0.9s cubic-bezier(0.22,1,0.36,1);filter:drop-shadow(0 0 5px rgba(29,158,117,0.5))"/>
+        </svg>
+        <div class="dt-ring-center">
+          <div class="dt-ring-pct"><span id="dt-cov-num">0</span><span class="u">%</span></div>
+          <div class="dt-ring-cap">covered</div>
+        </div>
+      </div>
+      <div class="dt-ring-note" id="dt-ring-note">Set up your route to see coverage climb.</div>
+    </div>
+
+    <div class="dt-secs">
+      <div class="dt-sec-row">
+        <span class="dt-sec-name">Bio &amp; Biochem</span><span class="dt-sec-pct" data-secpct="bb">0%</span>
+        <div class="dt-sec-track"><div class="dt-sec-fill" data-secfill="bb" style="background:#1D9E75"></div></div>
+      </div>
+      <div class="dt-sec-row">
+        <span class="dt-sec-name">Chem &amp; Physics</span><span class="dt-sec-pct" data-secpct="cp">0%</span>
+        <div class="dt-sec-track"><div class="dt-sec-fill" data-secfill="cp" style="background:#60A5FA"></div></div>
+      </div>
+      <div class="dt-sec-row">
+        <span class="dt-sec-name">Psych &amp; Soc</span><span class="dt-sec-pct" data-secpct="ps">0%</span>
+        <div class="dt-sec-track"><div class="dt-sec-fill" data-secfill="ps" style="background:#A78BFA"></div></div>
+      </div>
+    </div>
+
+    <div class="dt-stats-row">
+      <div class="dt-stat"><div class="dt-stat-num streak" id="dt-streak">0</div><div class="dt-stat-cap">day streak</div></div>
+      <div class="dt-stat"><div class="dt-stat-num" id="dt-answered">0</div><div class="dt-stat-cap">answered</div></div>
+    </div>
+  </div>
+
+  <div class="dt-foot">
+    <div class="dt-foot-line">Your classes are <em>already</em> MCAT prep.</div>
+  </div>
+</aside>
 
 <script>
 // ── DATA ─────────────────────────────────────────────────────────────────────
@@ -6014,6 +6168,61 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100 };
 
+// ── Desktop dashboard rail sync ─────────────────────────────────
+// The rail is a static sibling of #app (survives re-render); refresh its live
+// values here on every render(). Every lookup is null-guarded, so on mobile —
+// where the rail is never displayed — this is a complete no-op.
+function syncDesktopShell() {
+  const shell = document.querySelector('.dt-shell');
+  if (!shell) return;
+
+  const NAV = {
+    brief:    ['brief', 'complete'],
+    reveal:   ['reveal'],
+    quicklog: ['quicklog', 'quicklog-subtopic', 'quicklogdone'],
+  };
+  shell.querySelectorAll('.dt-nav-item').forEach(b => {
+    const m = NAV[b.dataset.nav];
+    b.classList.toggle('active', !!m && m.includes(S.screen));
+  });
+
+  shell.classList.toggle('dt-empty', S.courses.size === 0);
+
+  const cov = coverage(S.courses);
+  const covNum = document.getElementById('dt-cov-num');
+  if (covNum) covNum.textContent = cov;
+  const ring = document.getElementById('dt-ring-fill');
+  if (ring) ring.style.strokeDashoffset = (213.6 * (1 - cov / 100)).toFixed(1);
+
+  const note = document.getElementById('dt-ring-note');
+  if (note) {
+    // 79 = total weight of course-gated content (CARS, 21%, builds on its own)
+    const covOfCourses = cov > 0 ? Math.round(cov / 79 * 100) : 0;
+    note.innerHTML = cov > 0
+      ? `<strong>${cov}%</strong> of the exam so far — <strong>${covOfCourses}%</strong> of your course-based content.`
+      : 'Set up your route to see coverage climb.';
+  }
+
+  const secTot = { bb: 0, cp: 0, ps: 0 }, secCov = { bb: 0, cp: 0, ps: 0 };
+  TOPICS.forEach(t => {
+    if (secTot[t.mcat] === undefined) return; // CARS excluded — not course-based
+    secTot[t.mcat] += t.w;
+    if (t.course && S.courses.has(t.course)) secCov[t.mcat] += t.w;
+  });
+  ['bb', 'cp', 'ps'].forEach(k => {
+    const pct = secTot[k] > 0 ? Math.round(secCov[k] / secTot[k] * 100) : 0;
+    const p = shell.querySelector(`[data-secpct="${k}"]`);
+    const f = shell.querySelector(`[data-secfill="${k}"]`);
+    if (p) p.textContent = pct + '%';
+    if (f) f.style.width = pct + '%';
+  });
+
+  const st = document.getElementById('dt-streak');
+  if (st) st.textContent = S.streak || 0;
+  const an = document.getElementById('dt-answered');
+  if (an) an.textContent = S.totalAnswered || 0;
+}
+
 function render() {
   try {
   const el = document.getElementById('app');
@@ -6067,6 +6276,8 @@ function render() {
       ring.style.strokeDashoffset = ring.dataset.target;
     }, 80));
   }
+
+  syncDesktopShell();
   } catch(e) {
     console.error('[Waypoint] render() failed:', e);
     screenError();
