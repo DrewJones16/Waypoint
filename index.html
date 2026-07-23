@@ -5352,6 +5352,12 @@ function screenBreakdown() {
     </div>`;
 }
 
+function secSlug(sec) { return sec.replace(/[^a-z0-9]/gi, '').toLowerCase(); }
+function courseButtonsHTML(id) {
+  const status = S.courseStatus[id] || null;
+  return `<button type="button" class="csb${status === 'in-progress' ? ' csb-ip' : ''}" onclick="setCourseState('${id}','in-progress')">${status === 'in-progress' ? '<span class="pulse-dot"></span>' : ''}Taking</button><button type="button" class="csb${status === 'completed' ? ' csb-done' : ''}" onclick="setCourseState('${id}','completed')">${status === 'completed' ? '\u2713 ' : ''}Done</button>`;
+}
+
 function screenCourses() {
   const sections = [...new Set(COURSES.map(c => c.section))];
   return `
@@ -5379,7 +5385,7 @@ function screenCourses() {
           return `
           <div class="section-head">
             <p class="section-label">${sec}</p>
-            <button type="button" class="sa-btn" onclick="toggleCat('${sec}',${!allChecked})">${allChecked ? 'Deselect all' : 'Select all'}</button>
+            <button type="button" class="sa-btn" id="sa-${secSlug(sec)}" onclick="toggleCat('${sec}')">${allChecked ? 'Deselect all' : 'Select all'}</button>
           </div>
           ${secCourses.map(c => {
             const status = S.courseStatus[c.id] || null;
@@ -5390,10 +5396,7 @@ function screenCourses() {
                 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</span>
                 ${(() => { const m = REQ_META[COURSE_REQ[c.id]]; return m ? `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;color:${m.color};background:${m.bg};padding:2px 6px;border-radius:6px;flex-shrink:0;white-space:nowrap;">${m.short}</span>` : ''; })()}
               </button>
-              <div style="display:flex;gap:5px;flex-shrink:0;">
-                <button type="button" class="csb${status === 'in-progress' ? ' csb-ip' : ''}" onclick="setCourseState('${c.id}','in-progress')">${status === 'in-progress' ? '<span class="pulse-dot"></span>' : ''}Taking</button>
-                <button type="button" class="csb${status === 'completed' ? ' csb-done' : ''}" onclick="setCourseState('${c.id}','completed')">${status === 'completed' ? '✓ ' : ''}Done</button>
-              </div>
+              <div id="csb-${c.id}" style="display:flex;gap:5px;flex-shrink:0;">${courseButtonsHTML(c.id)}</div>
             </div>
             ${(S._expandedCourses && S._expandedCourses.has(c.id)) ? `<div class="course-topics-panel">${courseTopicsBreakdown(c.id)}</div>` : ''}`;
           }).join('')}
@@ -5851,17 +5854,25 @@ function setCourseState(id, newState) {
     S.courseStatus[id] = newState;
   }
   save();
-  // Re-render preserving scroll position
-  const scroll = document.querySelector('.courses-scroll');
-  const scrollTop = scroll ? scroll.scrollTop : 0;
-  render();
-  requestAnimationFrame(() => {
-    const newScroll = document.querySelector('.courses-scroll');
-    if (newScroll) newScroll.scrollTop = scrollTop;
-  });
+  // Patch only what changed — no full re-render, so no fade-up replay or scroll jump.
+  const box = document.getElementById('csb-' + id);
+  if (!box) { render(); return; }
+  box.innerHTML = courseButtonsHTML(id);
+  const counter = document.getElementById('course-counter');
+  if (counter) {
+    const n = S.courses.size;
+    counter.textContent = n + ' course' + (n !== 1 ? 's' : '') + ' selected';
+    counter.style.display = n > 0 ? '' : 'none';
+  }
+  const course = COURSES.find(c => c.id === id);
+  if (course) {
+    const sa = document.getElementById('sa-' + secSlug(course.section));
+    if (sa) sa.textContent = COURSES.filter(c => c.section === course.section).every(c => S.courses.has(c.id)) ? 'Deselect all' : 'Select all';
+  }
 }
 
-function toggleCat(section, checked) {
+function toggleCat(section) {
+  const checked = !COURSES.filter(c => c.section === section).every(c => S.courses.has(c.id));
   COURSES.filter(c => c.section === section).forEach(c => {
     if (checked) {
       S.courses.add(c.id);
