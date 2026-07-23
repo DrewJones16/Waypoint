@@ -4150,8 +4150,17 @@ function load() {
 
 // ── LOGIC ─────────────────────────────────────────────────────────────────────
 
-function coverage(courses) {
-  return TOPICS.reduce((n, t) => n + (t.course && courses.has(t.course) ? t.w : 0), 0);
+// A course you're still TAKING counts partial credit until you mark it done —
+// so the % reflects what you've genuinely covered, not what you're mid-way through.
+const IN_PROGRESS_CREDIT = 0.5;
+function courseCredit(courseId) {
+  return S.courseStatus[courseId] === 'in-progress' ? IN_PROGRESS_CREDIT : 1;
+}
+function coverage(courses, statusAware = false) {
+  return Math.round(TOPICS.reduce((n, t) => {
+    if (!t.course || !courses.has(t.course)) return n;
+    return n + t.w * (statusAware ? courseCredit(t.course) : 1);
+  }, 0));
 }
 
 // Coverage-percentage celebration moments — fire once each as the route fills in
@@ -4164,7 +4173,7 @@ const COVERAGE_MILESTONES = [
 ];
 
 function milestoneCopy() {
-  const cov = coverage(S.courses);
+  const cov = coverage(S.courses, true);
   const hit = COVERAGE_MILESTONES.filter(m => cov >= m.at && !S.covMilestonesShown[m.at]);
   if (!hit.length) return '';
   const m = hit[hit.length - 1]; // highest unseen milestone
@@ -4316,7 +4325,7 @@ function sectionedMapHTML() {
   return MCAT_SECTIONS.map(sec => {
     const secTopics  = TOPICS.filter(t => t.mcat === sec.id);
     const secTotal   = secTopics.reduce((s, t) => s + t.w, 0);
-    const secCovered = secTopics.reduce((s, t) => s + (t.course && S.courses.has(t.course) ? t.w : 0), 0);
+    const secCovered = secTopics.reduce((s, t) => s + (t.course && S.courses.has(t.course) ? t.w * courseCredit(t.course) : 0), 0);
     const secPct     = Math.round(secCovered / secTotal * 100);
     const hasAny     = secCovered > 0;
 
@@ -4344,7 +4353,7 @@ function sectionedMapHTML() {
       <div style="margin-bottom:22px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6B7185;text-transform:uppercase;letter-spacing:0.05em;"><span style="display:inline-flex;color:#1D9E75;">${sectionIcon(sec.id)}</span>${sec.short}</div>
-          <div style="font-size:11px;color:${hasAny ? '#1D9E75' : '#3A4060'};">${secCovered}/${secTotal}%</div>
+          <div style="font-size:11px;color:${hasAny ? '#1D9E75' : '#3A4060'};">${Math.round(secCovered)}/${secTotal}%</div>
         </div>
         <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:10px;overflow:hidden;">
           <div class="sec-bar-fill" data-w="${secPct}" style="height:100%;width:0%;background:#1D9E75;border-radius:2px;transition:width 1.2s ease;"></div>
@@ -4721,7 +4730,7 @@ function sectionBarsHTML() {
   ];
   const bars = SECS.map(sec => {
     const totalW = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t ? t.w : 0); }, 0);
-    const covW   = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t && t.course && S.courses.has(t.course) ? t.w : 0); }, 0);
+    const covW   = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t && t.course && S.courses.has(t.course) ? t.w * courseCredit(t.course) : 0); }, 0);
     const pct    = totalW > 0 ? Math.round(covW / totalW * 100) : 0;
     if (pct === 0) return ''; // hide sections with no progress
     return `<div style="margin-bottom:11px;">
@@ -4872,7 +4881,7 @@ function landingTwistHTML() {
 
 function screenBrief() {
   const wc        = wrongCount();
-  const cov       = coverage(S.courses);
+  const cov       = coverage(S.courses, true);
   const total     = S.totalAnswered;
   const history   = S.sessionHistory;
 
@@ -5222,7 +5231,7 @@ function screenCourses() {
 }
 
 function screenReveal() {
-  const cov  = coverage(S.courses);
+  const cov  = coverage(S.courses, true);
   const nCov = TOPICS.filter(t => t.course && S.courses.has(t.course)).length;
 
   // Headline scales with how much they have
@@ -5419,7 +5428,7 @@ function getRetentionHTML(sessionAnswers) {
 function screenComplete() {
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
-  const cov     = coverage(S.courses);
+  const cov     = coverage(S.courses, true);
   const tt      = todayTopics();
   const pct     = total > 0 ? Math.round(correct / total * 100) : 0;
 
@@ -5880,7 +5889,7 @@ function roundRect(ctx, x, y, w, h, r) {
 
 async function shareCoverageCard(variant = 'coverage', btn) {
   if (window.plausible) plausible('share_card');
-  const cov   = coverage(S.courses);
+  const cov   = coverage(S.courses, true);
   const myTopics    = TOPICS.filter(t => t.course && S.courses.has(t.course));
   const totalTopics = TOPICS.filter(t => t.course).length;
   const streak = S.streak;
@@ -6252,7 +6261,7 @@ function syncDesktopShell() {
 
   shell.classList.toggle('dt-empty', S.courses.size === 0);
 
-  const cov = coverage(S.courses);
+  const cov = coverage(S.courses, true);
   const covNum = document.getElementById('dt-cov-num');
   if (covNum) covNum.textContent = cov;
   const ring = document.getElementById('dt-ring-fill');
@@ -6269,7 +6278,7 @@ function syncDesktopShell() {
   TOPICS.forEach(t => {
     if (secTot[t.mcat] === undefined) return; // CARS excluded — not course-based
     secTot[t.mcat] += t.w;
-    if (t.course && S.courses.has(t.course)) secCov[t.mcat] += t.w;
+    if (t.course && S.courses.has(t.course)) secCov[t.mcat] += t.w * courseCredit(t.course);
   });
   ['bb', 'cp', 'ps'].forEach(k => {
     const pct = secTot[k] > 0 ? Math.round(secCov[k] / secTot[k] * 100) : 0;
