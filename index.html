@@ -4784,6 +4784,13 @@ function dailyTwistHTML() {
   const d = getDailyTwist();
   if (!d) return '';
   const { q, topic, text, teaser } = d;
+  // One impression per session when the card actually renders — pairs with
+  // twist_of_day_drill to give a view->drill conversion rate in Plausible.
+  // S._twistViewFired is transient (not persisted), so it resets each app open.
+  if (!S._twistViewFired && window.plausible) {
+    S._twistViewFired = true;
+    plausible('twist_of_day_view', { props: { topic: topic ? topic.id : 'na' } });
+  }
   const parts = splitTwist(text);
   const tag = topic ? `<span class="q-tag ${sectionTag(topic.mcat)}">${sectionIcon(topic.mcat)}${topic.disp}</span>` : '';
   const body = parts.exam ? `
