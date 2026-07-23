@@ -4266,13 +4266,16 @@ function getDirectiveTopic() {
   // Prefer a retention nudge (covered topic not seen in 21+ days)
   const nudge = getRetentionNudge();
   if (nudge) return { topic: nudge.topic, days: nudge.days, reason: 'retention' };
-  // Otherwise suggest the highest-weight covered topic not dismissed today
+  // Otherwise prefer a topic from a course you're TAKING right now (learn it at MCAT
+  // depth while you're in the class), then fall back to highest-weight covered topic.
   const today = isoDate();
+  const inProg = c => S.courseStatus[c] === 'in-progress' ? 1 : 0;
   const candidates = TOPICS
     .filter(t => t.course && S.courses.has(t.course) && S.nudgeDismissed[t.id] !== today)
-    .sort((a, b) => b.w - a.w);
+    .sort((a, b) => (inProg(b.course) - inProg(a.course)) || (b.w - a.w));
   if (candidates.length === 0) return null;
-  return { topic: candidates[0], days: null, reason: 'drill' };
+  const top = candidates[0];
+  return { topic: top, days: null, reason: inProg(top.course) ? 'in-progress' : 'drill' };
 }
 
 function weeksAgo(days) {
@@ -4783,7 +4786,11 @@ function splitTwist(text) {
 // topics the student has already covered; falls back to a teaser if none yet.
 function getDailyTwist() {
   const covered = new Set(TOPICS.filter(t => t.course === null || (t.course && S.courses.has(t.course))).map(t => t.id));
-  let pool = QUESTIONS.filter(q => covered.has(q.topic) && twistTextFor(q));
+  // Prefer twists from a class you're TAKING now — but only if there's enough variety
+  // there to avoid daily repeats; otherwise draw from everything you've covered.
+  const inProg = new Set(TOPICS.filter(t => t.course && S.courses.has(t.course) && S.courseStatus[t.course] === 'in-progress').map(t => t.id));
+  let pool = QUESTIONS.filter(q => inProg.has(q.topic) && twistTextFor(q));
+  if (pool.length < 5) pool = QUESTIONS.filter(q => covered.has(q.topic) && twistTextFor(q));
   const teaser = pool.length === 0;
   if (teaser) pool = QUESTIONS.filter(q => twistTextFor(q));
   if (!pool.length) return null;
@@ -4793,6 +4800,32 @@ function getDailyTwist() {
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   const q = pool[h % pool.length];
   return { q, topic: TOPICS.find(t => t.id === q.topic), text: twistTextFor(q), teaser };
+}
+
+// ── "FINISH THIS CLASS TO CLAIM +X%" ──────────────────────────────────────────
+// A course you're taking counts partial credit; this surfaces the unclaimed rest as
+// a forward hook — marking the course done makes the coverage % jump.
+function inProgressClaim() {
+  return COURSES
+    .filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress')
+    .map(c => {
+      const full = TOPICS.filter(t => t.course === c.id).reduce((s, t) => s + t.w, 0);
+      return { course: c, delta: Math.round(full * (1 - IN_PROGRESS_CREDIT)) };
+    })
+    .filter(x => x.delta > 0)
+    .sort((a, b) => b.delta - a.delta);
+}
+
+function claimHTML() {
+  const items = inProgressClaim();
+  if (!items.length) return '';
+  const top = items[0];
+  const more = items.length > 1 ? ` <span style="color:#555B70;">(+${items.length - 1} more in progress)</span>` : '';
+  return `
+      <button onclick="go('courses')" style="width:100%;text-align:left;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.22);border-radius:12px;padding:13px 16px;margin-bottom:20px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
+        <div style="font-size:10px;font-weight:700;color:#F5B36A;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">In progress</div>
+        <p style="font-size:13px;color:#B0B5C8;line-height:1.5;margin:0;">You're taking <strong style="color:#F0F2F8;">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:#F5B36A;">+${top.delta}%</strong> coverage →</p>
+      </button>`;
 }
 
 function dailyTwistHTML() {
@@ -4893,11 +4926,13 @@ function screenBrief() {
   if (directive) {
     const t = directive.topic;
     const courseInProgress = t.course && S.courseStatus[t.course] === 'in-progress';
-    const copy = courseInProgress && directive.reason === 'retention'
-      ? `You're covering ${t.name} right now — drill a quick question while it's fresh.`
-      : directive.reason === 'retention'
-        ? `${t.name} is ${t.w}% of the exam — you covered it ${weeksAgo(directive.days)}. Most premeds won't revisit this until test prep. Staying sharp now is the edge.`
-        : `${t.name} is ${t.w}% of the exam. Do this now — every session turns a class you've already taken into MCAT points you keep.`;
+    const copy = directive.reason === 'in-progress'
+      ? `You're taking ${t.name} in class right now — learn it at MCAT depth while it's fresh, and it's review by test prep.`
+      : courseInProgress && directive.reason === 'retention'
+        ? `You're covering ${t.name} right now — drill a quick question while it's fresh.`
+        : directive.reason === 'retention'
+          ? `${t.name} is ${t.w}% of the exam — you covered it ${weeksAgo(directive.days)}. Most premeds won't revisit this until test prep. Staying sharp now is the edge.`
+          : `${t.name} is ${t.w}% of the exam. Do this now — every session turns a class you've already taken into MCAT points you keep.`;
     directiveHTML = `
       <div style="background:linear-gradient(135deg,rgba(29,158,117,0.14),rgba(29,158,117,0.04));border:1px solid rgba(29,158,117,0.32);border-radius:14px;padding:18px 18px 16px;margin-bottom:24px;">
         <div style="font-size:10px;font-weight:800;color:#1D9E75;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Do this now</div>
@@ -4998,6 +5033,8 @@ function screenBrief() {
 
       ${denomNote}
       ${benchSentence ? `<p style="font-size:12px;color:#555B70;margin:-16px 0 20px;line-height:1.5;">${benchSentence}</p>` : ''}
+
+      ${claimHTML()}
 
       ${dailyTwistHTML()}
 
