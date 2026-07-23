@@ -1072,6 +1072,27 @@ const COURSES = [
   { id:'soc',    name:'Sociology',             section:'Social Sciences' },
 ];
 
+// Med-school admission requirement vs. MCAT-content, grounded in the standard premed
+// prereqs (Bio/GenChem/Orgo/Physics + labs, English, math/stats required; Biochem
+// strongly recommended & increasingly required; Psych/Soc MCAT-tested, rarely required).
+const COURSE_REQ = {
+  bio1:'required', bio2:'required', gc1:'required', gc2:'required',
+  oc1:'required', oc2:'required', ph1:'required', ph2:'required',
+  biochem:'recommended', stats:'recommended', psych:'mcat', soc:'mcat',
+};
+const REQ_META = {
+  required:    { short:'Required',    color:'#4DE3AB', bg:'rgba(29,158,117,0.14)' },
+  recommended: { short:'Recommended', color:'#F5B36A', bg:'rgba(245,179,106,0.16)' },
+  mcat:        { short:'MCAT-tested', color:'#A78BFA', bg:'rgba(139,92,246,0.16)' },
+};
+function courseReqNote(id) {
+  if (id === 'biochem') return 'Strongly recommended and increasingly required — finish it before the MCAT (it\'s heavily tested).';
+  if (id === 'stats')   return 'Meets the math/statistics requirement at many schools, and builds MCAT data-reasoning skills.';
+  if (COURSE_REQ[id] === 'required') return 'Required (with lab) by most med schools — and MCAT content.';
+  if (COURSE_REQ[id] === 'mcat')     return 'MCAT-tested content, but not usually a med-school admission requirement.';
+  return '';
+}
+
 // Typical premed course set by year — used to compute benchmark coverage
 // Grounded in the standard premed course sequence (Gen Chem + Bio yr1; Orgo +
 // Psych/Soc yr2; Physics + Biochem yr3; all prereqs before the junior-spring MCAT).
@@ -5257,7 +5278,9 @@ function courseTopicsBreakdown(courseId) {
   }
   const total = ts.reduce((s, t) => s + t.w, 0);
   const rows = ts.map(t => `<div style="display:flex;justify-content:space-between;font-size:12px;color:#8A90A8;padding:2px 0;"><span>${t.name}</span><strong style="color:#C0C4D8;font-weight:600;">${t.w}%</strong></div>`).join('');
-  return `${rows}<div style="display:flex;justify-content:space-between;font-size:12px;color:#4DE3AB;font-weight:700;border-top:1px solid rgba(255,255,255,0.08);margin-top:5px;padding-top:5px;"><span>${ts.length > 1 ? 'Together' : 'On the MCAT'}</span><span>${total}% of the MCAT</span></div>`;
+  const note = courseReqNote(courseId);
+  const noteHTML = note ? `<p style="font-size:11px;color:#6B7185;line-height:1.5;margin-top:8px;">${note}</p>` : '';
+  return `${rows}<div style="display:flex;justify-content:space-between;font-size:12px;color:#4DE3AB;font-weight:700;border-top:1px solid rgba(255,255,255,0.08);margin-top:5px;padding-top:5px;"><span>${ts.length > 1 ? 'Together' : 'On the MCAT'}</span><span>${total}% of the MCAT</span></div>${noteHTML}`;
 }
 
 function toggleCourseExpand(courseId) {
@@ -5339,7 +5362,16 @@ function screenCourses() {
       </button>
       <p class="label">Your courses</p>
       <h2>What are you taking?</h2>
-      <p style="font-size:14px;color:#555B70;margin:6px 0 16px;">Mark each course as <strong style="color:#4DE3AB;">Taking</strong> (in progress) or <strong style="color:#C8F0E0;">Done</strong> (completed).</p>
+      <p style="font-size:14px;color:#555B70;margin:6px 0 12px;">Mark each course as <strong style="color:#4DE3AB;">Taking</strong> (in progress) or <strong style="color:#C8F0E0;">Done</strong> (completed).</p>
+      <details style="margin-bottom:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:11px 14px;">
+        <summary style="cursor:pointer;font-size:13px;color:#8A90A8;font-weight:600;list-style:none;-webkit-tap-highlight-color:transparent;">Which classes do I actually need?</summary>
+        <div style="font-size:12px;color:#6B7185;line-height:1.6;margin-top:11px;">
+          <p style="margin:0 0 8px;"><strong style="color:#4DE3AB;">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
+          <p style="margin:0 0 8px;"><strong style="color:#F5B36A;">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
+          <p style="margin:0;"><strong style="color:#A78BFA;">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
+          <p style="font-size:11px;color:#3A4060;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
+        </div>
+      </details>
       <div class="courses-scroll" style="padding-bottom:80px;">
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
@@ -5356,6 +5388,7 @@ function screenCourses() {
               <button type="button" class="course-name-btn" onclick="toggleCourseExpand('${c.id}')" title="See the MCAT topics this course covers">
                 <svg class="chev${(S._expandedCourses && S._expandedCourses.has(c.id)) ? ' open' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
                 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</span>
+                ${(() => { const m = REQ_META[COURSE_REQ[c.id]]; return m ? `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;color:${m.color};background:${m.bg};padding:2px 6px;border-radius:6px;flex-shrink:0;white-space:nowrap;">${m.short}</span>` : ''; })()}
               </button>
               <div style="display:flex;gap:5px;flex-shrink:0;">
                 <button type="button" class="csb${status === 'in-progress' ? ' csb-ip' : ''}" onclick="setCourseState('${c.id}','in-progress')">${status === 'in-progress' ? '<span class="pulse-dot"></span>' : ''}Taking</button>
