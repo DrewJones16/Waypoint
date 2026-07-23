@@ -953,6 +953,17 @@
     .tab-bar { display: none; }
     #app.has-tabbar .screen { padding-bottom: 48px; }
   }
+  /* Course→topic breakdown (expandable rows + breakdown screen) */
+  .course-name-btn { display:flex; align-items:center; gap:8px; background:none; border:none; cursor:pointer; color:#E0E3EE; font-family:inherit; font-size:14px; text-align:left; padding:0; min-width:0; flex:1; -webkit-tap-highlight-color:transparent; }
+  .course-name-btn .chev { color:#555B70; transition:transform 0.18s ease; flex-shrink:0; }
+  .course-name-btn .chev.open { transform:rotate(90deg); color:#8A90A8; }
+  .course-name-btn:hover .chev { color:#8A90A8; }
+  .course-topics-panel { margin:-2px 8px 9px; padding:9px 13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; }
+  .bd-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .bd-row:last-child { border-bottom:none; }
+  .bd-name { font-size:13px; color:#C0C4D8; display:flex; align-items:center; gap:8px; min-width:0; }
+  .bd-mark { width:16px; height:16px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
+  .bd-w { font-size:13px; font-weight:600; flex-shrink:0; }
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://plausible.io/js/pa-UBHkY0Tyi1miYukuXz21K.js"></script>
@@ -5033,6 +5044,7 @@ function screenBrief() {
 
       ${denomNote}
       ${benchSentence ? `<p style="font-size:12px;color:#555B70;margin:-16px 0 20px;line-height:1.5;">${benchSentence}</p>` : ''}
+      ${cov > 0 ? `<button onclick="go('breakdown')" style="background:none;border:none;color:#2DB88A;font-size:12px;font-weight:600;cursor:pointer;padding:0 0 4px;margin:-12px 0 18px;display:block;text-align:left;-webkit-tap-highlight-color:transparent;">See how this adds up →</button>` : ''}
 
       ${claimHTML()}
 
@@ -5227,6 +5239,85 @@ function screenYear() {
     </div>`;
 }
 
+// Topic breakdown for one course (used in the expandable course rows).
+function courseTopicsBreakdown(courseId) {
+  const ts = TOPICS.filter(t => t.course === courseId);
+  if (!ts.length) {
+    return `<p style="font-size:12px;color:#555B70;line-height:1.55;margin:0;">This course's MCAT content is counted under the intro course in its sequence, so it adds 0% on its own.</p>`;
+  }
+  const total = ts.reduce((s, t) => s + t.w, 0);
+  const rows = ts.map(t => `<div style="display:flex;justify-content:space-between;font-size:12px;color:#8A90A8;padding:2px 0;"><span>${t.name}</span><strong style="color:#C0C4D8;font-weight:600;">${t.w}%</strong></div>`).join('');
+  return `${rows}<div style="display:flex;justify-content:space-between;font-size:12px;color:#4DE3AB;font-weight:700;border-top:1px solid rgba(255,255,255,0.08);margin-top:5px;padding-top:5px;"><span>${ts.length > 1 ? 'Together' : 'On the MCAT'}</span><span>${total}% of the MCAT</span></div>`;
+}
+
+function toggleCourseExpand(courseId) {
+  if (!S._expandedCourses) S._expandedCourses = new Set();
+  if (S._expandedCourses.has(courseId)) S._expandedCourses.delete(courseId);
+  else S._expandedCourses.add(courseId);
+  // Re-render preserving scroll (same as setCourseState)
+  const scroll = document.querySelector('.courses-scroll');
+  const scrollTop = scroll ? scroll.scrollTop : 0;
+  render();
+  requestAnimationFrame(() => {
+    const ns = document.querySelector('.courses-scroll');
+    if (ns) ns.scrollTop = scrollTop;
+  });
+}
+
+// A single authoritative "how your % is calculated" view.
+function screenBreakdown() {
+  const cov = coverage(S.courses, true);
+  const sections = MCAT_SECTIONS.map(sec => {
+    const ts = TOPICS.filter(t => t.mcat === sec.id);
+    const secTotal = ts.reduce((s, t) => s + t.w, 0);
+    const items = ts.map(t => {
+      let state = 'none';
+      if (t.id === 'cars') state = 'ongoing';
+      else if (t.course && S.courses.has(t.course)) state = S.courseStatus[t.course] === 'in-progress' ? 'partial' : 'done';
+      return { t, state };
+    });
+    const secCredited = items.reduce((s, i) => s + (i.state === 'done' ? i.t.w : i.state === 'partial' ? i.t.w * IN_PROGRESS_CREDIT : 0), 0);
+    return { sec, items, secTotal, secCredited: Math.round(secCredited) };
+  });
+  const mark = state =>
+    state === 'done'    ? `<span class="bd-mark" style="background:rgba(29,158,117,0.16);color:#4DE3AB;">✓</span>`
+    : state === 'partial' ? `<span class="bd-mark" style="background:rgba(245,179,106,0.16);color:#F5B36A;">½</span>`
+    : state === 'ongoing' ? `<span class="bd-mark" style="background:rgba(245,158,11,0.14);color:#F59E0B;">~</span>`
+    : `<span class="bd-mark" style="background:rgba(255,255,255,0.05);color:#3A4060;">·</span>`;
+  const wColor = state => state === 'done' ? '#4DE3AB' : state === 'partial' ? '#F5B36A' : state === 'ongoing' ? '#8A90A8' : '#555B70';
+
+  return `
+    <div class="screen">
+      <div class="brief-topbar">
+        <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          How your coverage adds up
+        </button>
+      </div>
+      <p style="font-size:13px;color:#6B7185;line-height:1.6;margin-bottom:20px;">Every course maps to official MCAT content areas. Here's exactly how your <strong style="color:#4DE3AB;">${cov}%</strong> is built — topic by topic, weighted the way the exam is.</p>
+
+      ${sections.map(({ sec, items, secTotal, secCredited }) => `
+        <div style="margin-bottom:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <span style="font-size:11px;font-weight:700;color:#8A90A8;text-transform:uppercase;letter-spacing:0.06em;">${sec.short}</span>
+            <span style="font-size:11px;color:#555B70;">${sec.id === 'cars' ? '21% · ongoing' : `${secCredited} / ${secTotal}%`}</span>
+          </div>
+          ${items.map(({ t, state }) => `
+            <div class="bd-row">
+              <span class="bd-name">${mark(state)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.name}</span></span>
+              <span class="bd-w" style="color:${wColor(state)};">${t.w}%</span>
+            </div>`).join('')}
+        </div>`).join('')}
+
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;margin-top:4px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#C0C4D8;margin-bottom:6px;"><span>Course content covered</span><strong style="color:#4DE3AB;">${cov}%</strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#555B70;"><span>Max from courses</span><span>79%</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#555B70;"><span>CARS — a reading skill built all along</span><span>21%</span></div>
+        <p style="font-size:11px;color:#3A4060;line-height:1.55;margin-top:10px;">✓ done · ½ taking now (counts half until you finish) · · not yet · ~ ongoing.</p>
+      </div>
+    </div>`;
+}
+
 function screenCourses() {
   const sections = [...new Set(COURSES.map(c => c.section))];
   return `
@@ -5250,13 +5341,17 @@ function screenCourses() {
           ${secCourses.map(c => {
             const status = S.courseStatus[c.id] || null;
             return `
-            <div class="course-row">
-              <span>${c.name}</span>
-              <div style="display:flex;gap:5px;">
+            <div class="course-row" style="align-items:center;">
+              <button type="button" class="course-name-btn" onclick="toggleCourseExpand('${c.id}')" title="See the MCAT topics this course covers">
+                <svg class="chev${(S._expandedCourses && S._expandedCourses.has(c.id)) ? ' open' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</span>
+              </button>
+              <div style="display:flex;gap:5px;flex-shrink:0;">
                 <button type="button" class="csb${status === 'in-progress' ? ' csb-ip' : ''}" onclick="setCourseState('${c.id}','in-progress')">${status === 'in-progress' ? '<span class="pulse-dot"></span>' : ''}Taking</button>
                 <button type="button" class="csb${status === 'completed' ? ' csb-done' : ''}" onclick="setCourseState('${c.id}','completed')">${status === 'completed' ? '✓ ' : ''}Done</button>
               </div>
-            </div>`;
+            </div>
+            ${(S._expandedCourses && S._expandedCourses.has(c.id)) ? `<div class="course-topics-panel">${courseTopicsBreakdown(c.id)}</div>` : ''}`;
           }).join('')}
         `;}).join('')}
       </div>
@@ -6275,7 +6370,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, breakdown:10 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -6346,6 +6441,7 @@ function render() {
     case 'question': html += screenQuestion(); break;
     case 'complete': html += screenComplete(); break;
     case 'settings': html += screenSettings(); break;
+    case 'breakdown': html += screenBreakdown(); break;
     case 'quicklog':          html += screenQuickLog();         break;
     case 'quicklog-subtopic': html += screenQuickLogSubtopic(); break;
     case 'quicklogdone':      html += screenQuickLogDone();     break;
