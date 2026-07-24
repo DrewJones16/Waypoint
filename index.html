@@ -5193,6 +5193,35 @@ function screenLanding() {
     </div>`;
 }
 
+function screenAbout() {
+  const para = (t) => `<p style="font-size:15px;color:#B8BCCE;line-height:1.75;margin:0 0 16px;">${t}</p>`;
+  return `
+    <div class="screen" style="padding-bottom:40px;">
+      <div class="brief-topbar">
+        <button onclick="go('settings')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          About
+        </button>
+      </div>
+
+      <h1 style="font-size:26px;font-weight:800;letter-spacing:-0.02em;color:#F0F2F8;margin-bottom:6px;">What is Waypoint?</h1>
+      <p style="font-size:13px;color:#555B70;margin-bottom:24px;">A note from the person who made it.</p>
+
+      ${para(`Hey — I'm Drew. I'm a sophomore and a neuroscience major, and I'm premed, just like you. I built Waypoint because I couldn't find the thing I needed, so I made it myself.`)}
+      ${para(`Here's the honest origin story. I wanted to start getting ready for the MCAT early — not cram, just build a real foundation while the material was actually in front of me in class. But everywhere I looked, the advice was the same: <em style="color:#8A90A8;">"It's too early. Wait until junior year."</em>`)}
+      ${para(`I understand why people say that — you shouldn't be grinding full-length practice exams as a sophomore. But "just wait" never sat right with me. I'm already taking Bio. I'm already taking Chem. That <strong style="color:#E0E3EE;">is</strong> MCAT material. It felt wrong to ignore an advantage sitting right in front of me — and I really believe that if I learn this stuff a little more deeply the first time, junior year becomes review instead of panic.`)}
+      ${para(`So Waypoint is the tool I wished existed.`)}
+      ${para(`It maps the classes you're already taking onto the MCAT, so you can see honestly how much of the exam your coursework already covers. It shows you how the MCAT will bend what your professor is teaching — because the exam tests the <em style="color:#C4B5FD;">consequence</em>, not just the definition — and it lets you practice that gap a few minutes at a time, on the exact topics you're in right now.`)}
+      ${para(`It's not a cram tool, and it's not trying to replace the big question banks you'll use junior year. It's for the two years <em style="color:#8A90A8;">before</em> that — the stretch where you're motivated but everyone tells you there's nothing to do yet. The goal is simple: by the time you open a prep book, a good chunk of it already feels familiar, and you never had to do a panic death-march to get there. Mostly, I want the whole thing to feel a little less scary and a little more in your control.`)}
+      ${para(`A few honest things, because trust matters to me. I'm a student, not a company. I build this between classes, EMT shifts, and my work as an RBT — it's a side project, not a startup trying to sell you anything. The coverage numbers come from the real AAMC exam weighting and a standard premed course sequence, and I say so plainly inside the app; they're a typical course load, not a survey of students. It's free, there's no account, and there's nothing to buy.`)}
+      ${para(`I just needed this to exist. I hope it helps.`)}
+
+      <p style="font-size:15px;color:#4DE3AB;font-weight:600;margin-top:4px;">— Drew</p>
+
+      <div style="margin-top:28px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#3A4060;line-height:1.6;">Free · no account · a premed side project. Built with care between shifts.</div>
+    </div>`;
+}
+
 function screenSettings() {
   const YEARS = [
     { val:'freshman',  label:'Freshman',           hint:'1st year'  },
@@ -5208,6 +5237,11 @@ function screenSettings() {
           Settings
         </button>
       </div>
+
+      <button onclick="go('about')" style="width:100%;text-align:left;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:14px 16px;margin-bottom:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:inherit;">
+        <span><span style="display:block;font-size:14px;font-weight:600;color:#F0F2F8;margin-bottom:2px;">What is Waypoint?</span><span style="font-size:12px;color:#6B7185;">Why I built it, and how it helps — from the maker.</span></span>
+        <span style="color:#1D9E75;font-size:18px;flex-shrink:0;">→</span>
+      </button>
 
       <p class="label" style="margin-bottom:6px;">Your year</p>
       <p style="font-size:13px;color:#555B70;line-height:1.55;margin-bottom:14px;">Sets your benchmark. Update it as you move through school.</p>
@@ -6425,7 +6459,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, breakdown:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, breakdown:10, about:10 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -6496,6 +6530,7 @@ function render() {
     case 'question': html += screenQuestion(); break;
     case 'complete': html += screenComplete(); break;
     case 'settings': html += screenSettings(); break;
+    case 'about': html += screenAbout(); break;
     case 'breakdown': html += screenBreakdown(); break;
     case 'quicklog':          html += screenQuickLog();         break;
     case 'quicklog-subtopic': html += screenQuickLogSubtopic(); break;
