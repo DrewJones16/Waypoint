@@ -1051,6 +1051,7 @@
 
   <div class="dt-foot">
     <div class="dt-foot-line">Your classes are <em>already</em> MCAT prep.</div>
+    <button onclick="openAbout()" style="background:none;border:none;color:#555B70;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:12px 0 0;text-align:left;-webkit-tap-highlight-color:transparent;">What is Waypoint? →</button>
   </div>
 </aside>
 
@@ -5189,18 +5190,21 @@ function screenLanding() {
       <button class="btn btn-primary" onclick="go('year')" style="font-size:15px;font-weight:600;letter-spacing:-0.01em;">See where you are →</button>
       <a href="https://form.typeform.com/to/YC2tTVYd" target="_blank" rel="noopener" class="btn btn-ghost" style="display:block;text-align:center;margin-top:10px;text-decoration:none;">Get notified about new features</a>
       <p style="text-align:center;font-size:12px;color:#333B52;margin-top:10px;">Free · no account · 2 minutes</p>
+      <button onclick="openAbout()" style="display:block;margin:14px auto 0;background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;">What is Waypoint? Why I built it →</button>
       <p style="text-align:center;font-size:11px;color:#2E3550;margin-top:22px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
     </div>`;
 }
+
+function openAbout() { S._aboutBack = S.screen; go('about'); }
 
 function screenAbout() {
   const para = (t) => `<p style="font-size:15px;color:#B8BCCE;line-height:1.75;margin:0 0 16px;">${t}</p>`;
   return `
     <div class="screen" style="padding-bottom:40px;">
       <div class="brief-topbar">
-        <button onclick="go('settings')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+        <button onclick="go(S._aboutBack || 'brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          About
+          Back
         </button>
       </div>
 
@@ -5238,7 +5242,7 @@ function screenSettings() {
         </button>
       </div>
 
-      <button onclick="go('about')" style="width:100%;text-align:left;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:14px 16px;margin-bottom:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:inherit;">
+      <button onclick="openAbout()" style="width:100%;text-align:left;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:14px 16px;margin-bottom:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:inherit;">
         <span><span style="display:block;font-size:14px;font-weight:600;color:#F0F2F8;margin-bottom:2px;">What is Waypoint?</span><span style="font-size:12px;color:#6B7185;">Why I built it, and how it helps — from the maker.</span></span>
         <span style="color:#1D9E75;font-size:18px;flex-shrink:0;">→</span>
       </button>
