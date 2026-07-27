@@ -5196,13 +5196,14 @@ function screenLanding() {
 }
 
 function openAbout() { S._aboutBack = S.screen; go('about'); }
+function backFromAbout() { go(S._aboutBack || 'brief'); }
 
 function screenAbout() {
   const para = (t) => `<p style="font-size:15px;color:#B8BCCE;line-height:1.75;margin:0 0 16px;">${t}</p>`;
   return `
     <div class="screen" style="padding-bottom:40px;">
       <div class="brief-topbar">
-        <button onclick="go(S._aboutBack || 'brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+        <button onclick="backFromAbout()" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Back
         </button>
