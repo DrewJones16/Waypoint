@@ -967,6 +967,12 @@
   .bd-name { font-size:13px; color:#C0C4D8; display:flex; align-items:center; gap:8px; min-width:0; }
   .bd-mark { width:16px; height:16px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
   .bd-w { font-size:13px; font-weight:600; flex-shrink:0; }
+  @keyframes ans-pop { 0% { transform: scale(1); } 45% { transform: scale(1.035); } 100% { transform: scale(1); } }
+  .ans-btn.picked { animation: ans-pop 0.18s cubic-bezier(0.22,1,0.36,1); }
+  .reveal-banner { display: flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 14px; }
+  .reveal-banner .rb-badge { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .reveal-banner.ok { color: #4DE3AB; } .reveal-banner.ok .rb-badge { background: rgba(29,158,117,0.18); }
+  .reveal-banner.no { color: #F08060; } .reveal-banner.no .rb-badge { background: rgba(216,90,48,0.16); }
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://plausible.io/js/pa-UBHkY0Tyi1miYukuXz21K.js"></script>
@@ -5531,12 +5537,14 @@ function screenQuestion() {
             if (i === q.ans) cls += ' correct';
             else if (i === S.answered) cls += ' wrong';
             else cls += ' dim';
+            if (i === S.answered) cls += ' picked'; // scale-pop the option they tapped
           }
           return `<button class="${cls}" ${answered ? 'disabled' : ''} onclick="answer(${i})">${'ABCD'[i]}.&nbsp;&nbsp;${opt}</button>`;
         }).join('')}
       </div>
 
       ${answered ? `
+        <div id="q-reveal" class="reveal-banner ${S.answered === q.ans ? 'ok' : 'no'}"><span class="rb-badge">${S.answered === q.ans ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F08060" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'}</span><span>${S.answered === q.ans ? 'Correct' : 'Not quite'}</span></div>
         <div class="explanation${S.answered !== q.ans ? ' wrong' : ''}">${q.exp}</div>
         ${TOPIC_SKILL[q.topic] ? `
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 14px;margin-bottom:16px;">
@@ -5959,6 +5967,11 @@ function answer(i) {
   S.qStats[q.id].last = correct ? 1 : 0; // most-recent outcome — powers recency weighting
 
   render();
+  // Bring the result + explanation into view so it's never below the fold.
+  requestAnimationFrame(() => {
+    const rv = document.getElementById('q-reveal');
+    if (rv && rv.scrollIntoView) rv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 }
 
 function next() {
