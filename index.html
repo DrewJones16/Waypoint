@@ -4157,6 +4157,31 @@ const S = {
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
 
+// Single source of truth for the keys Waypoint owns. Backup, restore and reset
+// all read from here (or from the wp_ prefix scan below), so a key added in a
+// future release is covered everywhere the moment it's listed.
+const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
+                 'wp_total','wp_history','wp_milestones','wp_cov_milestones',
+                 'wp_topic_last_seen','wp_nudge_dismissed'];
+
+// Keys whose value must be valid JSON. load() wipes everything if a parse throws,
+// so a restore validates these up front rather than discovering it after reload.
+const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_qstats','wp_history',
+                      'wp_milestones','wp_cov_milestones','wp_topic_last_seen','wp_nudge_dismissed'];
+
+// Discovered by prefix, not by list: a backup taken on a newer build that writes
+// keys this build has never heard of still round-trips them intact.
+function wpStorageKeys() {
+  const keys = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf('wp_') === 0) keys.push(k);
+    }
+  } catch(e) { /* storage unavailable — treat as empty */ }
+  return keys;
+}
+
 function save() {
   localStorage.setItem('wp_courses',       JSON.stringify([...S.courses]));
   localStorage.setItem('wp_course_status', JSON.stringify(S.courseStatus));
@@ -4173,6 +4198,7 @@ function save() {
 }
 
 function load() {
+  let migrated = false;
   try {
     const c = localStorage.getItem('wp_courses');
     if (c) S.courses = new Set(JSON.parse(c));
@@ -4182,6 +4208,7 @@ function load() {
     } else if (S.courses.size > 0) {
       // Migrate: treat all existing courses as 'completed'
       S.courses.forEach(id => { S.courseStatus[id] = 'completed'; });
+      migrated = true;
     }
     S.year     = localStorage.getItem('wp_year')     || null;
     S.streak   = parseInt(localStorage.getItem('wp_streak')   || '0', 10);
@@ -4206,14 +4233,135 @@ function load() {
       const diffDays = (new Date() - new Date(S.lastDate)) / 86400000;
       if (diffDays > 1.5) S.streak = 0;
     }
+
+    // Persist a back-filled migration immediately, so a backup taken before the
+    // user's next action is a complete snapshot rather than a partial one.
+    if (migrated) save();
   } catch(e) {
     // Corrupted or unparseable localStorage — wipe all Waypoint keys and start fresh.
     // Silent recovery: new users see the landing screen, not an error.
     console.warn('[Waypoint] load() failed — resetting localStorage:', e);
-    ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
-     'wp_total','wp_history','wp_milestones','wp_cov_milestones',
-     'wp_topic_last_seen','wp_nudge_dismissed'].forEach(k => localStorage.removeItem(k));
+    WP_KEYS.forEach(k => localStorage.removeItem(k));
   }
+}
+
+// ── BACKUP & RESTORE ──────────────────────────────────────────────────────────
+// Also the serializer cloud sync will reuse later: one JSON envelope that
+// captures the whole account, independent of how any single key is shaped.
+
+const BACKUP_FORMAT = 1;
+
+// Values are kept as the raw strings localStorage holds — never re-parsed and
+// re-stringified — so a backup restores byte-for-byte on any build.
+function serializeState() {
+  const data = {};
+  wpStorageKeys().forEach(k => {
+    const v = localStorage.getItem(k);
+    if (v !== null) data[k] = v;
+  });
+  return { app: 'waypoint', format: BACKUP_FORMAT, exportedAt: new Date().toISOString(), data: data };
+}
+
+// Returns {ok:true, count} or {ok:false, message}. Never throws, never leaves
+// storage half-written: everything is validated before anything is removed.
+function applyBackup(raw) {
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch(e) { return { ok:false, message:'That file isn\'t readable. Pick the .json file Waypoint downloaded.' }; }
+
+  const data = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed.data : null;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return { ok:false, message:'That doesn\'t look like a Waypoint backup.' };
+  }
+
+  const keys = Object.keys(data).filter(k => k.indexOf('wp_') === 0);
+  if (keys.length === 0) {
+    return { ok:false, message:'No Waypoint data in that file — nothing to restore.' };
+  }
+
+  const clean = {};
+  for (const k of keys) {
+    const v = data[k];
+    if (v === null || v === undefined) continue;
+    // Tolerate a hand-edited file that stored objects instead of strings.
+    clean[k] = (typeof v === 'string') ? v : JSON.stringify(v);
+
+    if (WP_JSON_KEYS.indexOf(k) !== -1) {
+      let val;
+      try { val = JSON.parse(clean[k]); }
+      catch(e) { return { ok:false, message:'That backup is damaged and can\'t be restored safely.' }; }
+      // wp_courses feeds new Set(...) on load — a non-array would throw and wipe.
+      if (k === 'wp_courses' && !Array.isArray(val)) {
+        return { ok:false, message:'That backup is damaged and can\'t be restored safely.' };
+      }
+    }
+  }
+
+  const rollback = serializeState();
+  try {
+    wpStorageKeys().forEach(k => localStorage.removeItem(k));
+    Object.keys(clean).forEach(k => localStorage.setItem(k, clean[k]));
+  } catch(e) {
+    // Put back exactly what was there. A failed restore never costs existing data.
+    try {
+      wpStorageKeys().forEach(k => localStorage.removeItem(k));
+      Object.keys(rollback.data).forEach(k => localStorage.setItem(k, rollback.data[k]));
+    } catch(e2) { console.error('[Waypoint] rollback failed:', e2); }
+    return { ok:false, message:'Your browser wouldn\'t accept the write — storage may be full. Nothing was changed.' };
+  }
+  return { ok:true, count: Object.keys(clean).length };
+}
+
+function downloadBackup() {
+  try {
+    const blob = new Blob([JSON.stringify(serializeState(), null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'waypoint-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    backupStatus('Backup downloaded. Keep it somewhere you\'ll find it again.', 'ok');
+    if (window.plausible) plausible('backup_export');
+  } catch(e) {
+    console.warn('[Waypoint] export failed:', e);
+    backupStatus('Couldn\'t create the file. Try again, or use a different browser.', 'err');
+  }
+}
+
+function restoreBackup(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const res = applyBackup(String(reader.result));
+    if (res.ok) {
+      if (window.plausible) plausible('backup_import');
+      backupStatus('Restored ' + res.count + ' item' + (res.count !== 1 ? 's' : '') + '. Reloading…', 'ok');
+      setTimeout(() => window.location.reload(), 700);
+    } else {
+      backupStatus(res.message, 'err');
+      input.value = ''; // so the same file can be picked again after a fix
+    }
+  };
+  reader.onerror = () => {
+    backupStatus('Couldn\'t read that file. Try downloading a fresh backup.', 'err');
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function backupStatus(msg, kind) {
+  const el = document.getElementById('backup-status');
+  if (!el) return;
+  const err = kind === 'err';
+  el.textContent = msg;
+  el.style.display     = 'block';
+  el.style.color       = err ? '#F4B48A' : '#4DE3AB';
+  el.style.background  = err ? 'rgba(194,98,42,0.1)'   : 'rgba(29,158,117,0.1)';
+  el.style.borderColor = err ? 'rgba(244,180,138,0.2)' : 'rgba(29,158,117,0.2)';
 }
 
 // ── LOGIC ─────────────────────────────────────────────────────────────────────
@@ -5271,8 +5419,21 @@ function screenSettings() {
 
       <div class="section-divider"></div>
 
+      <p class="label" style="margin-bottom:6px;">Your data</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:14px;">Your route lives in this browser. A backup file is how you carry it — to a new phone, a new laptop, or back after a browser cleanup.</p>
+
+      <div id="backup-status" role="status" style="display:none;font-size:13px;line-height:1.5;border:1px solid transparent;border-radius:10px;padding:11px 14px;margin-bottom:12px;"></div>
+
+      <button class="btn btn-primary" onclick="downloadBackup()">Back up my data</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('wp-restore-file').click()">Restore from backup</button>
+      <input type="file" id="wp-restore-file" accept="application/json,.json"
+             style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
+             onchange="restoreBackup(this)">
+
+      <div class="section-divider"></div>
+
       <p class="label" style="margin-bottom:6px;">Reset</p>
-      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:14px;">Clear your courses, streak, and all practice history. This can't be undone.</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:14px;">Clear your courses, streak, and all practice history. This can't be undone — back up first if you want a copy.</p>
       <button class="btn btn-ghost" onclick="resetProgress()">Start fresh</button>
 
       <p style="text-align:center;font-size:11px;color:#767E96;margin-top:28px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool, not affiliated with or endorsed by the AAMC.</p>
@@ -5288,9 +5449,7 @@ function setYearFromSettings(year) {
 
 function resetProgress() {
   if (!confirm("Start fresh? This clears your courses, streak, and all practice history. This can't be undone.")) return;
-  ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
-   'wp_total','wp_history','wp_milestones','wp_cov_milestones',
-   'wp_topic_last_seen','wp_nudge_dismissed'].forEach(k => localStorage.removeItem(k));
+  wpStorageKeys().forEach(k => localStorage.removeItem(k));
   if (window.plausible) plausible('reset_progress');
   window.location.reload();
 }
@@ -5827,9 +5986,8 @@ function screenQuickLogDone() {
 }
 
 function screenError() {
-  const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
-                   'wp_total','wp_history','wp_milestones','wp_cov_milestones',
-                   'wp_topic_last_seen','wp_nudge_dismissed'];
+  // Reset is inlined rather than calling a helper: this screen has to work even
+  // when something else in the app is broken.
   const el = document.getElementById('app');
   if (!el) return;
   el.innerHTML = `
