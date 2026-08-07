@@ -4268,6 +4268,8 @@ const S = {
   semPrompt: null,    // 'dismissed' once the user has waved off the semester-start ask
   midterm:   null,    // { courseId, subIds:[...], date:'YYYY-MM-DD' } — active Midterm Mode plan
   mtDraft:   null,    // transient: the plan being built on the Midterm setup screen
+  briefs:    [],      // [{weekStart, coverage, totalAnswered, ...}] — Sunday Brief snapshots
+  briefSeen: null,    // weekStart of the most recently dismissed brief
 };
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
@@ -4278,7 +4280,7 @@ const S = {
 const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
-                 'wp_midterm','wp_updated_at'];
+                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen'];
 
 // The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
 // files (which users share and store) and out of the cloud payload. It is
@@ -4289,7 +4291,7 @@ const AUTH_KEY = 'waypoint_auth';
 // so a restore validates these up front rather than discovering it after reload.
 const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_qstats','wp_history',
                       'wp_milestones','wp_cov_milestones','wp_topic_last_seen','wp_nudge_dismissed',
-                      'wp_midterm'];
+                      'wp_midterm','wp_briefs'];
 
 // Discovered by prefix, not by list: a backup taken on a newer build that writes
 // keys this build has never heard of still round-trips them intact.
@@ -4321,6 +4323,8 @@ function save() {
   localStorage.setItem('wp_sem_prompt', S.semPrompt || '');
   if (S.midterm) localStorage.setItem('wp_midterm', JSON.stringify(S.midterm));
   else localStorage.removeItem('wp_midterm');
+  localStorage.setItem('wp_briefs', JSON.stringify(S.briefs.slice(-12)));
+  localStorage.setItem('wp_brief_seen', S.briefSeen || '');
   // Stamp every write so cloud sync can tell which side is newer. Harmless and
   // inert when logged out; schedulePush() returns immediately without a session.
   localStorage.setItem('wp_updated_at', new Date().toISOString());
@@ -4360,6 +4364,9 @@ function load() {
     // Semester Sync — absent for every existing user, which simply means "not asked yet".
     S.semStart  = localStorage.getItem('wp_sem_start')  || null;
     S.semPrompt = localStorage.getItem('wp_sem_prompt') || null;
+    const br = localStorage.getItem('wp_briefs');
+    if (br) { const p = JSON.parse(br); if (Array.isArray(p)) S.briefs = p; }
+    S.briefSeen = localStorage.getItem('wp_brief_seen') || null;
     const mt = localStorage.getItem('wp_midterm');
     if (mt) {
       const parsed = JSON.parse(mt);
@@ -5430,6 +5437,184 @@ function semesterCardHTML() {
     </div>`;
 }
 
+// ── SUNDAY BRIEF ──────────────────────────────────────────────────────────────
+// One honest weekly read, shown Sunday and Monday: what moved, what's weakest,
+// and exactly one thing to do next. A quiet week is a normal week — the copy
+// never implies the student let anyone down.
+
+// Lifetime correct answers, derived from wp_qstats rather than stored — so it's
+// already accurate for every existing user with no migration.
+function lifetimeCorrect() {
+  return Object.keys(S.qStats).reduce((n, k) => n + ((S.qStats[k] && S.qStats[k].right) || 0), 0);
+}
+
+// Sunday that starts the week containing `now`, as YYYY-MM-DD (UTC-normalized).
+function weekStartISO(now = new Date()) {
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d.toISOString().slice(0, 10);
+}
+
+// Weakest topic the student has actually attempted, among courses on their route.
+// Needs a few attempts before calling anything weak — two misses isn't a verdict.
+function weakestTopic(minAttempts = 3) {
+  const onRoute = new Set(TOPICS.filter(t => !t.course || S.courses.has(t.course)).map(t => t.id));
+  const byTopic = {};
+  QUESTIONS.forEach(q => {
+    const st = S.qStats[q.id];
+    if (!st || !onRoute.has(q.topic)) return;
+    if (!byTopic[q.topic]) byTopic[q.topic] = { right: 0, wrong: 0 };
+    byTopic[q.topic].right += st.right;
+    byTopic[q.topic].wrong += st.wrong;
+  });
+  let worst = null;
+  Object.entries(byTopic).forEach(([id, st]) => {
+    const n = st.right + st.wrong;
+    if (n < minAttempts) return;
+    const acc = st.right / n;
+    if (!worst || acc < worst.accuracy) {
+      worst = { topic: TOPICS.find(t => t.id === id), accuracy: acc, attempts: n };
+    }
+  });
+  return worst && worst.topic ? worst : null;
+}
+
+// The single next action. Prefers shoring up a genuine weak spot, then a topic
+// from a class in progress, then the heaviest topic on the route.
+function briefAction() {
+  const weak = weakestTopic();
+  if (weak && weak.accuracy < 0.7) {
+    return { topic: weak.topic, subId: null,
+             text: `Five questions on ${weak.topic.name}. You're at ${Math.round(weak.accuracy * 100)}% there — it's the fastest point you can pick up this week.` };
+  }
+  const wk = thisWeekUnits()[0];
+  if (wk) {
+    return { topic: wk.topic, subId: wk.subId,
+             text: `Five questions on ${wk.subLabel}. It's what ${wk.courseName} is covering now, so it's the cheapest it will ever be to learn.` };
+  }
+  const onRoute = TOPICS.filter(t => t.course && S.courses.has(t.course))
+                        .sort((a, b) => b.w - a.w);
+  if (onRoute.length) {
+    const t = onRoute[0];
+    return { topic: t, subId: null,
+             text: `Five questions on ${t.name}. At ${t.w}% of the exam, it's the biggest single block on your route.` };
+  }
+  return null;
+}
+
+// Numbers come from snapshots, not inference: each brief records coverage and
+// lifetime totals, so the following week's deltas are exact rather than derived
+// from sessionHistory (which only keeps the last 7 sessions).
+function buildBrief(now = new Date()) {
+  const weekStart = weekStartISO(now);
+  const prior = S.briefs.filter(b => b && b.weekStart && b.weekStart < weekStart).slice(-1)[0] || null;
+  const cov = coverage(S.courses, true);
+
+  let answered, correct;
+  if (prior && typeof prior.totalAnswered === 'number') {
+    answered = Math.max(0, S.totalAnswered - prior.totalAnswered);
+    correct  = Math.max(0, lifetimeCorrect() - (prior.lifetimeCorrect || 0));
+  } else {
+    // First brief: fall back to whatever sessions are still in history.
+    const since = new Date(now.getTime() - 7 * 86400000);
+    const recent = S.sessionHistory.filter(h => { const d = new Date(h.date); return !isNaN(d) && d >= since; });
+    answered = recent.reduce((n, h) => n + (h.total || 0), 0);
+    correct  = recent.reduce((n, h) => n + (h.correct || 0), 0);
+  }
+
+  return {
+    weekStart,
+    coverage: cov,
+    coverageDelta: prior ? cov - (prior.coverage || 0) : 0,
+    answered, correct,
+    accuracy: answered > 0 ? Math.round(correct / answered * 100) : null,
+    streak: S.streak,
+    totalAnswered: S.totalAnswered,
+    lifetimeCorrect: lifetimeCorrect(),
+    weakest: weakestTopic(),
+    action: briefAction(),
+    quiet: answered === 0,
+    hasPrior: !!prior,
+  };
+}
+
+// Sunday and Monday only, and only once the student has a route to report on.
+function shouldShowBrief(now = new Date()) {
+  const day = now.getDay();
+  if (day !== 0 && day !== 1) return false;
+  if (S.courses.size === 0) return false;
+  return S.briefSeen !== weekStartISO(now);
+}
+
+function dismissBrief() {
+  const b = buildBrief();
+  S.briefSeen = b.weekStart;
+  // Record the snapshot so next week's deltas are exact. One row per week.
+  S.briefs = S.briefs.filter(x => x && x.weekStart !== b.weekStart);
+  S.briefs.push({ weekStart: b.weekStart, coverage: b.coverage, totalAnswered: b.totalAnswered,
+                  lifetimeCorrect: b.lifetimeCorrect, answered: b.answered, correct: b.correct,
+                  streak: b.streak });
+  save();   // syncs to the account automatically — briefs live in the wp_* payload
+  if (window.plausible) plausible('brief_dismissed');
+  render();
+}
+
+function briefActionStart(topicId, subId) {
+  dismissBrief();
+  if (subId) startWeekDrill(topicId, subId); else startQuickLog(topicId, null);
+  if (S.quickLog) S.quickLog.streakEligible = true;
+}
+
+function briefCardHTML() {
+  if (!shouldShowBrief()) return '';
+  const b = buildBrief();
+  const stat = (v, label) => `
+    <div style="flex:1;min-width:0;">
+      <div class="disp" style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1;">${v}</div>
+      <div style="font-size:10px;color:#767E96;margin-top:3px;letter-spacing:0.02em;">${label}</div>
+    </div>`;
+
+  const headline = b.quiet
+    ? 'A light week — here\'s the one thing.'
+    : `You answered ${b.answered} question${b.answered !== 1 ? 's' : ''} this week.`;
+
+  const sub = b.quiet
+    ? 'Some weeks belong to everything else. Your route is exactly where you left it, and one short session puts you back in motion.'
+    : b.coverageDelta > 0
+      ? `Coverage is up ${b.coverageDelta} point${b.coverageDelta !== 1 ? 's' : ''} — that's MCAT ground you now own.`
+      : b.accuracy !== null
+        ? `${b.accuracy}% correct. Every miss you fix now is a point you don't lose on test day.`
+        : 'Your route is holding steady.';
+
+  return `
+    <div style="background:linear-gradient(135deg,rgba(29,158,117,0.13),rgba(29,158,117,0.03));border:1px solid rgba(29,158,117,0.3);border-radius:14px;padding:16px 18px;margin-bottom:22px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;">
+        <div style="font-size:10px;font-weight:800;color:#4DE3AB;text-transform:uppercase;letter-spacing:0.1em;">Your week</div>
+        <!-- Padding + matching negative margin: a comfortable 44px hit area without
+             changing how the header sits. -->
+        <button style="background:none;border:none;font-size:11px;color:#767E96;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;min-height:44px;padding:0 8px;margin:-15px -8px;-webkit-tap-highlight-color:transparent;" onclick="dismissBrief()">Dismiss</button>
+      </div>
+      <div style="font-size:17px;font-weight:700;color:#F0F2F8;line-height:1.3;margin-bottom:5px;">${headline}</div>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 14px;">${sub}</p>
+
+      <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:14px;">
+        ${stat(b.coverage + '%', 'covered')}
+        ${stat(b.answered, 'this week')}
+        ${stat(b.streak, b.streak === 1 ? 'day streak' : 'day streak')}
+      </div>
+
+      ${b.weakest && !b.quiet ? `<p style="font-size:12px;color:#767E96;line-height:1.55;margin:0 0 12px;">Weakest right now: <strong style="color:#B0B5C8;">${b.weakest.topic.name}</strong> at ${Math.round(b.weakest.accuracy * 100)}% across ${b.weakest.attempts} question${b.weakest.attempts !== 1 ? 's' : ''}.</p>` : ''}
+
+      ${b.action ? `
+        <div style="font-size:10px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">This week, do this one thing</div>
+        <p style="font-size:13px;color:#B0B5C8;line-height:1.55;margin:0 0 12px;">${b.action.text}</p>
+        <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;"
+                onclick="briefActionStart('${b.action.topic.id}', ${b.action.subId ? `'${b.action.subId}'` : 'null'})">Start →</button>
+      ` : `
+        <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;" onclick="go('courses')">Add a course to your route</button>`}
+    </div>`;
+}
+
 // ── MIDTERM MODE ──────────────────────────────────────────────────────────────
 // A real exam is the moment a premed will actually study. Midterm Mode meets them
 // there: pick the course, the units the exam covers, and the date, and Waypoint
@@ -5848,10 +6033,13 @@ function screenBrief() {
   // An imminent exam outranks the week feed — that's what they're actually
   // studying for. Both cards stand down anything that would repeat them.
   const midtermHTML  = midtermCardHTML();
+  const briefHTML    = briefCardHTML();
   const semesterHTML = semesterCardHTML();
   const semesterTopicIds = new Set(thisWeekUnits().map(u => u.topic.id));
   const mtPlan = midtermPlan();
   if (mtPlan && mtPlan.today) semesterTopicIds.add(mtPlan.today.topicId);
+  // The brief already names one thing to do — don't follow it with another.
+  if (briefHTML) { const a = briefAction(); if (a) semesterTopicIds.add(a.topic.id); }
 
   let directiveHTML = '';
   const directive = getDirectiveTopic();
@@ -5930,6 +6118,7 @@ function screenBrief() {
       </div>
 
       ${midtermHTML}
+      ${briefHTML}
       ${semesterHTML}
       ${directiveHTML}
       ${midtermHTML ? '' : `
