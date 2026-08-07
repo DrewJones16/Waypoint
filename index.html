@@ -4278,7 +4278,12 @@ const S = {
 const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
-                 'wp_midterm'];
+                 'wp_midterm','wp_updated_at'];
+
+// The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
+// files (which users share and store) and out of the cloud payload. It is
+// credentials, not progress.
+const AUTH_KEY = 'waypoint_auth';
 
 // Keys whose value must be valid JSON. load() wipes everything if a parse throws,
 // so a restore validates these up front rather than discovering it after reload.
@@ -4316,6 +4321,10 @@ function save() {
   localStorage.setItem('wp_sem_prompt', S.semPrompt || '');
   if (S.midterm) localStorage.setItem('wp_midterm', JSON.stringify(S.midterm));
   else localStorage.removeItem('wp_midterm');
+  // Stamp every write so cloud sync can tell which side is newer. Harmless and
+  // inert when logged out; schedulePush() returns immediately without a session.
+  localStorage.setItem('wp_updated_at', new Date().toISOString());
+  schedulePush();
 }
 
 function load() {
@@ -4492,6 +4501,174 @@ function backupStatus(msg, kind) {
   el.style.color       = err ? '#F4B48A' : '#4DE3AB';
   el.style.background  = err ? 'rgba(194,98,42,0.1)'   : 'rgba(29,158,117,0.1)';
   el.style.borderColor = err ? 'rgba(244,180,138,0.2)' : 'rgba(29,158,117,0.2)';
+}
+
+// ── ACCOUNTS & CLOUD SYNC ─────────────────────────────────────────────────────
+// Local-first and strictly additive. Waypoint works exactly as before with no
+// account; signing in mirrors the same wp_* JSON that Task 1's backup produces,
+// so there is one serializer and one writer for every path data can travel.
+// Signing out clears credentials only — never the student's progress.
+
+const SUPABASE_URL = 'https://xaldfseldfqctmplfpfu.supabase.co';
+// Publishable anon key. Safe to ship: it is protected by row-level security,
+// which restricts every row in user_state to its own auth.uid().
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhbGRmc2VsZGZxY3RtcGxmcGZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNjI5MjMsImV4cCI6MjEwMTYzODkyM30.7536ZuABjA5kvBxgEmgtHZj1rpHPQnrms4hE2UhP0U8';
+
+let syncState = { status: 'idle', message: '' }; // drives the Settings UI only
+let pushTimer = null;
+
+function authSession() {
+  try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    return (s && s.access_token && s.refresh_token) ? s : null;
+  } catch(e) { return null; }
+}
+
+function setAuthSession(s) {
+  if (!s) { localStorage.removeItem(AUTH_KEY); return; }
+  localStorage.setItem(AUTH_KEY, JSON.stringify(s));
+}
+
+function sbHeaders(token) {
+  return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + (token || SUPABASE_ANON),
+           'Content-Type': 'application/json' };
+}
+
+// Access tokens are short-lived; swap a stale one for a fresh pair before use.
+// Returns a valid access token, or null if the session can't be revived.
+async function freshToken() {
+  const s = authSession();
+  if (!s) return null;
+  if (s.expires_at && Date.now() < s.expires_at - 60000) return s.access_token;
+  try {
+    const r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST', headers: sbHeaders(), body: JSON.stringify({ refresh_token: s.refresh_token })
+    });
+    if (!r.ok) { setAuthSession(null); return null; }
+    const j = await r.json();
+    setAuthSession({ access_token: j.access_token, refresh_token: j.refresh_token,
+                     expires_at: Date.now() + (j.expires_in || 3600) * 1000,
+                     email: (j.user && j.user.email) || s.email,
+                     user_id: (j.user && j.user.id) || s.user_id });
+    return j.access_token;
+  } catch(e) { return null; }
+}
+
+async function sendMagicLink(email) {
+  email = (email || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    syncState = { status: 'error', message: "That doesn't look like an email address." };
+    return render();
+  }
+  syncState = { status: 'working', message: 'Sending your link…' };
+  render();
+  try {
+    const redirect = location.origin + location.pathname;
+    const r = await fetch(SUPABASE_URL + '/auth/v1/otp?redirect_to=' + encodeURIComponent(redirect), {
+      method: 'POST', headers: sbHeaders(), body: JSON.stringify({ email, create_user: true })
+    });
+    if (!r.ok) {
+      console.warn('[Waypoint] magic link failed:', await r.text());
+      syncState = { status: 'error', message: "Couldn't send that link. Check the address and try again." };
+    } else {
+      syncState = { status: 'sent', message: 'Check ' + email + ' — the link signs you in.' };
+      if (window.plausible) plausible('auth_link_sent');
+    }
+  } catch(e) {
+    syncState = { status: 'error', message: "Couldn't reach the server. Your progress is safe on this device." };
+  }
+  render();
+}
+
+// Supabase returns tokens in the URL fragment. Consume them, then scrub the URL
+// so tokens never sit in history or travel in a copied link.
+function captureAuthRedirect() {
+  // Guarded so the file can still be evaluated outside a browser (validate.mjs).
+  if (typeof location === 'undefined' || typeof history === 'undefined') return false;
+  if (!location.hash || location.hash.indexOf('access_token=') === -1) return false;
+  const p = new URLSearchParams(location.hash.slice(1));
+  const access = p.get('access_token'), refresh = p.get('refresh_token');
+  if (!access || !refresh) return false;
+  let email = null, userId = null;
+  try {
+    const claims = JSON.parse(atob(access.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    email = claims.email || null; userId = claims.sub || null;
+  } catch(e) {}
+  setAuthSession({ access_token: access, refresh_token: refresh,
+                   expires_at: Date.now() + parseInt(p.get('expires_in') || '3600', 10) * 1000,
+                   email, user_id: userId });
+  history.replaceState(null, '', location.pathname + location.search);
+  if (window.plausible) plausible('auth_signed_in');
+  return true;
+}
+
+async function pullCloud() {
+  const token = await freshToken();
+  if (!token) return null;
+  try {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/user_state?select=data,updated_at', { headers: sbHeaders(token) });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return (Array.isArray(rows) && rows.length) ? rows[0] : { data: null, updated_at: null };
+  } catch(e) { return null; }
+}
+
+async function pushCloud() {
+  const token = await freshToken();
+  const s = authSession();
+  if (!token || !s || !s.user_id) return false;
+  try {
+    const body = { user_id: s.user_id, data: serializeState().data, updated_at: new Date().toISOString() };
+    const r = await fetch(SUPABASE_URL + '/rest/v1/user_state?on_conflict=user_id', {
+      method: 'POST',
+      headers: { ...sbHeaders(token), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(body)
+    });
+    if (r.ok) { syncState = { status: 'synced', message: 'Saved to your account.' }; return true; }
+    console.warn('[Waypoint] push failed:', await r.text());
+    return false;
+  } catch(e) { return false; }
+}
+
+function schedulePush() {
+  if (!authSession()) return;             // logged out: completely inert
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { pushCloud(); }, 2000);
+}
+
+// Last-write-wins. If the cloud copy is newer than this device's, adopt it using
+// the same validated writer a restored backup uses; otherwise publish local.
+async function syncOnLoad() {
+  if (!authSession()) return;
+  const cloud = await pullCloud();
+  if (!cloud) { syncState = { status: 'idle', message: '' }; return render(); }
+
+  const localTs = localStorage.getItem('wp_updated_at') || '';
+  const cloudTs = cloud.updated_at || '';
+  const cloudHasData = cloud.data && Object.keys(cloud.data).length > 0;
+
+  if (cloudHasData && cloudTs > localTs) {
+    const res = applyBackup(JSON.stringify({ data: cloud.data }));
+    if (res.ok) {
+      localStorage.setItem('wp_updated_at', cloudTs);
+      // Reload so every screen rebuilds from the adopted state. Can't loop: local
+      // now carries the cloud's timestamp, so this branch won't retrigger.
+      location.reload();
+      return;
+    }
+  }
+  await pushCloud();
+  render();
+}
+
+function signOut() {
+  setAuthSession(null);
+  clearTimeout(pushTimer);
+  syncState = { status: 'idle', message: '' };
+  if (window.plausible) plausible('auth_signed_out');
+  render();   // progress stays exactly where it is — only credentials were cleared
 }
 
 // ── LOGIC ─────────────────────────────────────────────────────────────────────
@@ -5969,6 +6146,10 @@ function screenSettings() {
 
       <div class="section-divider"></div>
 
+      ${accountSectionHTML()}
+
+      <div class="section-divider"></div>
+
       <p class="label" style="margin-bottom:6px;">Semester</p>
       ${S.semStart ? `
         <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:14px;">Started ${S.semStart}${semesterWeek() ? ` — you're in week ${semesterWeek()}` : ''}. Home leads with what your classes typically cover this week.</p>
@@ -6004,6 +6185,33 @@ function screenSettings() {
 
       <p style="text-align:center;font-size:11px;color:#767E96;margin-top:28px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool, not affiliated with or endorsed by the AAMC.</p>
     </div>`;
+}
+
+function accountSectionHTML() {
+  const s = authSession();
+  const tone = syncState.status === 'error' ? '#F4B48A'
+             : syncState.status === 'sent'  ? '#A78BFA' : '#4DE3AB';
+  const note = syncState.message
+    ? `<p style="font-size:12px;color:${tone};line-height:1.55;margin:-4px 0 12px;">${syncState.message}</p>` : '';
+
+  if (s) {
+    return `
+      <p class="label" style="margin-bottom:6px;">Your account</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:10px;">Signed in as <strong style="color:#F0F2F8;">${s.email || 'your account'}</strong>. Your route syncs to every device you sign in on.</p>
+      ${note}
+      <button class="btn btn-ghost" onclick="signOut()">Sign out</button>
+      <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:8px;">Signing out leaves everything on this device untouched.</p>`;
+  }
+
+  return `
+    <p class="label" style="margin-bottom:6px;">Save your progress</p>
+    <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Your junior-year self will want this record. Add an email and Waypoint keeps your route safe across devices — no password to remember.</p>
+    ${note}
+    <input type="email" id="auth-email" placeholder="you@school.edu" autocomplete="email"
+           style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:10px;">
+    <button class="btn btn-primary" ${syncState.status === 'working' ? 'disabled' : ''}
+            onclick="sendMagicLink(document.getElementById('auth-email').value)">Email me a sign-in link</button>
+    <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:8px;">Optional — Waypoint works fully without an account, exactly as it does now.</p>`;
 }
 
 function setYearFromSettings(year) {
@@ -7379,12 +7587,28 @@ window.onunhandledrejection = function(event) {
   screenError();
 };
 
+// Consume any magic-link tokens before load(), so the first render already knows
+// the user is signed in. Wrapped: a malformed redirect must never block startup.
+try { captureAuthRedirect(); } catch(e) { console.warn('[Waypoint] auth redirect ignored:', e); }
+
 load();
 // Route: returning user with session history → brief; returning without history → reveal; new user → landing
 if (S.courses.size > 0) {
   S.screen = S.sessionHistory.length > 0 ? 'brief' : 'reveal';
   if (window.plausible) plausible('app_open');
 }
+// Sync is queued here but runs after the first paint, since render() below is
+// synchronous. Failures are swallowed on purpose: an offline or broken sync must
+// leave the local app fully usable, and must never reach onunhandledrejection
+// and throw up the error screen. Kept above render() so validate.mjs — which
+// strips a trailing render() call to evaluate this file in Node — still works.
+if (typeof setTimeout !== 'undefined') {
+  setTimeout(() => {
+    try { Promise.resolve(syncOnLoad()).catch(e => console.warn('[Waypoint] sync skipped:', e)); }
+    catch(e) { console.warn('[Waypoint] sync skipped:', e); }
+  }, 0);
+}
+
 render();
 </script>
 </body>
