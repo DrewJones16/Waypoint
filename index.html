@@ -5000,47 +5000,7 @@ function journeyPathSvg() {
   </svg></div>`;
 }
 
-// ── BRIEF SCREEN HELPERS ──────────────────────────────────────────────────────
 
-function getWelcomeHeadline() {
-  // Self-referential only — Waypoint measures you against your own progress, not
-  // against other students or a benchmark.
-  const streak  = S.streak;
-  const history = S.sessionHistory;
-  if (streak === 0 && history.length > 0) return 'Pick up where you left off.';
-  if (streak <= 1 && history.length <= 1) return 'Day one. Your route starts here.';
-  if (streak === 2)  return 'Day 2. The habit is forming.';
-  if (streak === 3)  return 'Day 3. Three sessions in.';
-  if (streak === 4)  return 'Day 4. This is what consistent looks like.';
-  if (streak === 5)  return 'Day 5. Five days of compounding.';
-  if (streak === 6)  return 'Day 6. Momentum is real now.';
-  if (streak === 7)  return "One week straight. That's real.";
-  if (streak === 14) return 'Two weeks in. This is a routine now.';
-  if (streak === 30) return 'Day 30. A month of steady progress.';
-  if (streak > 30)   return `Day ${streak}. Still going.`;
-  return `Day ${streak}. Keep it rolling.`;
-}
-
-function getTrendInsight(history) {
-  if (history.length < 2) return '';
-  const last  = history[history.length - 1];
-  const prev  = history[history.length - 2];
-  const lastR = last.total  > 0 ? last.correct  / last.total  : 0;
-  const prevR = prev.total  > 0 ? prev.correct  / prev.total  : 0;
-  const lastP = Math.round(lastR * 100);
-
-  if (history.length >= 3) {
-    const avg = history.slice(-3).reduce((s, h) => s + (h.total > 0 ? h.correct / h.total : 0), 0) / 3;
-    const avgP = Math.round(avg * 100);
-    if (lastR > prevR + 0.15) return `Accuracy trending up — ${lastP}% last session.`;
-    if (lastR < prevR - 0.15) return `Tougher session last time. That's exactly what builds retention.`;
-    return `Consistent at ${avgP}% over your last 3 sessions.`;
-  }
-  if (lastR === 1)  return 'Perfect last session. Let\'s see if it holds.';
-  if (lastR >= 0.8) return `Strong last session — ${lastP}% accuracy.`;
-  if (lastR >= 0.6) return `${lastP}% last session. The hard ones build the most.`;
-  return 'Tough last session. Today\'s a new one.';
-}
 
 const MILESTONES = [
   { at: 10,  text: '10 questions in. You\'re already ahead of where most classmates start.' },
@@ -5112,17 +5072,6 @@ function getTopicInsight() {
     </div>`;
 }
 
-function getMilestone() {
-  const hit = MILESTONES.filter(m => S.totalAnswered >= m.at && !S.milestonesShown[m.at]);
-  if (!hit.length) return '';
-  const m = hit[hit.length - 1]; // highest unseen milestone
-  S.milestonesShown[m.at] = true;
-  save();
-  return `<div style="background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.3);border-radius:10px;padding:13px 16px;margin-bottom:16px;">
-    <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Milestone</div>
-    <p style="font-size:14px;color:#4DE3AB;line-height:1.5;">${m.text}</p>
-  </div>`;
-}
 
 function sectionTag(mcat) {
   const map = { bb:'tag-bb', cp:'tag-cp', ps:'tag-ps', cars:'tag-cars' };
@@ -5385,69 +5334,6 @@ function clearSemesterStart() {
   render();
 }
 
-function semesterCardHTML() {
-  // The ask — one date input, dismissible, never nags again once answered.
-  if (shouldAskSemesterStart()) {
-    const guess = isoDate(new Date(Date.now() - 21 * 86400000)); // sensible default: 3 weeks ago
-    return `
-      <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(167,139,250,0.28);border-radius:14px;padding:16px 18px;margin-bottom:20px;">
-        <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Semester Sync</div>
-        <div style="font-size:16px;font-weight:700;color:#F0F2F8;line-height:1.3;margin-bottom:6px;">When did your semester start?</div>
-        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 12px;">Then Waypoint can lead with what your class is covering this week — and show you the MCAT version of it.</p>
-        <input type="date" id="sem-start-input" value="${guess}" max="${isoDate()}"
-               style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:10px;">
-        <button class="btn btn-primary" style="margin:0;padding:11px 18px;font-size:14px;"
-                onclick="saveSemesterStart(document.getElementById('sem-start-input').value)">Sync my semester</button>
-        <button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;display:block;width:100%;text-align:center;margin-top:8px;padding:4px 0;-webkit-tap-highlight-color:transparent;"
-                onclick="dismissSemesterPrompt()">Not now</button>
-      </div>`;
-  }
-
-  const week  = semesterWeek();
-  if (week === null) return '';
-  if (week === 0) {
-    return `
-      <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:14px;padding:14px 18px;margin-bottom:20px;">
-        <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Semester Sync</div>
-        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0;">Your semester hasn't started yet. Week-by-week guidance turns on the day it does.</p>
-      </div>`;
-  }
-
-  const units = thisWeekUnits(week);
-  if (!units.length) {
-    // Past the table, or no in-progress course with pacing — stay quiet rather than
-    // inventing a week. The rest of Home still has plenty to offer.
-    if (week > SEMESTER_WEEKS) {
-      return `
-        <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:14px;padding:14px 18px;margin-bottom:20px;">
-          <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Semester Sync</div>
-          <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 10px;">That's week ${week} — your semester's wrapped. Mark your courses done, and start a new sync when the next term begins.</p>
-          <button style="background:none;border:none;font-size:13px;color:#A78BFA;cursor:pointer;padding:2px 0;font-family:inherit;font-weight:600;-webkit-tap-highlight-color:transparent;" onclick="clearSemesterStart()">Start a new semester →</button>
-        </div>`;
-    }
-    return '';
-  }
-
-  const rows = units.map(u => `
-    <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid rgba(255,255,255,0.06);">
-      <span style="flex:1;min-width:0;">
-        <span style="display:block;font-size:11px;color:#767E96;margin-bottom:2px;">${u.courseName}</span>
-        <span style="display:block;font-size:15px;font-weight:600;color:#F0F2F8;line-height:1.25;">${u.subLabel}</span>
-      </span>
-      <button class="btn btn-primary" style="margin:0;padding:13px 16px;font-size:13px;width:auto;flex-shrink:0;min-height:44px;"
-              onclick="startWeekDrill('${u.topic.id}', '${u.subId}')">Drill →</button>
-    </div>`).join('');
-
-  return `
-    <div style="background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(139,92,246,0.03));border:1px solid rgba(167,139,250,0.28);border-radius:14px;padding:16px 18px 8px;margin-bottom:22px;">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px;">
-        <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;">This week in class</div>
-        <div style="font-size:11px;color:#767E96;flex-shrink:0;">Week ${week}</div>
-      </div>
-      <p style="font-size:12px;color:#767E96;line-height:1.5;margin:0 0 4px;">What your ${units.length > 1 ? 'classes are' : 'class is'} typically covering now — learn it at MCAT depth while it's fresh.</p>
-      ${rows}
-    </div>`;
-}
 
 // ── SUNDAY BRIEF ──────────────────────────────────────────────────────────────
 // One honest weekly read, shown Sunday and Monday: what moved, what's weakest,
@@ -5762,52 +5648,6 @@ function startMidtermDrill(topicId, subId) {
   if (window.plausible) plausible('midterm_drill_start');
 }
 
-function midtermCardHTML() {
-  const plan = midtermPlan();
-  if (!plan) return '';
-
-  if (plan.past) {
-    return `
-      <div style="background:rgba(245,179,106,0.07);border:1px solid rgba(245,179,106,0.24);border-radius:14px;padding:15px 18px;margin-bottom:20px;">
-        <div style="font-size:10px;font-weight:800;color:#F5B36A;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Midterm Mode</div>
-        <p style="font-size:14px;color:#F0F2F8;line-height:1.5;margin:0 0 6px;font-weight:600;">Your ${plan.courseName} exam has passed.</p>
-        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 12px;">However it went, that material is still on the MCAT — and you're ahead on it now.</p>
-        <button class="btn btn-primary" style="margin:0;padding:11px 18px;font-size:14px;" onclick="startMidtermSetup()">Set up the next one</button>
-        <button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;display:block;width:100%;text-align:center;margin-top:8px;padding:4px 0;-webkit-tap-highlight-color:transparent;" onclick="clearMidterm()">Clear</button>
-      </div>`;
-  }
-
-  const u = plan.today;
-  const tw = unitTwist(u);
-  const when = plan.days === 0 ? 'is today'
-             : plan.days === 1 ? 'is tomorrow'
-             : `is in ${plan.days} days`;
-  const remaining = plan.schedule.length;
-
-  return `
-    <div style="background:linear-gradient(135deg,rgba(245,179,106,0.13),rgba(245,179,106,0.03));border:1px solid rgba(245,179,106,0.3);border-radius:14px;padding:16px 18px;margin-bottom:22px;">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;">
-        <div style="font-size:10px;font-weight:800;color:#F5B36A;text-transform:uppercase;letter-spacing:0.1em;">Midterm Mode</div>
-        <div style="font-size:11px;color:#767E96;flex-shrink:0;">${remaining} day${remaining !== 1 ? 's' : ''} of prep</div>
-      </div>
-      <div style="font-size:16px;font-weight:700;color:#F0F2F8;line-height:1.3;margin-bottom:10px;">Your ${plan.courseName} exam ${when}.</div>
-
-      <div style="background:rgba(0,0,0,0.22);border-radius:10px;padding:12px 14px;margin-bottom:12px;">
-        <div style="font-size:10px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Today</div>
-        <div style="font-size:15px;font-weight:600;color:#F0F2F8;line-height:1.3;">${u.label}</div>
-        ${tw ? `
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);">
-            <p style="font-size:12px;color:#8A93A8;line-height:1.55;margin:0 0 5px;"><strong style="color:#B0B5C8;">Your professor:</strong> ${tw.cls}</p>
-            <p style="font-size:12px;color:#8A93A8;line-height:1.55;margin:0;"><strong style="color:#A78BFA;">The MCAT:</strong> ${tw.exam}</p>
-          </div>` : ''}
-      </div>
-
-      <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;"
-              onclick="startMidtermDrill('${u.topicId}', '${u.subId}')">Drill ${u.label} →</button>
-      <button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;display:block;width:100%;text-align:center;margin-top:8px;padding:4px 0;-webkit-tap-highlight-color:transparent;"
-              onclick="startMidtermSetup()">Edit plan</button>
-    </div>`;
-}
 
 function screenMidterm() {
   const d = S.mtDraft || { courseId: null, subIds: [], date: '' };
@@ -6031,85 +5871,87 @@ function landingTwistHTML() {
       </div>`;
 }
 
-function screenBrief() {
-  const wc        = wrongCount();
-  const cov       = coverage(S.courses, true);
-  const total     = S.totalAnswered;
-  const history   = S.sessionHistory;
+// ── TODAY ─────────────────────────────────────────────────────────────────────
+// Home answers exactly one question: what should I do right now? Four systems
+// used to each render their own card and a suppression pass decided who won —
+// which meant the user had to arbitrate between them. Now one priority ladder
+// decides before render, and only the winner is drawn.
+//
+//   Sunday Brief (Sun/Mon) → exam within 14 days → this week in class
+//   → retention decay → coverage gap → cold start
+//
+// Everything retrospective — ring, section bars, sparkline, staying sharp,
+// milestones, claim, Twist of the Day — lives on Route.
 
-  const headline  = getWelcomeHeadline();
-  const trendText = getTrendInsight(history);
-  const milestone = getMilestone();
-  // Semester Sync leads. If it already points at the same topic, the directive
-  // card would just say the same thing twice — so it stands down.
-  // An imminent exam outranks the week feed — that's what they're actually
-  // studying for. Both cards stand down anything that would repeat them.
-  const midtermHTML  = midtermCardHTML();
-  const briefHTML    = briefCardHTML();
-  const semesterHTML = semesterCardHTML();
-  const semesterTopicIds = new Set(thisWeekUnits().map(u => u.topic.id));
-  const mtPlan = midtermPlan();
-  if (mtPlan && mtPlan.today) semesterTopicIds.add(mtPlan.today.topicId);
-  // The brief already names one thing to do — don't follow it with another.
-  if (briefHTML) { const a = briefAction(); if (a) semesterTopicIds.add(a.topic.id); }
+function todayPick() {
+  const mt = midtermPlan();
+  if (mt && !mt.past && mt.days <= 14 && mt.today) {
+    return { label: 'Before your exam', accent: '#F5B36A',
+             title: `5 questions on ${mt.today.label}`,
+             reason: mt.days === 0 ? `Your ${mt.courseName} exam is today.`
+                   : mt.days === 1 ? `Your ${mt.courseName} exam is tomorrow.`
+                   : `Your ${mt.courseName} exam is in ${mt.days} days.`,
+             onclick: `startMidtermDrill('${mt.today.topicId}', '${mt.today.subId}')` };
+  }
 
-  let directiveHTML = '';
-  const directive = getDirectiveTopic();
-  if (directive && semesterTopicIds.has(directive.topic.id)) {
-    directiveHTML = '';
-  } else if (directive) {
-    const t = directive.topic;
-    const courseInProgress = t.course && S.courseStatus[t.course] === 'in-progress';
-    const copy = directive.reason === 'in-progress'
-      ? `You're taking ${t.name} in class right now — learn it at MCAT depth while it's fresh, and it's review by test prep.`
-      : courseInProgress && directive.reason === 'retention'
-        ? `You're covering ${t.name} right now — drill a quick question while it's fresh.`
-        : directive.reason === 'retention'
-          ? `${t.name} is ${t.w}% of the exam — you covered it ${weeksAgo(directive.days)}. Most premeds won't revisit this until test prep. Staying sharp now is the edge.`
-          : `${t.name} is ${t.w}% of the exam. Do this now — every session turns a class you've already taken into MCAT points you keep.`;
-    directiveHTML = `
-      <div style="background:linear-gradient(135deg,rgba(29,158,117,0.14),rgba(29,158,117,0.04));border:1px solid rgba(29,158,117,0.32);border-radius:14px;padding:18px 18px 16px;margin-bottom:24px;">
+  const wk = thisWeekUnits()[0];
+  if (wk) {
+    return { label: 'This week in class', accent: '#A78BFA',
+             title: `5 questions on ${wk.subLabel}`,
+             reason: `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
+             onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')` };
+  }
+
+  const d = getDirectiveTopic();
+  if (d) {
+    const t = d.topic;
+    const reason = d.reason === 'retention'   ? `You covered it ${weeksAgo(d.days)}.`
+                 : d.reason === 'in-progress' ? `You're taking it in class right now.`
+                 : `${t.w}% of the exam.`;
+    return { label: 'Do this now', accent: '#1D9E75',
+             title: `5 questions on ${t.name}`, reason,
+             onclick: `startQuickLog('${t.id}', null)` };
+  }
+  return null;
+}
+
+function todayCardHTML() {
+  // The weekly read owns the slot on Sunday and Monday — still one card, one action.
+  const brief = briefCardHTML();
+  if (brief) return brief;
+
+  if (S.courses.size === 0) {
+    return `
+      <div style="background:linear-gradient(135deg,rgba(29,158,117,0.14),rgba(29,158,117,0.04));border:1px solid rgba(29,158,117,0.32);border-radius:14px;padding:18px;margin-bottom:18px;">
+        <div style="font-size:10px;font-weight:800;color:#8A93A8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Start here</div>
+        <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.25;margin-bottom:8px;">Add the classes you're taking</div>
+        <p style="font-size:13px;color:#767E96;line-height:1.55;margin:0 0 14px;">That's all it takes to see your route.</p>
+        <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;" onclick="go('courses')">Choose my courses →</button>
+      </div>`;
+  }
+
+  const p = todayPick();
+  if (!p) {
+    return `
+      <div style="background:linear-gradient(135deg,rgba(29,158,117,0.14),rgba(29,158,117,0.04));border:1px solid rgba(29,158,117,0.32);border-radius:14px;padding:18px;margin-bottom:18px;">
         <div style="font-size:10px;font-weight:800;color:#8A93A8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Do this now</div>
-        <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.2;margin-bottom:8px;">5 questions on ${t.name}</div>
-        <p style="font-size:13px;color:#767E96;line-height:1.55;margin:0 0 14px;">${copy}</p>
-        <button class="btn btn-primary" style="padding:10px 18px;font-size:14px;margin:0;" onclick="startQuickLog('${t.id}', null)">Start →</button>
-        <button style="background:none;border:none;font-size:13px;color:#2DB88A;cursor:pointer;display:block;width:100%;text-align:left;margin-top:12px;padding:4px 0;-webkit-tap-highlight-color:transparent;" onclick="go('quicklog')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Study what's on my syllabus this week →</button>
-        <button style="background:none;border:none;font-size:12px;color:#8A93A8;cursor:pointer;display:block;width:100%;text-align:center;margin-top:6px;padding:2px 0;" onclick="dismissNudge('${t.id}')">Skip for now</button>
+        <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.25;margin-bottom:8px;">A session from what you know</div>
+        <p style="font-size:13px;color:#767E96;line-height:1.55;margin:0 0 14px;">Drawn from the courses on your route.</p>
+        <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;" onclick="startSession()">Start →</button>
       </div>`;
   }
 
-  // SVG ring
-  const r = 46, circ = Math.round(2 * Math.PI * r);
-  const offset = Math.round(circ * (1 - cov / 100));
-
-  // Courses map to 79% of the exam; CARS is the other 21% — a skill, not a topic to unlock.
-  const denomNote = cov > 0
-    ? `<p style="font-size:13px;color:#767E96;margin-top:-14px;margin-bottom:20px;line-height:1.55;">You've covered <strong style="color:#8A90A8;">${cov}%</strong> of the MCAT so far — and climbing. <span style="color:#8A93A8;">Your courses map to 79% of the exam; the other 21% is CARS — a reading skill you build in every session, not a topic to unlock.</span></p>`
-    : '';
-
-  // Body card
-  let bodyCard;
-  if (wc >= 2) {
-    bodyCard = `<div style="background:rgba(194,98,42,0.1);border:1px solid rgba(244,180,138,0.2);border-radius:10px;padding:13px 16px;margin-bottom:20px;">
-      <div style="font-size:10px;font-weight:700;color:#F08060;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;">Unfinished business</div>
-      <p style="font-size:14px;color:#B0B5C8;line-height:1.5;"><strong style="color:#F0F2F8;">${wc} questions</strong> from your history still need a rematch. Today's session starts with them.</p>
+  return `
+    <div style="background:linear-gradient(135deg,${p.accent}22,${p.accent}08);border:1px solid ${p.accent}55;border-radius:14px;padding:18px;margin-bottom:18px;">
+      <div style="font-size:10px;font-weight:800;color:${p.accent};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">${p.label}</div>
+      <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.25;margin-bottom:8px;">${p.title}</div>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 14px;">${p.reason}</p>
+      <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;" onclick="${p.onclick}">Start →</button>
     </div>`;
-  } else if (wc === 1) {
-    bodyCard = `<div style="background:rgba(194,98,42,0.1);border:1px solid rgba(244,180,138,0.2);border-radius:10px;padding:13px 16px;margin-bottom:20px;">
-      <div style="font-size:10px;font-weight:700;color:#F08060;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;">Unfinished business</div>
-      <p style="font-size:14px;color:#B0B5C8;line-height:1.5;"><strong style="color:#F0F2F8;">1 question</strong> from your history still needs a rematch. Let's settle it today.</p>
-    </div>`;
-  } else if (total > 0) {
-    const mastered = getMasteredTopic();
-    bodyCard = mastered ||
-      `<div style="background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.2);border-radius:10px;padding:13px 16px;margin-bottom:20px;">
-        <p style="font-size:14px;color:#4DE3AB;line-height:1.5;">History is clean — no wrong answers outstanding. Keep going.</p>
-      </div>`;
-  } else {
-    bodyCard = '';
-  }
+}
 
-  const hasTrend = trendText !== '';
+function screenBrief() {
+  const cov = coverage(S.courses, true);
   return `
     <div class="screen">
       <div class="brief-topbar">
@@ -6123,71 +5965,26 @@ function screenBrief() {
           </div>
           <span class="disp" style="font-size:14px;font-weight:600;color:#F0F2F8;">Waypoint</span>
         </button>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:none;border:none;cursor:pointer;padding:6px 2px;font-family:inherit;font-size:13px;font-weight:700;color:#4DE3AB;-webkit-tap-highlight-color:transparent;">${cov}%</button>` : ''}
           ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C2622A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size:13px;font-weight:600;color:#C2622A;">${S.streak}</span></div>` : ''}
-
         </div>
       </div>
 
-      ${midtermHTML}
-      ${briefHTML}
-      ${semesterHTML}
-      ${directiveHTML}
-      ${midtermHTML ? '' : `
-        <button style="width:100%;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.2);border-radius:12px;padding:13px 16px;margin-bottom:22px;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;-webkit-tap-highlight-color:transparent;"
-                onclick="startMidtermSetup()">
-          <span>
-            <span style="display:block;font-size:14px;font-weight:600;color:#F0F2F8;margin-bottom:2px;">Exam coming up?</span>
-            <span style="font-size:12px;color:#8A93A8;">Get a countdown plan — and the MCAT version of everything on it.</span>
-          </span>
-          <span style="color:#F5B36A;font-size:18px;flex-shrink:0;">→</span>
-        </button>`}
+      ${todayCardHTML()}
 
-      <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px;">
-        <div style="position:relative;flex-shrink:0;width:112px;height:112px;">
-          <svg width="112" height="112" viewBox="0 0 112 112" style="transform:rotate(-90deg);position:absolute;inset:0;">
-            <circle cx="56" cy="56" r="${r}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="9"/>
-            <circle cx="56" cy="56" r="${r}" fill="none" stroke="#1D9E75" stroke-width="9"
-              stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
-              stroke-linecap="round"
-              style="transition:stroke-dashoffset 1.4s cubic-bezier(0.2,0.8,0.4,1);filter:drop-shadow(0 0 7px rgba(29,158,117,0.55));"
-              data-target="${offset}"/>
-          </svg>
-          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-            <div class="disp" id="cov-num" data-count="${cov}" style="font-size:28px;font-weight:800;color:#F0F2F8;line-height:1;">${cov}%</div>
-            ${cov > 0 ? `<div style="font-size:9px;color:#767E96;margin-top:4px;letter-spacing:0.07em;text-transform:uppercase;">covered</div>` : ''}
-          </div>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <h2 style="font-size:20px;margin-bottom:4px;">${headline}</h2>
-          <p style="font-size:13px;color:#8A93A8;line-height:1.5;">${total > 0 ? `${total} question${total !== 1 ? 's' : ''} answered.` : 'Your first session is ready.'}</p>
-          ${hasTrend ? `<p style="font-size:12px;color:#8A93A8;margin-top:4px;line-height:1.5;">${trendText}</p>` : ''}
-        </div>
-      </div>
-
-      ${denomNote}
-      ${cov > 0 ? `<button onclick="go('breakdown')" style="background:none;border:none;color:#2DB88A;font-size:12px;font-weight:600;cursor:pointer;padding:0 0 4px;margin:-12px 0 18px;display:block;text-align:left;-webkit-tap-highlight-color:transparent;">See how this adds up →</button>` : ''}
-
-      ${claimHTML()}
-
-      ${dailyTwistHTML()}
-
-      <div class="section-divider"></div>
-
-      <p class="label" style="margin-bottom:6px;">Your edge so far</p>
-      ${sectionBarsHTML()}
-      ${stayingSharpHTML()}
-
-      ${history.length > 1 ? sparklineHTML(history) : ''}
-      ${milestone}
-
-      <div class="section-divider"></div>
-
-      ${bodyCard}
-
-      <button class="btn btn-primary" onclick="startSession()">Keep building the edge →</button>
+      <button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="go('quicklog')">Other things to study →</button>
+      ${(() => {
+        const mt = midtermPlan();
+        // A finished exam still counts as "no exam coming up" — otherwise a stale
+        // plan would hide the only way to set the next one.
+        if (mt && !mt.past) return '';
+        const label = (mt && mt.past) ? 'Set up your next exam →' : 'Exam coming up? →';
+        return `<button style="background:none;border:none;font-size:13px;color:#8A93A8;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${label}</button>`;
+      })()}
     </div>`;
 }
+
 
 function screenLanding() {
   return `
@@ -6617,24 +6414,17 @@ function screenReveal() {
   // ~42% = end of sophomore year (+ Bio II, Gen Chem II, Orgo I)
   // ~68% = end of junior year (+ Physics I, Biochem, Psych)
   // ~79% = max (all courses)
+  // One clause. The peer comparison earns its place on the first reveal, where
+  // it's genuinely new information — not on every visit.
   if (cov === 0) {
     headline = 'Your MCAT route.';
-    subhead  = 'Select your completed courses to see your coverage.';
-  } else if (cov < 15) {
-    headline = `${nCov} content area${nCov !== 1 ? 's' : ''} unlocked.`;
-    subhead  = `${cov}% covered — your route is just starting to fill in. Most classmates aren't thinking about this yet.`;
-  } else if (cov <= 22) {
-    headline = `${nCov} content areas unlocked.`;
-    subhead  = `${cov}% covered. That's about where most classmates finish freshman year. You have the whole route ahead.`;
-  } else if (cov <= 44) {
-    headline = `${nCov} content areas unlocked.`;
-    subhead  = `${cov}% covered — sophomore territory. Most classmates land around here by end of year 2.`;
-  } else if (cov <= 68) {
-    headline = `${nCov} content areas unlocked.`;
-    subhead  = `${cov}% covered. That's junior-year ground. Most classmates are still working through these courses right now.`;
+    subhead  = 'Add your courses to see your coverage.';
   } else {
-    headline = `${nCov} content areas unlocked.`;
-    subhead  = `${cov}% covered. Senior-year MCAT territory — you've built most of the content foundation.`;
+    headline = `${nCov} content area${nCov !== 1 ? 's' : ''} unlocked.`;
+    subhead  = cov <= 22 ? `${cov}% covered — freshman territory.`
+             : cov <= 44 ? `${cov}% covered — sophomore territory.`
+             : cov <= 68 ? `${cov}% covered — junior-year ground.`
+             :             `${cov}% covered — senior-year territory.`;
   }
 
   // Best single course to add next
@@ -6646,6 +6436,10 @@ function screenReveal() {
 
   const milestone = milestoneCopy();
 
+  // Coverage ring — moved here from Home so progress lives in exactly one place.
+  const ringR = 46, ringCirc = Math.round(2 * Math.PI * ringR);
+  const ringOffset = Math.round(ringCirc * (1 - cov / 100));
+
   return `
     <div class="screen">
       <p class="label">Your route</p>
@@ -6654,7 +6448,40 @@ function screenReveal() {
 
       ${milestone}
 
+      ${cov > 0 ? `
+        <div style="display:flex;align-items:center;gap:20px;margin:4px 0 22px;">
+          <div style="position:relative;flex-shrink:0;width:112px;height:112px;">
+            <svg width="112" height="112" viewBox="0 0 112 112" style="transform:rotate(-90deg);position:absolute;inset:0;">
+              <circle cx="56" cy="56" r="${ringR}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="9"/>
+              <circle cx="56" cy="56" r="${ringR}" fill="none" stroke="#1D9E75" stroke-width="9"
+                stroke-dasharray="${ringCirc}" stroke-dashoffset="${ringCirc}"
+                stroke-linecap="round"
+                style="transition:stroke-dashoffset 1.4s cubic-bezier(0.2,0.8,0.4,1);filter:drop-shadow(0 0 7px rgba(29,158,117,0.55));"
+                data-target="${ringOffset}"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div class="disp" id="cov-num" data-count="${cov}" style="font-size:28px;font-weight:800;color:#F0F2F8;line-height:1;">${cov}%</div>
+              <div style="font-size:9px;color:#767E96;margin-top:4px;letter-spacing:0.07em;text-transform:uppercase;">covered</div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:13px;color:#8A93A8;line-height:1.5;">${S.totalAnswered > 0 ? `${S.totalAnswered} question${S.totalAnswered !== 1 ? 's' : ''} answered.` : 'Your first session is ready.'}</p>
+            <button onclick="go('breakdown')" style="background:none;border:none;color:#2DB88A;font-size:12px;font-weight:600;cursor:pointer;padding:6px 0 0;text-align:left;-webkit-tap-highlight-color:transparent;">See how this adds up →</button>
+            <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:6px;">Courses map to 79% of the exam. The other 21% is CARS — a reading skill, not a topic to unlock.</p>
+          </div>
+        </div>` : ''}
+
       <div id="sectioned-map"></div>
+
+      ${cov > 0 ? `
+        <div class="section-divider"></div>
+        <p class="label" style="margin-bottom:6px;">Your edge so far</p>
+        ${sectionBarsHTML()}
+        ${stayingSharpHTML()}
+        ${S.sessionHistory.length > 1 ? sparklineHTML(S.sessionHistory) : ''}
+      ` : ''}
+
+      ${claimHTML()}
 
       ${nextCourse && cov > 0 ? `
         <div style="border:1px dashed rgba(29,158,117,0.4);border-radius:10px;padding:13px 16px;margin-bottom:20px;background:rgba(29,158,117,0.06);">
@@ -6662,10 +6489,7 @@ function screenReveal() {
           <p style="font-size:13px;color:#B0B5C8;line-height:1.5;">Add <strong style="color:#F0F2F8;">${nextCourse.name}</strong> and move your route by <strong style="color:#1D9E75;">+${nextCourse.gain}%</strong>.</p>
         </div>` : ''}
 
-      ${cov === 0 ? '' : `
-        <div style="background:#131520;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:13px 16px;margin-bottom:20px;">
-          <p style="font-size:13px;color:#767E96;line-height:1.55;">The students who do best on the MCAT aren't the ones who cram at the end. They're the ones who built consistently. Every course you add moves your route forward.</p>
-        </div>`}
+      ${dailyTwistHTML()}
 
       <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} onclick="startSession()">Practice from what you know →</button>
       ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
@@ -7732,8 +7556,8 @@ function render() {
     const m = document.getElementById('map-mini');
     if (m) m.innerHTML = mapHTML(true, todayTopics());
   }
-  // Animate coverage ring on brief screen
-  if (S.screen === 'brief') {
+  // Animate the coverage ring wherever it renders — it lives on Route now.
+  {
     const ring = document.querySelector('[data-target]');
     if (ring) requestAnimationFrame(() => setTimeout(() => {
       ring.style.strokeDashoffset = ring.dataset.target;
