@@ -1420,6 +1420,7 @@ const TWISTS = {
   'sc15': 'Your professor tests implicit vs. explicit bias. The MCAT gives clinical decision-making data showing systematic disparities that the physicians deny holding consciously and asks whether this is better explained by implicit or explicit bias.',
   'sc16': 'Your professor tests functionalist vs. conflict theory of stratification. The MCAT gives a passage on income inequality and asks which sociological theory would argue that inequality is functional and which would frame it as exploitation — applying competing frameworks to the same data.',
   'sc17': 'Your professor tests Merton\'s strain theory. The MCAT gives crime rate data from an economically depressed neighborhood and asks which theory predicts elevated deviance when cultural goals (wealth) are blocked by lack of legitimate means — applying strain theory to a policy-relevant scenario.',
+  'sc18': 'Your professor tests the sick role as a four-item list to memorize — two rights, two obligations. The MCAT gives a clinical vignette about a patient who declines treatment and is quietly re-labeled a malingerer, then asks why the exemption from work and blame no longer holds — requiring you to reason that those rights are conditional on genuinely trying to get well, not granted by diagnosis alone.',
   // ─ Research Methods ─
   's01': 'Your professor tests Type I and Type II error definitions. The MCAT gives a clinical trial result and asks whether the researchers\' decision to reject H₀ at p = 0.04 was a correct decision or a Type I error — distinguishing the decision from the truth in a scenario.',
   's02': 'Your professor tests that correlation ≠ causation. The MCAT gives an observational study and asks what additional study design would be needed to establish a causal relationship — selecting the design that controls confounding, not just identifying the flaw.',
@@ -1636,7 +1637,7 @@ const SUBTOPIC_TAGS = {
   // Sociology
   'sc01':'stratification','sc06':'stratification','sc09':'stratification','sc13':'stratification','sc16':'stratification','sc17':'stratification',
   'sc03':'identity',      'sc04':'identity',       'sc07':'identity',      'sc11':'identity',      'sc14':'identity',
-  'sc02':'institutions',  'sc10':'institutions',
+  'sc02':'institutions',  'sc10':'institutions',  'sc18':'institutions',
   'sc05':'health-disparities','sc08':'health-disparities','sc12':'health-disparities','sc15':'health-disparities',
   // Research
   's02':'study-design','s07':'study-design','s09':'study-design','s10':'study-design',
@@ -4067,6 +4068,16 @@ const QUESTIONS = [
           'Weak social bonds — reduced attachment, commitment, involvement, and belief — leave individuals without informal social controls'],
     ans:1,
     exp:'Merton\'s strain theory: American culture universally promotes success goals (wealth, status) but distributes legitimate means (education, stable employment) unequally. This disjunction produces "strain" and five adaptations — Conformity (accept both goals and means), Innovation (accept goals, reject means → most crime), Ritualism (reject goals, follow means mechanically), Retreatism (reject both → withdrawal, addiction), Rebellion (replace both with new goals and means). "Innovation" explains why property crime rates are highest among groups systematically blocked from legitimate opportunity structures. Distinguish Merton from: (1) Durkheim\'s original anomie — normlessness from rapid social change disrupting collective norms; (2) Hirschi\'s social bond theory — deviance from weak attachment/commitment/involvement/belief (option D); (3) Labeling theory — deviance as a social reaction that creates deviant identity. All four frameworks are MCAT-testable; matching the theorist to their mechanism is the core skill.'
+  },
+  {
+    id:'sc18', topic:'soc',
+    stem:'According to Talcott Parsons\' concept of the "sick role," a person who is ill is granted certain rights but also incurs obligations. Which of the following is an obligation (rather than a right) of the sick role?',
+    opts:['Exemption from normal social responsibilities, such as work or school',
+          'Not being held personally responsible or blamed for becoming ill',
+          'The obligation to want to get well and to seek competent help and cooperate with treatment',
+          'Permanent exemption from social roles regardless of whether the person seeks treatment'],
+    ans:2,
+    exp:'Parsons\' sick role model describes illness as a socially structured status with two rights and two obligations. Rights: (1) exemption from normal social role obligations, and (2) not being blamed for the illness itself. Obligations: (3) the sick person must want to get well — illness cannot be treated as a desirable permanent state — and (4) must seek competent (usually medical) help and cooperate with the prescribed treatment. Options A and B describe the rights side of the model, not obligations. Option D is wrong because the exemption is conditional and temporary, not permanent — a person who does not genuinely try to recover risks losing the legitimacy of the sick role (e.g., being seen as a malingerer). Content knowledge: medical sociology — social construction of illness and the sick role.'
   },
   // ── Cell Biology — additional batch ────────────────────────────────────────
   {
