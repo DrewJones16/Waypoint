@@ -1185,11 +1185,12 @@ const TAB_ICONS = {
 const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings', 'midterm'];
 
 function tabBarHTML() {
+  // Two destinations, not four. Log is an action (reached from Today), and
+  // Settings is a gear in the topbar — neither is a place you go.
   const tabs = [
-    { id: 'brief',   label: 'Home',  icon: TAB_ICONS.home,  match: ['brief', 'complete'] },
-    { id: 'reveal',  label: 'Route', icon: TAB_ICONS.route, match: ['reveal'] },
-    { id: 'quicklog',label: 'Log',   icon: TAB_ICONS.log,   match: ['quicklog', 'quicklog-subtopic', 'quicklogdone'] },
-    { id: 'settings',label: 'Settings', icon: TAB_ICONS.settings, match: ['settings'] },
+    { id: 'brief',  label: 'Today', icon: TAB_ICONS.home,
+      match: ['brief', 'complete', 'quicklog', 'quicklog-subtopic', 'quicklogdone'] },
+    { id: 'reveal', label: 'Route', icon: TAB_ICONS.route, match: ['reveal'] },
   ];
   return `<div class="tab-bar">
     ${tabs.map(t => `
@@ -5927,10 +5928,32 @@ function todayPick() {
   return null;
 }
 
+// True once the student has finished a session today.
+function practicedToday() {
+  return S.lastDate === new Date().toDateString();
+}
+
 function todayCardHTML() {
   // The weekly read owns the slot on Sunday and Monday — still one card, one action.
   const brief = briefCardHTML();
   if (brief) return brief;
+
+  // Today's work is done: the slot becomes the reward rather than another demand.
+  // The Twist is the best thing Waypoint has to say, so it earns the space here
+  // instead of competing with the CTA it used to sit above.
+  if (practicedToday() && S.courses.size > 0) {
+    const d = getDailyTwist();
+    if (d) {
+      const { cls, exam } = splitTwist(d.text);
+      return `
+        <div style="background:linear-gradient(135deg,rgba(139,92,246,0.13),rgba(139,92,246,0.03));border:1px solid rgba(167,139,250,0.3);border-radius:14px;padding:18px;margin-bottom:18px;">
+          <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Done for today${S.streak > 1 ? ` · ${S.streak} days` : ''}</div>
+          <div style="font-size:16px;font-weight:700;color:#F0F2F8;line-height:1.3;margin-bottom:12px;">${d.topic ? d.topic.name : 'Your'} — the MCAT twist</div>
+          <p style="font-size:12px;color:#8A93A8;line-height:1.6;margin:0 0 6px;"><strong style="color:#B0B5C8;">In class:</strong> ${cls}</p>
+          ${exam ? `<p style="font-size:12px;color:#8A93A8;line-height:1.6;margin:0;"><strong style="color:#A78BFA;">On the MCAT:</strong> ${exam}</p>` : ''}
+        </div>`;
+    }
+  }
 
   if (S.courses.size === 0) {
     return `
@@ -5978,8 +6001,11 @@ function screenBrief() {
           <span class="disp" style="font-size:14px;font-weight:600;color:#F0F2F8;">Waypoint</span>
         </button>
         <div style="display:flex;align-items:center;gap:10px;">
-          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:none;border:none;cursor:pointer;padding:6px 2px;font-family:inherit;font-size:13px;font-weight:700;color:#4DE3AB;-webkit-tap-highlight-color:transparent;">${cov}%</button>` : ''}
+          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 4px;margin:-11px 0;font-family:inherit;font-size:13px;font-weight:700;color:#4DE3AB;-webkit-tap-highlight-color:transparent;">${cov}%</button>` : ''}
           ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C2622A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size:13px;font-weight:600;color:#C2622A;">${S.streak}</span></div>` : ''}
+          <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-11px -10px -11px 0;-webkit-tap-highlight-color:transparent;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
+          </button>
         </div>
       </div>
 
@@ -6016,19 +6042,6 @@ function screenLanding() {
       <p style="font-size:16px;font-weight:600;color:#4DE3AB;line-height:1.4;margin-bottom:12px;letter-spacing:-0.01em;">If you start now, you won't be scrambling later.</p>
       <p style="font-size:15px;color:#767E96;line-height:1.7;margin-bottom:26px;">Most classmates don't realize it until year 3. Waypoint plots your coursework onto a route through the exam, so coverage grows every semester — and year 3 is review, not panic.</p>
 
-      <div class="landing-example">
-        <div class="landing-example-label">After Bio I alone</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
-          <span class="topic-pill">Cell Biology ✓</span>
-          <span class="topic-pill">Genetics ✓</span>
-          <span class="topic-pill">Mol. Biology ✓</span>
-        </div>
-        <div style="height:4px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;margin-bottom:6px;">
-          <div style="height:100%;width:10%;background:#1D9E75;border-radius:3px;box-shadow:0 0 6px rgba(29,158,117,0.6);"></div>
-        </div>
-        <div style="font-size:12px;color:#767E96;">10% of the MCAT covered. One class in.</div>
-      </div>
-
       <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:16px 16px 14px;margin-bottom:20px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:13px;gap:12px;">
           <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;padding-top:4px;">Example — a sophomore<br>bio major's route</div>
@@ -6038,8 +6051,6 @@ function screenLanding() {
         <div style="font-size:11px;color:#767E96;margin-top:13px;line-height:1.55;">Two years before dedicated prep — and 41% of the exam is already familiar, just from Bio I &amp; II, Gen Chem, and Psych. You're probably further along than you think.</div>
       </div>
 
-      ${landingTwistHTML()}
-
       <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:36px;">
         <div class="lf-row">
           <div class="lf-icon">
@@ -6047,7 +6058,7 @@ function screenLanding() {
           </div>
           <div>
             <div class="lf-title">Know exactly where you stand</div>
-            <div class="lf-body">Turn Bio I into MCAT momentum — every class you take maps directly onto the exam.</div>
+            <div class="lf-body">Every class you take maps onto the exam.</div>
           </div>
         </div>
         <div class="lf-row">
@@ -6056,16 +6067,7 @@ function screenLanding() {
           </div>
           <div>
             <div class="lf-title">Practice only what you've learned</div>
-            <div class="lf-body">Questions filtered to your courses. Build confidence before you build volume.</div>
-          </div>
-        </div>
-        <div class="lf-row">
-          <div class="lf-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          </div>
-          <div>
-            <div class="lf-title">Add a course, gain coverage</div>
-            <div class="lf-body">Every semester your route fills in further. By year 4 you're reviewing — not cramming.</div>
+            <div class="lf-body">Questions filtered to the courses you've taken.</div>
           </div>
         </div>
         <div class="lf-row">
@@ -6074,7 +6076,7 @@ function screenLanding() {
           </div>
           <div>
             <div class="lf-title">Practice the skill, not just the content</div>
-            <div class="lf-body">The MCAT tests reasoning and application — not recall. Every question is written in exam style: four options, real trap answers, novel scenarios. You're learning to think like the test, two years early.</div>
+            <div class="lf-body">Written in real exam style — passages, traps, novel scenarios.</div>
           </div>
         </div>
       </div>
@@ -6304,7 +6306,9 @@ function toggleCourseExpand(courseId) {
 }
 
 // A single authoritative "how your % is calculated" view.
-function screenBreakdown() {
+// Rendered inline on Route rather than as its own screen — 'how does this add
+// up' is a detail of the route, not a separate destination.
+function breakdownHTML() {
   const cov = coverage(S.courses, true);
   const sections = MCAT_SECTIONS.map(sec => {
     const ts = TOPICS.filter(t => t.mcat === sec.id);
@@ -6326,14 +6330,7 @@ function screenBreakdown() {
   const wColor = state => state === 'done' ? '#4DE3AB' : state === 'partial' ? '#F5B36A' : state === 'ongoing' ? '#8A90A8' : '#8A93A8';
 
   return `
-    <div class="screen">
-      <div class="brief-topbar">
-        <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          How your coverage adds up
-        </button>
-      </div>
-      <p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:20px;">Every course maps to official MCAT content areas. Here's exactly how your <strong style="color:#4DE3AB;">${cov}%</strong> is built — topic by topic, weighted the way the exam is.</p>
+    <div style="margin-top:14px;">
 
       ${sections.map(({ sec, items, secTotal, secCredited }) => `
         <div style="margin-bottom:18px;">
@@ -6364,8 +6361,51 @@ function courseButtonsHTML(id) {
   return `<button type="button" class="csb${status === 'in-progress' ? ' csb-ip' : ''}" onclick="setCourseState('${id}','in-progress')">${status === 'in-progress' ? '<span class="pulse-dot"></span>' : ''}Taking</button><button type="button" class="csb${status === 'completed' ? ' csb-done' : ''}" onclick="setCourseState('${id}','completed')">${status === 'completed' ? '\u2713 ' : ''}Done</button>`;
 }
 
+function screenCoursesSimple(sections) {
+  return `
+    <div class="screen">
+      <button onclick="go('year')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;min-height:44px;padding:0;color:#8A93A8;font-size:13px;margin-bottom:8px;-webkit-tap-highlight-color:transparent;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+      <p class="label">Your courses</p>
+      <h2>What are you taking right now?</h2>
+      <p style="font-size:14px;color:#8A93A8;margin:6px 0 18px;">Tap everything on your schedule this term.</p>
+
+      <div class="courses-scroll" style="padding-bottom:80px;">
+        ${sections.map(sec => `
+          <div class="section-head"><p class="section-label">${sec}</p></div>
+          ${COURSES.filter(c => c.section === sec).map(c => {
+            const on = S.courseStatus[c.id] === 'in-progress';
+            return `
+            <button type="button" class="topic-pick-btn" style="${on ? 'border-color:rgba(29,158,117,0.55);background:rgba(29,158,117,0.09);' : ''}"
+                    onclick="setCourseState('${c.id}','in-progress');render();">
+              <span class="tp-name" style="color:${on ? '#4DE3AB' : '#F0F2F8'};">${c.name}</span>
+              <span class="tp-arrow" style="color:${on ? '#4DE3AB' : '#444B62'};">${on ? '✓' : '+'}</span>
+            </button>`;
+          }).join('')}
+        `).join('')}
+
+        <button onclick="S._fullCourses = true; render();" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:8px;-webkit-tap-highlight-color:transparent;">Already finished some courses? Add them &rarr;</button>
+      </div>
+
+      <div style="position:sticky;bottom:0;background:linear-gradient(to top,#0D0F14 70%,transparent);padding:12px 0 28px;flex-shrink:0;margin:0 -2px;padding-left:2px;padding-right:2px;">
+        <p style="text-align:center;font-size:12px;color:#8A93A8;margin:0 0 8px;font-weight:600;letter-spacing:0.03em;${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
+        <button class="btn btn-primary" ${S.courses.size ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
+      </div>
+    </div>`;
+}
+
 function screenCourses() {
   const sections = [...new Set(COURSES.map(c => c.section))];
+
+  // First run asks one question — "what are you taking right now?" — and nothing
+  // else: no Taking/Done distinction, no requirement badges, no prerequisites
+  // explainer. A freshman with two classes should be done in three taps. The full
+  // catalog is one tap away for anyone who has already finished courses.
+  const simple = S.courses.size === 0 && !S._fullCourses;
+  if (simple) return screenCoursesSimple(sections);
+
   return `
     <div class="screen">
       <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-size:13px;margin-bottom:16px;-webkit-tap-highlight-color:transparent;">
@@ -6375,15 +6415,6 @@ function screenCourses() {
       <p class="label">Your courses</p>
       <h2>What are you taking?</h2>
       <p style="font-size:14px;color:#8A93A8;margin:6px 0 12px;">Mark each course as <strong style="color:#4DE3AB;">Taking</strong> (in progress) or <strong style="color:#C8F0E0;">Done</strong> (completed).</p>
-      <details style="margin-bottom:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:11px 14px;">
-        <summary style="cursor:pointer;font-size:13px;color:#8A90A8;font-weight:600;list-style:none;-webkit-tap-highlight-color:transparent;">Which classes do I actually need?</summary>
-        <div style="font-size:12px;color:#767E96;line-height:1.6;margin-top:11px;">
-          <p style="margin:0 0 8px;"><strong style="color:#4DE3AB;">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
-          <p style="margin:0 0 8px;"><strong style="color:#F5B36A;">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
-          <p style="margin:0;"><strong style="color:#A78BFA;">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
-          <p style="font-size:11px;color:#767E96;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
-        </div>
-      </details>
       <div class="courses-scroll" style="padding-bottom:80px;">
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
@@ -6478,10 +6509,23 @@ function screenReveal() {
           </div>
           <div style="flex:1;min-width:0;">
             <p style="font-size:13px;color:#8A93A8;line-height:1.5;">${S.totalAnswered > 0 ? `${S.totalAnswered} question${S.totalAnswered !== 1 ? 's' : ''} answered.` : 'Your first session is ready.'}</p>
-            <button onclick="go('breakdown')" style="background:none;border:none;color:#2DB88A;font-size:12px;font-weight:600;cursor:pointer;padding:6px 0 0;text-align:left;-webkit-tap-highlight-color:transparent;">See how this adds up →</button>
+            <button onclick="S._showBreakdown=!S._showBreakdown;render();" style="background:none;border:none;color:#2DB88A;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;text-align:left;-webkit-tap-highlight-color:transparent;">${S._showBreakdown ? 'Hide the breakdown' : 'See how this adds up →'}</button>
             <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:6px;">Courses map to 79% of the exam. The other 21% is CARS — a reading skill, not a topic to unlock.</p>
           </div>
         </div>` : ''}
+
+      ${S._showBreakdown ? breakdownHTML() : ''}
+
+      ${cov > 0 ? `
+        <details style="margin:10px 0 18px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:11px 14px;">
+          <summary style="cursor:pointer;font-size:13px;color:#8A90A8;font-weight:600;list-style:none;-webkit-tap-highlight-color:transparent;">Which classes do I still need?</summary>
+          <div style="font-size:12px;color:#767E96;line-height:1.6;margin-top:11px;">
+            <p style="margin:0 0 8px;"><strong style="color:#4DE3AB;">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
+            <p style="margin:0 0 8px;"><strong style="color:#F5B36A;">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
+            <p style="margin:0;"><strong style="color:#A78BFA;">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
+            <p style="font-size:11px;color:#767E96;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
+          </div>
+        </details>` : ''}
 
       <div id="sectioned-map"></div>
 
@@ -6500,8 +6544,6 @@ function screenReveal() {
           <div style="font-size:10px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;">Next to unlock</div>
           <p style="font-size:13px;color:#B0B5C8;line-height:1.5;">Add <strong style="color:#F0F2F8;">${nextCourse.name}</strong> and move your route by <strong style="color:#1D9E75;">+${nextCourse.gain}%</strong>.</p>
         </div>` : ''}
-
-      ${dailyTwistHTML()}
 
       <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} onclick="startSession()">Practice from what you know →</button>
       ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
@@ -7462,7 +7504,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, breakdown:10, about:10, midterm:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -7535,10 +7577,12 @@ function render() {
     case 'settings': html += screenSettings(); break;
     case 'about': html += screenAbout(); break;
     case 'midterm': html += screenMidterm(); break;
-    case 'breakdown': html += screenBreakdown(); break;
     case 'quicklog':          html += screenQuickLog();         break;
     case 'quicklog-subtopic': html += screenQuickLogSubtopic(); break;
     case 'quicklogdone':      html += screenQuickLogDone();     break;
+    // A retired screen name (an old bookmark, or 'breakdown' now that it lives
+    // inline on Route) must never render an empty shell.
+    default: S.screen = 'brief'; html += screenBrief(); break;
   }
 
   const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
