@@ -5774,9 +5774,9 @@ function dailyTwistHTML() {
         </div>`
     : `<p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${text}</p>`;
   const drill = (topic && !teaser)
-    ? `<div style="display:flex;align-items:center;gap:18px;margin-top:14px;flex-wrap:wrap;">
-         <button style="background:none;border:none;font-size:13px;color:#A78BFA;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="twistDrill('${topic.id}', '${q.id}')">Drill ${topic.name} while it's fresh →</button>
-         <button style="background:none;border:none;font-size:13px;color:#767E96;font-weight:600;cursor:pointer;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="shareTwistCard(this)">Share</button>
+    ? `<div style="display:flex;align-items:center;gap:18px;margin-top:2px;margin-bottom:-12px;flex-wrap:wrap;">
+         <button style="background:none;border:none;font-size:13px;color:#A78BFA;font-weight:600;cursor:pointer;text-align:left;padding:0;min-height:44px;display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent;" onclick="twistDrill('${topic.id}', '${q.id}')">Drill ${topic.name} while it's fresh →</button>
+         <button style="background:none;border:none;font-size:13px;color:#767E96;font-weight:600;cursor:pointer;padding:0;min-height:44px;display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent;" onclick="shareTwistCard(this)">Share</button>
        </div>`
     : '';
   return `
