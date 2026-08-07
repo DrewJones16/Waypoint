@@ -1645,6 +1645,106 @@ const SUBTOPIC_TAGS = {
   's11':'bias',        's12':'bias',         's14':'bias',        's15':'bias',
 };
 
+// ── SEMESTER SYNC: what a typical section covers each week ────────────────────
+// One entry per week of a standard 15-week semester, as [topicId, subtopicId].
+// Drawn from the common sequencing of each course, not from any one syllabus —
+// so it's a good guess, never a promise. The UI says "typically" for that reason,
+// and every card offers a way to drill something else instead.
+//
+// Courses map to topics via TOPICS[].course. A course whose topic has few
+// subtopics simply revisits them; startQuickLog() already falls back to the full
+// topic when a subtopic has fewer than 3 questions, so a thin week still works.
+const PACING = {
+  bio1: [
+    ['cell-bio','organelles'], ['cell-bio','membranes'],   ['cell-bio','membranes'],
+    ['cell-bio','signaling'],  ['cell-bio','cell-cycle'],  ['cell-bio','cell-cycle'],
+    ['genetics','mendelian'],  ['genetics','mendelian'],   ['genetics','linkage'],
+    ['genetics','mutations'],  ['mol-bio','replication'],  ['mol-bio','transcription'],
+    ['mol-bio','translation'], ['mol-bio','gene-regulation'], ['genetics','gene-expression'],
+  ],
+  bio2: [
+    ['physio','muscle'],        ['physio','muscle'],        ['neuro','action-potential'],
+    ['neuro','action-potential'],['neuro','synaptic'],      ['neuro','brain'],
+    ['neuro','ans'],            ['physio','cardiovascular'],['physio','cardiovascular'],
+    ['physio','respiratory'],   ['physio','respiratory'],   ['physio','renal'],
+    ['physio','renal'],         ['neuro','brain'],          ['physio','cardiovascular'],
+  ],
+  gc1: [
+    ['stoich','moles'],       ['stoich','moles'],          ['stoich','reactions'],
+    ['stoich','solutions'],   ['atomic','quantum'],        ['atomic','quantum'],
+    ['atomic','electron-config'],['atomic','periodic-trends'],['bonding','polarity'],
+    ['bonding','hybridization'],['bonding','imf'],          ['stoich','gas-laws'],
+    ['acid-base','ph-buffers'],['acid-base','weak-acids'],  ['acid-base','titrations'],
+  ],
+  // Gen Chem II stays inside its own topic (thermo). Acid-base is genuinely a
+  // Gen Chem II unit at most schools, but Waypoint models it under Gen Chem I —
+  // pacing it here would label gc1 content as gc2 on the Home card.
+  gc2: [
+    ['thermo','enthalpy'],    ['thermo','enthalpy'],     ['thermo','entropy'],
+    ['thermo','entropy'],     ['thermo','gibbs'],        ['thermo','gibbs'],
+    ['thermo','equilibrium'], ['thermo','equilibrium'],  ['thermo','equilibrium'],
+    ['thermo','gibbs'],       ['thermo','enthalpy'],     ['thermo','entropy'],
+    ['thermo','equilibrium'], ['thermo','gibbs'],        ['thermo','equilibrium'],
+  ],
+  oc1: [
+    ['orgo','stereochemistry'],['orgo','stereochemistry'],['orgo','stereochemistry'],
+    ['orgo','reactions'],      ['orgo','reactions'],      ['orgo','reactions'],
+    ['orgo','reactions'],      ['orgo','stereochemistry'],['orgo','reactions'],
+    ['orgo','reactions'],      ['orgo','reactions'],      ['orgo','reactions'],
+    ['orgo','stereochemistry'],['orgo','reactions'],      ['orgo','reactions'],
+  ],
+  oc2: [
+    ['orgo2','nomenclature'], ['orgo2','reactions'],    ['orgo2','reactions'],
+    ['orgo2','reactions'],    ['orgo2','reactions'],    ['orgo2','spectroscopy'],
+    ['orgo2','spectroscopy'], ['orgo2','spectroscopy'], ['orgo2','reactions'],
+    ['orgo2','reactions'],    ['orgo2','reactions'],    ['orgo2','nomenclature'],
+    ['orgo2','spectroscopy'], ['orgo2','reactions'],    ['orgo2','reactions'],
+  ],
+  biochem: [
+    ['biochem','amino-acids'],['biochem','amino-acids'],['biochem','amino-acids'],
+    ['biochem','enzymes'],    ['biochem','enzymes'],    ['biochem','enzymes'],
+    ['biochem','lipids'],     ['biochem','metabolism'], ['biochem','metabolism'],
+    ['biochem','metabolism'], ['biochem','metabolism'], ['biochem','metabolism'],
+    ['biochem','metabolism'], ['biochem','lipids'],     ['biochem','metabolism'],
+  ],
+  ph1: [
+    ['physics','kinematics'], ['physics','kinematics'], ['physics','kinematics'],
+    ['physics','kinematics'], ['physics','kinematics'], ['physics','kinematics'],
+    ['physics','kinematics'], ['physics','kinematics'], ['physics','fluids'],
+    ['physics','fluids'],     ['physics','fluids'],     ['physics','fluids'],
+    ['physics','fluids'],     ['physics','kinematics'], ['physics','fluids'],
+  ],
+  ph2: [
+    ['physics2','circuits'],  ['physics2','circuits'],  ['physics2','circuits'],
+    ['physics2','circuits'],  ['physics2','circuits'],  ['physics2','circuits'],
+    ['physics2','circuits'],  ['physics2','optics'],    ['physics2','optics'],
+    ['physics2','optics'],    ['physics2','optics'],    ['physics2','optics'],
+    ['physics2','optics'],    ['physics2','circuits'],  ['physics2','optics'],
+  ],
+  psych: [
+    ['psych','development'],  ['psych','learning'],     ['psych','learning'],
+    ['psych','memory'],       ['psych','memory'],       ['psych','development'],
+    ['psych','social'],       ['psych','social'],       ['psych','disorders'],
+    ['psych','disorders'],    ['psych','disorders'],    ['psych','social'],
+    ['psych','memory'],       ['psych','learning'],     ['psych','development'],
+  ],
+  soc: [
+    ['soc','identity'],           ['soc','identity'],       ['soc','institutions'],
+    ['soc','institutions'],       ['soc','stratification'], ['soc','stratification'],
+    ['soc','stratification'],     ['soc','identity'],       ['soc','health-disparities'],
+    ['soc','health-disparities'], ['soc','institutions'],   ['soc','health-disparities'],
+    ['soc','stratification'],     ['soc','identity'],       ['soc','health-disparities'],
+  ],
+  stats: [
+    ['research','study-design'], ['research','study-design'], ['research','statistics'],
+    ['research','statistics'],   ['research','statistics'],   ['research','statistics'],
+    ['research','statistics'],   ['research','study-design'], ['research','bias'],
+    ['research','bias'],         ['research','statistics'],   ['research','bias'],
+    ['research','study-design'], ['research','bias'],         ['research','statistics'],
+  ],
+};
+const SEMESTER_WEEKS = 15;
+
 const QUESTIONS = [
   // ── Biology I ───────────────────────────────────────────────────────────────
   {
@@ -4164,6 +4264,8 @@ const S = {
   quickLog: null,      // { topicId, subtopicId, subtopicFallback } while a quick-log session is active
   quickLogTopic: null, // topicId chosen in step 1, waiting for subtopic pick
   nudgeDismissed: {}, // {topicId: 'YYYY-MM-DD'} — nudge for this topic dismissed on this date
+  semStart:  null,    // 'YYYY-MM-DD' — first day of the current semester (Semester Sync)
+  semPrompt: null,    // 'dismissed' once the user has waved off the semester-start ask
 };
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
@@ -4173,7 +4275,7 @@ const S = {
 // future release is covered everywhere the moment it's listed.
 const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
-                 'wp_topic_last_seen','wp_nudge_dismissed'];
+                 'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt'];
 
 // Keys whose value must be valid JSON. load() wipes everything if a parse throws,
 // so a restore validates these up front rather than discovering it after reload.
@@ -4206,6 +4308,8 @@ function save() {
   localStorage.setItem('wp_cov_milestones', JSON.stringify(S.covMilestonesShown));
   localStorage.setItem('wp_topic_last_seen', JSON.stringify(S.topicLastSeen));
   localStorage.setItem('wp_nudge_dismissed', JSON.stringify(S.nudgeDismissed));
+  localStorage.setItem('wp_sem_start',  S.semStart  || '');
+  localStorage.setItem('wp_sem_prompt', S.semPrompt || '');
 }
 
 function load() {
@@ -4238,6 +4342,9 @@ function load() {
     if (tls) S.topicLastSeen = JSON.parse(tls);
     const nd = localStorage.getItem('wp_nudge_dismissed');
     if (nd) S.nudgeDismissed = JSON.parse(nd);
+    // Semester Sync — absent for every existing user, which simply means "not asked yet".
+    S.semStart  = localStorage.getItem('wp_sem_start')  || null;
+    S.semPrompt = localStorage.getItem('wp_sem_prompt') || null;
 
     // Reset streak if more than 1 day has passed
     if (S.lastDate) {
@@ -4987,6 +5094,153 @@ function sectionBarsHTML() {
   return `<div style="margin:8px 0 16px;">${bars.join('')}</div>`;
 }
 
+// ── SEMESTER SYNC ─────────────────────────────────────────────────────────────
+// Turns "when did your semester start?" into "here's what your class is covering
+// this week, at MCAT depth." The pacing table is a typical sequence, so every
+// surface hedges with "typically" and offers a way to pick something else.
+
+// Week 1 is the week containing the start date. Returns null if unknown/invalid,
+// 0 if the semester hasn't started yet, or a 1-based week number.
+// Both endpoints are normalized to UTC midnight before subtracting. Local-time
+// arithmetic is off by an hour across a daylight-saving change, which is enough
+// to shift a week boundary by a day for anyone in a spring semester.
+function semesterWeek(startISO = S.semStart, now = new Date()) {
+  if (!startISO) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startISO);
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const startUTC = Date.UTC(y, mo - 1, d);
+  // Reject dates that rolled over (e.g. Feb 30) rather than silently shifting.
+  const back = new Date(startUTC);
+  if (back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d) return null;
+  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((todayUTC - startUTC) / 86400000);
+  if (days < 0) return 0;
+  return Math.floor(days / 7) + 1;
+}
+
+// What each in-progress course typically covers in the current week.
+// Returns [] when there's nothing to say — no semester set, no in-progress
+// course, or the semester has run past the pacing table.
+function thisWeekUnits(week = semesterWeek()) {
+  if (!week || week < 1 || week > SEMESTER_WEEKS) return [];
+  const out = [];
+  for (const courseId of S.courses) {
+    if (S.courseStatus[courseId] !== 'in-progress') continue;
+    const table = PACING[courseId];
+    if (!table) continue;
+    const entry = table[week - 1];
+    if (!entry) continue;
+    const [topicId, subId] = entry;
+    const topic = TOPICS.find(t => t.id === topicId);
+    if (!topic) continue;
+    const sub = (SUBTOPICS[topicId] || []).find(s => s.id === subId);
+    const course = COURSES.find(c => c.id === courseId);
+    // Only offer it if the drill will actually have questions to serve.
+    const count = QUESTIONS.filter(q => q.topic === topicId).length;
+    if (!count) continue;
+    out.push({ courseId, courseName: course ? course.name : courseId,
+               topic, subId, subLabel: sub ? sub.label : topic.name });
+  }
+  return out;
+}
+
+// True once we should ask for the semester start: they have a class in progress
+// that we have a pacing table for, and they haven't answered or dismissed yet.
+function shouldAskSemesterStart() {
+  if (S.semStart || S.semPrompt === 'dismissed') return false;
+  return [...S.courses].some(c => S.courseStatus[c] === 'in-progress' && PACING[c]);
+}
+
+function saveSemesterStart(value) {
+  if (!value) return;
+  const d = new Date(value + 'T00:00:00');
+  if (isNaN(d.getTime())) return;
+  S.semStart  = value;
+  S.semPrompt = 'answered';
+  save();
+  if (window.plausible) plausible('semester_start_set', { props: { week: String(semesterWeek()) } });
+  render();
+}
+
+function dismissSemesterPrompt() {
+  S.semPrompt = 'dismissed';
+  save();
+  render();
+}
+
+// Offered from Settings so a new term can be re-synced without a reset.
+function clearSemesterStart() {
+  S.semStart = null; S.semPrompt = null;
+  save();
+  render();
+}
+
+function semesterCardHTML() {
+  // The ask — one date input, dismissible, never nags again once answered.
+  if (shouldAskSemesterStart()) {
+    const guess = isoDate(new Date(Date.now() - 21 * 86400000)); // sensible default: 3 weeks ago
+    return `
+      <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(167,139,250,0.28);border-radius:14px;padding:16px 18px;margin-bottom:20px;">
+        <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Semester Sync</div>
+        <div style="font-size:16px;font-weight:700;color:#F0F2F8;line-height:1.3;margin-bottom:6px;">When did your semester start?</div>
+        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 12px;">Then Waypoint can lead with what your class is covering this week — and show you the MCAT version of it.</p>
+        <input type="date" id="sem-start-input" value="${guess}" max="${isoDate()}"
+               style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:10px;">
+        <button class="btn btn-primary" style="margin:0;padding:11px 18px;font-size:14px;"
+                onclick="saveSemesterStart(document.getElementById('sem-start-input').value)">Sync my semester</button>
+        <button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;display:block;width:100%;text-align:center;margin-top:8px;padding:4px 0;-webkit-tap-highlight-color:transparent;"
+                onclick="dismissSemesterPrompt()">Not now</button>
+      </div>`;
+  }
+
+  const week  = semesterWeek();
+  if (week === null) return '';
+  if (week === 0) {
+    return `
+      <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:14px;padding:14px 18px;margin-bottom:20px;">
+        <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Semester Sync</div>
+        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0;">Your semester hasn't started yet. Week-by-week guidance turns on the day it does.</p>
+      </div>`;
+  }
+
+  const units = thisWeekUnits(week);
+  if (!units.length) {
+    // Past the table, or no in-progress course with pacing — stay quiet rather than
+    // inventing a week. The rest of Home still has plenty to offer.
+    if (week > SEMESTER_WEEKS) {
+      return `
+        <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:14px;padding:14px 18px;margin-bottom:20px;">
+          <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Semester Sync</div>
+          <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 10px;">That's week ${week} — your semester's wrapped. Mark your courses done, and start a new sync when the next term begins.</p>
+          <button style="background:none;border:none;font-size:13px;color:#A78BFA;cursor:pointer;padding:2px 0;font-family:inherit;font-weight:600;-webkit-tap-highlight-color:transparent;" onclick="clearSemesterStart()">Start a new semester →</button>
+        </div>`;
+    }
+    return '';
+  }
+
+  const rows = units.map(u => `
+    <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid rgba(255,255,255,0.06);">
+      <span style="flex:1;min-width:0;">
+        <span style="display:block;font-size:11px;color:#767E96;margin-bottom:2px;">${u.courseName}</span>
+        <span style="display:block;font-size:15px;font-weight:600;color:#F0F2F8;line-height:1.25;">${u.subLabel}</span>
+      </span>
+      <button class="btn btn-primary" style="margin:0;padding:13px 16px;font-size:13px;width:auto;flex-shrink:0;min-height:44px;"
+              onclick="startWeekDrill('${u.topic.id}', '${u.subId}')">Drill →</button>
+    </div>`).join('');
+
+  return `
+    <div style="background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(139,92,246,0.03));border:1px solid rgba(167,139,250,0.28);border-radius:14px;padding:16px 18px 8px;margin-bottom:22px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px;">
+        <div style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.1em;">This week in class</div>
+        <div style="font-size:11px;color:#767E96;flex-shrink:0;">Week ${week}</div>
+      </div>
+      <p style="font-size:12px;color:#767E96;line-height:1.5;margin:0 0 4px;">What your ${units.length > 1 ? 'classes are' : 'class is'} typically covering now — learn it at MCAT depth while it's fresh.</p>
+      ${rows}
+    </div>`;
+}
+
 // ── TWIST OF THE DAY ──────────────────────────────────────────────────────────
 // Surfaces Waypoint's single most differentiated asset — the professor-vs-MCAT
 // "Twist" — on the Home screen, rotating once per day. A real reason to return
@@ -5150,9 +5404,16 @@ function screenBrief() {
   const headline  = getWelcomeHeadline();
   const trendText = getTrendInsight(history);
   const milestone = getMilestone();
+  // Semester Sync leads. If it already points at the same topic, the directive
+  // card would just say the same thing twice — so it stands down.
+  const semesterHTML = semesterCardHTML();
+  const semesterTopicIds = new Set(thisWeekUnits().map(u => u.topic.id));
+
   let directiveHTML = '';
   const directive = getDirectiveTopic();
-  if (directive) {
+  if (directive && semesterTopicIds.has(directive.topic.id)) {
+    directiveHTML = '';
+  } else if (directive) {
     const t = directive.topic;
     const courseInProgress = t.course && S.courseStatus[t.course] === 'in-progress';
     const copy = directive.reason === 'in-progress'
@@ -5224,6 +5485,7 @@ function screenBrief() {
         </div>
       </div>
 
+      ${semesterHTML}
       ${directiveHTML}
 
       <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px;">
@@ -5427,6 +5689,22 @@ function screenSettings() {
       <p class="label" style="margin-bottom:6px;">Daily reminder</p>
       <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:14px;">Add a recurring calendar event so a quick session becomes a habit.</p>
       <button class="btn btn-primary" id="reminder-btn" onclick="setReminder(this)">Set a daily reminder</button>
+
+      <div class="section-divider"></div>
+
+      <p class="label" style="margin-bottom:6px;">Semester</p>
+      ${S.semStart ? `
+        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:14px;">Started ${S.semStart}${semesterWeek() ? ` — you're in week ${semesterWeek()}` : ''}. Home leads with what your classes typically cover this week.</p>
+        <input type="date" id="sem-start-edit" value="${S.semStart}"
+               style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:10px;">
+        <button class="btn btn-primary" onclick="saveSemesterStart(document.getElementById('sem-start-edit').value)">Update start date</button>
+        <button class="btn btn-ghost" onclick="clearSemesterStart()">Clear semester</button>
+      ` : `
+        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:14px;">Tell Waypoint when your semester started and Home will lead with what your classes are covering this week.</p>
+        <input type="date" id="sem-start-edit" value="${isoDate(new Date(Date.now() - 21 * 86400000))}" max="${isoDate()}"
+               style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:10px;">
+        <button class="btn btn-primary" onclick="saveSemesterStart(document.getElementById('sem-start-edit').value)">Sync my semester</button>
+      `}
 
       <div class="section-divider"></div>
 
@@ -6138,6 +6416,14 @@ function startQuickLog(topicId, subtopicId, leadQId) {
   go('question');
 }
 
+// Semester Sync's "Drill" is the intended daily ritual, so unlike an ad-hoc quick
+// log it counts toward the streak and session history. Same question flow either way.
+function startWeekDrill(topicId, subtopicId) {
+  startQuickLog(topicId, subtopicId);
+  if (S.quickLog) S.quickLog.streakEligible = true;
+  if (window.plausible) plausible('week_drill_start', { props: { week: String(semesterWeek()) } });
+}
+
 function answer(i) {
   const q       = S.session[S.idx];
   const correct = i === q.ans;
@@ -6161,15 +6447,35 @@ function answer(i) {
   });
 }
 
+// Advance the streak for today. Consecutive days extend it; a gap restarts at 1.
+// Called at most once per day — a second session the same day leaves it alone.
+function bumpStreak() {
+  const today = new Date().toDateString();
+  if (S.lastDate === today) return;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  S.streak = (S.lastDate === yesterday.toDateString()) ? S.streak + 1 : 1;
+  S.lastDate = today;
+}
+
 function next() {
   S.idx++;
   S.answered = null;
   if (S.idx >= S.session.length) {
 
-    // Quick-log sessions skip the full completion screen and streak/history bookkeeping
+    // Quick-log sessions skip the full completion screen. Ad-hoc logs also skip
+    // streak/history bookkeeping; a Semester Sync week drill is the intended daily
+    // ritual, so it earns the streak the same way a full session does.
     if (S.quickLog) {
       S.totalAnswered += S.answers.length;
       markTopicsSeen([S.quickLog.topicId]);
+      if (S.quickLog.streakEligible) {
+        S.sessionHistory.push({ date: new Date().toDateString(),
+                                correct: S.answers.filter(a => a.correct).length,
+                                total: S.answers.length });
+        if (S.sessionHistory.length > 7) S.sessionHistory = S.sessionHistory.slice(-7);
+        bumpStreak();
+      }
       save();
       go('quicklogdone');
       return;
@@ -6184,14 +6490,7 @@ function next() {
     S.totalAnswered += total;
     markTopicsSeen(todayTopics());
 
-    // Update streak
-    const today = new Date().toDateString();
-    if (S.lastDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      S.streak = (S.lastDate === yesterday.toDateString()) ? S.streak + 1 : 1;
-      S.lastDate = today;
-    }
+    bumpStreak();
     save();
     if (window.plausible) plausible('session_complete');
     go('complete');
