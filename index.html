@@ -1437,6 +1437,7 @@ const TWISTS = {
   's13': 'Your professor tests that mean > median in right-skewed distributions. The MCAT gives income data from a hospital\'s patient population with a right-skewed distribution and asks which measure of central tendency better represents the typical patient\'s income.',
   's14': 'Your professor tests the distinction between reliability and validity. The MCAT gives a scale that reads 5 lb heavy consistently and asks whether this represents a reliability or validity problem — applying the distinction to a measurement scenario where precision and accuracy differ.',
   's15': 'Your professor tests the concept of regression to the mean. The MCAT gives a pre-post study where patients improve after treatment and asks whether the improvement is real or could be explained by regression to the mean — evaluating a study\'s interpretation for a statistical artifact.',
+  's16': 'Your professor tests PPV as a formula you plug numbers into. The MCAT hands you a screening program in a population where the disease is rare, then asks why a patient who just tested positive probably doesn\'t have it — requiring you to reason that predictive value moves with prevalence even when sensitivity and specificity never change.',
   // ─ Physiology ─
   'p01': 'Your professor tests the mechanism of the absolute refractory period. The MCAT gives a clinical scenario — a patient with a fast cardiac arrhythmia — and asks why cardiac muscle has a longer refractory period than neurons and what this prevents physiologically.',
   'p02': 'Your professor tests PTH\'s three actions by list. The MCAT gives a patient with a PTH-secreting adenoma and asks which lab values (serum Ca²⁺, PO₄³⁻, vitamin D, urine Ca²⁺) would be elevated vs. decreased — predicting a multi-variable lab panel from one hormone\'s mechanism.',
@@ -1643,6 +1644,7 @@ const SUBTOPIC_TAGS = {
   's02':'study-design','s07':'study-design','s09':'study-design','s10':'study-design',
   's01':'statistics',  's03':'statistics',  's04':'statistics',  's05':'statistics','s06':'statistics','s08':'statistics','s13':'statistics',
   's11':'bias',        's12':'bias',         's14':'bias',        's15':'bias',
+  's16':'statistics',
 };
 
 // ── SEMESTER SYNC: what a typical section covers each week ────────────────────
@@ -3887,6 +3889,16 @@ const QUESTIONS = [
           'Low internal validity due to an insufficient sample size'],
     ans:1,
     exp:'When participants in a drug trial simultaneously undergo another intervention (the diet program), it is impossible to isolate the drug\'s effect from the co-intervention\'s effect — the diet program is a confounding variable. This undermines internal validity: we cannot conclude the drug caused the LDL drop. True randomization controls for pre-existing differences between groups, but does not protect against confounders introduced during the study itself. A Type II error would mean missing a real effect; the study found a significant result, so that is not the issue here. Sample size affects statistical power, not confounding.'
+  },
+  {
+    id:'s16', topic:'research',
+    stem:'A screening test has 95% sensitivity and 95% specificity. When applied to a population in which only 1% of people actually have the disease, the positive predictive value (PPV) of a positive result will be:',
+    opts:['Very high, close to 95%, since sensitivity and specificity are both high',
+          'Substantially lower than 95%, because the low-prevalence population contains far more true negatives than true positives, so false positives dominate the pool of positive results',
+          'Unaffected by prevalence, since PPV is a fixed property of the test itself',
+          'Exactly equal to the test\'s specificity'],
+    ans:1,
+    exp:'PPV = true positives / (true positives + false positives), and unlike sensitivity and specificity, it depends heavily on disease prevalence. In a population of 10,000 with 1% prevalence, 100 people are truly diseased and 9,900 are not. 95% sensitivity detects 95 of the 100 true cases (95 TP, 5 FN). 95% specificity correctly clears 95% of the 9,900 healthy people, but the remaining 5% — 495 people — test positive despite being disease-free (495 FP). PPV = 95/(95+495) ≈ 16%, far below the 95% sensitivity/specificity figures. Because the healthy population is so much larger than the diseased population, even a small false-positive rate generates more false positives than true positives. This is why screening tests for rare conditions require very high specificity, and why a positive result on a low-prevalence screen is often followed by a confirmatory test. Content knowledge: diagnostic test statistics — PPV/NPV depend on prevalence, whereas sensitivity/specificity do not.'
   },
   // ── Physiology — additional batch 2 ────────────────────────────────────────
   {
