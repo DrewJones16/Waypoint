@@ -4627,13 +4627,21 @@ async function pushCloud() {
   const s = authSession();
   if (!token || !s || !s.user_id) return false;
   try {
-    const body = { user_id: s.user_id, data: serializeState().data, updated_at: new Date().toISOString() };
+    const stamp = new Date().toISOString();
+    const body = { user_id: s.user_id, data: serializeState().data, updated_at: stamp };
     const r = await fetch(SUPABASE_URL + '/rest/v1/user_state?on_conflict=user_id', {
       method: 'POST',
       headers: { ...sbHeaders(token), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify(body)
     });
-    if (r.ok) { syncState = { status: 'synced', message: 'Saved to your account.' }; return true; }
+    if (r.ok) {
+      // Move the local stamp up to match what we just published. Without this the
+      // row we wrote always looks newer than this device on the next load, so every
+      // launch would adopt its own data back and reload for nothing.
+      localStorage.setItem('wp_updated_at', stamp);
+      syncState = { status: 'synced', message: 'Saved to your account.' };
+      return true;
+    }
     console.warn('[Waypoint] push failed:', await r.text());
     return false;
   } catch(e) { return false; }
@@ -4652,11 +4660,15 @@ async function syncOnLoad() {
   const cloud = await pullCloud();
   if (!cloud) { syncState = { status: 'idle', message: '' }; return render(); }
 
-  const localTs = localStorage.getItem('wp_updated_at') || '';
   const cloudTs = cloud.updated_at || '';
+  // Compare instants, not strings: we write "...Z" but Postgres hands back
+  // "...+00:00", and those two spellings of the same moment don't sort together.
+  // The one-second margin keeps clock jitter from causing a pointless adopt.
+  const localMs = Date.parse(localStorage.getItem('wp_updated_at') || '') || 0;
+  const cloudMs = Date.parse(cloudTs) || 0;
   const cloudHasData = cloud.data && Object.keys(cloud.data).length > 0;
 
-  if (cloudHasData && cloudTs > localTs) {
+  if (cloudHasData && cloudMs > localMs + 1000) {
     const res = applyBackup(JSON.stringify({ data: cloud.data }));
     if (res.ok) {
       localStorage.setItem('wp_updated_at', cloudTs);
@@ -6376,6 +6388,19 @@ function screenSettings() {
     </div>`;
 }
 
+// Plain-language sync state, so "did that actually work?" is answerable at a glance.
+function lastSyncedLabel() {
+  const ms = Date.parse(localStorage.getItem('wp_updated_at') || '');
+  if (!ms) return 'Ready to sync';
+  const mins = Math.floor((Date.now() - ms) / 60000);
+  if (mins < 1)    return 'Synced just now';
+  if (mins < 60)   return `Synced ${mins} minute${mins !== 1 ? 's' : ''} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)    return `Synced ${hrs} hour${hrs !== 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `Synced ${days} day${days !== 1 ? 's' : ''} ago`;
+}
+
 function accountSectionHTML() {
   const s = authSession();
   const tone = syncState.status === 'error' ? '#F4B48A'
@@ -6386,7 +6411,11 @@ function accountSectionHTML() {
   if (s) {
     return `
       <p class="label" style="margin-bottom:6px;">Your account</p>
-      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:10px;">Signed in as <strong style="color:#F0F2F8;">${s.email || 'your account'}</strong>. Your route syncs to every device you sign in on.</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:8px;">Signed in as <strong style="color:#F0F2F8;">${s.email || 'your account'}</strong>. Your route syncs to every device you sign in on.</p>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:#1D9E75;flex-shrink:0;"></span>
+        <span style="font-size:12px;color:#8A93A8;">${lastSyncedLabel()}</span>
+      </div>
       ${note}
       <button class="btn btn-ghost" onclick="signOut()">Sign out</button>
       <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:8px;">Signing out leaves everything on this device untouched.</p>`;
