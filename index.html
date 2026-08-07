@@ -6378,20 +6378,20 @@ function screenCoursesSimple(sections) {
           ${COURSES.filter(c => c.section === sec).map(c => {
             const on = S.courseStatus[c.id] === 'in-progress';
             return `
-            <button type="button" class="topic-pick-btn" style="${on ? 'border-color:rgba(29,158,117,0.55);background:rgba(29,158,117,0.09);' : ''}"
-                    onclick="setCourseState('${c.id}','in-progress');render();">
+            <button type="button" id="spick-${c.id}" class="topic-pick-btn" style="${on ? 'border-color:rgba(29,158,117,0.55);background:rgba(29,158,117,0.09);' : ''}"
+                    aria-pressed="${on}" onclick="toggleCourseSimple('${c.id}')">
               <span class="tp-name" style="color:${on ? '#4DE3AB' : '#F0F2F8'};">${c.name}</span>
               <span class="tp-arrow" style="color:${on ? '#4DE3AB' : '#444B62'};">${on ? '✓' : '+'}</span>
             </button>`;
           }).join('')}
         `).join('')}
 
-        <button onclick="S._fullCourses = true; render();" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:8px;-webkit-tap-highlight-color:transparent;">Already finished some courses? Add them &rarr;</button>
+        <button onclick="S._pickerMode='full'; render();" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:8px;-webkit-tap-highlight-color:transparent;">Already finished some courses? Add them &rarr;</button>
       </div>
 
       <div style="position:sticky;bottom:0;background:linear-gradient(to top,#0D0F14 70%,transparent);padding:12px 0 28px;flex-shrink:0;margin:0 -2px;padding-left:2px;padding-right:2px;">
-        <p style="text-align:center;font-size:12px;color:#8A93A8;margin:0 0 8px;font-weight:600;letter-spacing:0.03em;${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
-        <button class="btn btn-primary" ${S.courses.size ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
+        <p id="simple-counter" style="text-align:center;font-size:12px;color:#8A93A8;margin:0 0 8px;font-weight:600;letter-spacing:0.03em;${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
+        <button id="simple-cta" class="btn btn-primary" ${S.courses.size ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
       </div>
     </div>`;
 }
@@ -6403,8 +6403,11 @@ function screenCourses() {
   // else: no Taking/Done distinction, no requirement badges, no prerequisites
   // explainer. A freshman with two classes should be done in three taps. The full
   // catalog is one tap away for anyone who has already finished courses.
-  const simple = S.courses.size === 0 && !S._fullCourses;
-  if (simple) return screenCoursesSimple(sections);
+  // Decided once per visit. Recomputing it each render flipped the screen to the
+  // full catalog the moment the first course was selected, so only one class
+  // could ever be picked. Cleared in go() when leaving this screen.
+  if (S._pickerMode == null) S._pickerMode = S.courses.size === 0 ? 'simple' : 'full';
+  if (S._pickerMode === 'simple') return screenCoursesSimple(sections);
 
   return `
     <div class="screen">
@@ -6880,6 +6883,7 @@ function screenError() {
 // ── ACTIONS ───────────────────────────────────────────────────────────────────
 
 function go(screen) {
+  if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
   S.screen = screen;
   render();
 }
@@ -6895,6 +6899,29 @@ function finishCourses() {
     if (window.plausible) plausible('onboarding_complete');
   }
   go('reveal');
+}
+
+// Simple picker: multi-select, patched in place. A full render here would replay
+// the fade-up and jump the scroll position while tapping down a list of classes.
+function toggleCourseSimple(id) {
+  if (S.courseStatus[id] === 'in-progress') { S.courses.delete(id); delete S.courseStatus[id]; }
+  else { S.courses.add(id); S.courseStatus[id] = 'in-progress'; }
+  save();
+  const row = document.getElementById('spick-' + id);
+  if (!row) { render(); return; }
+  const on = S.courseStatus[id] === 'in-progress';
+  row.style.borderColor = on ? 'rgba(29,158,117,0.55)' : '';
+  row.style.background  = on ? 'rgba(29,158,117,0.09)'  : '';
+  row.setAttribute('aria-pressed', String(on));
+  const name = row.querySelector('.tp-name');
+  if (name) name.style.color = on ? '#4DE3AB' : '#F0F2F8';
+  const arrow = row.querySelector('.tp-arrow');
+  if (arrow) { arrow.textContent = on ? '✓' : '+'; arrow.style.color = on ? '#4DE3AB' : '#444B62'; }
+  const n = S.courses.size;
+  const counter = document.getElementById('simple-counter');
+  if (counter) { counter.textContent = n + ' course' + (n !== 1 ? 's' : '') + ' selected'; counter.style.display = n > 0 ? '' : 'none'; }
+  const cta = document.getElementById('simple-cta');
+  if (cta) cta.disabled = n === 0;
 }
 
 function setCourseState(id, newState) {
