@@ -1182,7 +1182,7 @@ const TAB_ICONS = {
   settings: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
 };
 
-const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings'];
+const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings', 'midterm'];
 
 function tabBarHTML() {
   const tabs = [
@@ -4266,6 +4266,8 @@ const S = {
   nudgeDismissed: {}, // {topicId: 'YYYY-MM-DD'} — nudge for this topic dismissed on this date
   semStart:  null,    // 'YYYY-MM-DD' — first day of the current semester (Semester Sync)
   semPrompt: null,    // 'dismissed' once the user has waved off the semester-start ask
+  midterm:   null,    // { courseId, subIds:[...], date:'YYYY-MM-DD' } — active Midterm Mode plan
+  mtDraft:   null,    // transient: the plan being built on the Midterm setup screen
 };
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
@@ -4275,12 +4277,14 @@ const S = {
 // future release is covered everywhere the moment it's listed.
 const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
-                 'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt'];
+                 'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
+                 'wp_midterm'];
 
 // Keys whose value must be valid JSON. load() wipes everything if a parse throws,
 // so a restore validates these up front rather than discovering it after reload.
 const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_qstats','wp_history',
-                      'wp_milestones','wp_cov_milestones','wp_topic_last_seen','wp_nudge_dismissed'];
+                      'wp_milestones','wp_cov_milestones','wp_topic_last_seen','wp_nudge_dismissed',
+                      'wp_midterm'];
 
 // Discovered by prefix, not by list: a backup taken on a newer build that writes
 // keys this build has never heard of still round-trips them intact.
@@ -4310,6 +4314,8 @@ function save() {
   localStorage.setItem('wp_nudge_dismissed', JSON.stringify(S.nudgeDismissed));
   localStorage.setItem('wp_sem_start',  S.semStart  || '');
   localStorage.setItem('wp_sem_prompt', S.semPrompt || '');
+  if (S.midterm) localStorage.setItem('wp_midterm', JSON.stringify(S.midterm));
+  else localStorage.removeItem('wp_midterm');
 }
 
 function load() {
@@ -4345,6 +4351,12 @@ function load() {
     // Semester Sync — absent for every existing user, which simply means "not asked yet".
     S.semStart  = localStorage.getItem('wp_sem_start')  || null;
     S.semPrompt = localStorage.getItem('wp_sem_prompt') || null;
+    const mt = localStorage.getItem('wp_midterm');
+    if (mt) {
+      const parsed = JSON.parse(mt);
+      // Ignore a malformed or half-written plan rather than letting it break Home.
+      S.midterm = (parsed && parsed.courseId && parsed.date && Array.isArray(parsed.subIds)) ? parsed : null;
+    }
 
     // Reset streak if more than 1 day has passed
     if (S.lastDate) {
@@ -5241,6 +5253,256 @@ function semesterCardHTML() {
     </div>`;
 }
 
+// ── MIDTERM MODE ──────────────────────────────────────────────────────────────
+// A real exam is the moment a premed will actually study. Midterm Mode meets them
+// there: pick the course, the units the exam covers, and the date, and Waypoint
+// lays out a countdown — framed so the work counts twice. Your professor will test
+// this in two weeks; the MCAT will test it in two years. Learn it deeply once.
+
+// Whole days from today until the exam. Negative once the exam has passed.
+// UTC-normalized for the same daylight-saving reason as semesterWeek().
+function daysUntil(dateISO, now = new Date()) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateISO || '');
+  if (!m) return null;
+  const target = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  const back = new Date(target);
+  if (back.getUTCMonth() !== +m[2] - 1 || back.getUTCDate() !== +m[3]) return null;
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((target - today) / 86400000);
+}
+
+// Every drillable [topic, subtopic] unit belonging to a course, with how many
+// questions back it and how the student has done on them so far.
+function courseUnits(courseId) {
+  const out = [];
+  TOPICS.filter(t => t.course === courseId).forEach(topic => {
+    (SUBTOPICS[topic.id] || []).forEach(sub => {
+      const qs = QUESTIONS.filter(q => q.topic === topic.id &&
+                                       (q.subtopic || SUBTOPIC_TAGS[q.id]) === sub.id);
+      if (!qs.length) return;
+      let right = 0, wrong = 0;
+      qs.forEach(q => { const s = S.qStats[q.id]; if (s) { right += s.right; wrong += s.wrong; } });
+      const seen = right + wrong;
+      out.push({ topicId: topic.id, topic, subId: sub.id, label: sub.label,
+                 count: qs.length, seen, accuracy: seen ? right / seen : null });
+    });
+  });
+  return out;
+}
+
+// The countdown itself: one unit per day from today through exam day.
+// Units rotate so everything gets covered, then the last stretch is re-weighted
+// toward whatever the student is weakest on — untested units count as weak,
+// because "never practiced" is exactly what you want to catch before an exam.
+function midtermPlan(mt = S.midterm, now = new Date()) {
+  if (!mt) return null;
+  const days = daysUntil(mt.date, now);
+  if (days === null) return null;
+
+  const all = courseUnits(mt.courseId);
+  let units = all.filter(u => mt.subIds.indexOf(u.subId + '|' + u.topicId) !== -1);
+  if (!units.length) units = all;               // selection no longer resolves — cover the course
+  if (!units.length) return null;               // course has no drillable questions at all
+
+  const course = COURSES.find(c => c.id === mt.courseId);
+  const base = { days, course, courseName: course ? course.name : mt.courseId, units, date: mt.date };
+  if (days < 0) return { ...base, past: true, schedule: [] };
+
+  // Weakest first: never-practiced (null accuracy) sorts as 0.
+  const byWeakness = units.slice().sort((a, b) =>
+    (a.accuracy === null ? 0 : a.accuracy) - (b.accuracy === null ? 0 : b.accuracy));
+
+  const total = days + 1;                        // today counts as a study day
+  // Reinforcement only earns a slot once there's room to see everything at least
+  // once. On a short countdown, breadth beats repetition — cover more ground.
+  const finalPush = total > units.length
+    ? Math.min(units.length, Math.max(1, Math.ceil(total * 0.25)))
+    : 0;
+  const schedule = [];
+  for (let d = 0; d < total; d++) {
+    const fromEnd = total - 1 - d;
+    // The closing days go to the weakest units; everything before rotates evenly.
+    schedule.push(fromEnd < finalPush ? byWeakness[fromEnd] : units[d % units.length]);
+  }
+  return { ...base, past: false, schedule, today: schedule[0] };
+}
+
+// The Twist for a unit — the whole reason drilling for a midterm is worth doing
+// at MCAT depth. Returns the two halves of the contrast, or null.
+function unitTwist(unit) {
+  if (!unit) return null;
+  const qs = QUESTIONS.filter(q => q.topic === unit.topicId &&
+                                   (q.subtopic || SUBTOPIC_TAGS[q.id]) === unit.subId &&
+                                   twistTextFor(q));
+  if (!qs.length) return null;
+  const q = qs[0];
+  const parts = splitTwist(twistTextFor(q));
+  return parts.exam ? { ...parts, qId: q.id } : null;
+}
+
+function startMidtermSetup() {
+  const inProg = [...S.courses].filter(c => S.courseStatus[c] === 'in-progress');
+  const pick = S.midterm ? S.midterm.courseId : (inProg[0] || [...S.courses][0] || null);
+  S.mtDraft = S.midterm
+    ? { courseId: S.midterm.courseId, subIds: S.midterm.subIds.slice(), date: S.midterm.date }
+    : { courseId: pick, subIds: [], date: '' };
+  go('midterm');
+}
+
+function mtPickCourse(courseId) {
+  if (!S.mtDraft) return;
+  S.mtDraft.courseId = courseId;
+  S.mtDraft.subIds = [];   // units belong to a course; changing course clears them
+  render();
+}
+
+function mtToggleUnit(key) {
+  if (!S.mtDraft) return;
+  const i = S.mtDraft.subIds.indexOf(key);
+  if (i === -1) S.mtDraft.subIds.push(key); else S.mtDraft.subIds.splice(i, 1);
+  render();
+}
+
+function mtSetDate(v) { if (S.mtDraft) { S.mtDraft.date = v; render(); } }
+
+function saveMidterm() {
+  const d = S.mtDraft;
+  if (!d || !d.courseId || !d.date || daysUntil(d.date) === null) return;
+  S.midterm = { courseId: d.courseId, subIds: d.subIds.slice(), date: d.date };
+  S.mtDraft = null;
+  save();
+  if (window.plausible) plausible('midterm_set', { props: { days: String(daysUntil(d.date)) } });
+  go('brief');
+}
+
+function clearMidterm() {
+  S.midterm = null; S.mtDraft = null;
+  save();
+  render();
+}
+
+// Midterm drills are deliberate exam prep, so they earn the streak like a full session.
+function startMidtermDrill(topicId, subId) {
+  startQuickLog(topicId, subId);
+  if (S.quickLog) S.quickLog.streakEligible = true;
+  if (window.plausible) plausible('midterm_drill_start');
+}
+
+function midtermCardHTML() {
+  const plan = midtermPlan();
+  if (!plan) return '';
+
+  if (plan.past) {
+    return `
+      <div style="background:rgba(245,179,106,0.07);border:1px solid rgba(245,179,106,0.24);border-radius:14px;padding:15px 18px;margin-bottom:20px;">
+        <div style="font-size:10px;font-weight:800;color:#F5B36A;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Midterm Mode</div>
+        <p style="font-size:14px;color:#F0F2F8;line-height:1.5;margin:0 0 6px;font-weight:600;">Your ${plan.courseName} exam has passed.</p>
+        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 12px;">However it went, that material is still on the MCAT — and you're ahead on it now.</p>
+        <button class="btn btn-primary" style="margin:0;padding:11px 18px;font-size:14px;" onclick="startMidtermSetup()">Set up the next one</button>
+        <button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;display:block;width:100%;text-align:center;margin-top:8px;padding:4px 0;-webkit-tap-highlight-color:transparent;" onclick="clearMidterm()">Clear</button>
+      </div>`;
+  }
+
+  const u = plan.today;
+  const tw = unitTwist(u);
+  const when = plan.days === 0 ? 'is today'
+             : plan.days === 1 ? 'is tomorrow'
+             : `is in ${plan.days} days`;
+  const remaining = plan.schedule.length;
+
+  return `
+    <div style="background:linear-gradient(135deg,rgba(245,179,106,0.13),rgba(245,179,106,0.03));border:1px solid rgba(245,179,106,0.3);border-radius:14px;padding:16px 18px;margin-bottom:22px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;">
+        <div style="font-size:10px;font-weight:800;color:#F5B36A;text-transform:uppercase;letter-spacing:0.1em;">Midterm Mode</div>
+        <div style="font-size:11px;color:#767E96;flex-shrink:0;">${remaining} day${remaining !== 1 ? 's' : ''} of prep</div>
+      </div>
+      <div style="font-size:16px;font-weight:700;color:#F0F2F8;line-height:1.3;margin-bottom:10px;">Your ${plan.courseName} exam ${when}.</div>
+
+      <div style="background:rgba(0,0,0,0.22);border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Today</div>
+        <div style="font-size:15px;font-weight:600;color:#F0F2F8;line-height:1.3;">${u.label}</div>
+        ${tw ? `
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);">
+            <p style="font-size:12px;color:#8A93A8;line-height:1.55;margin:0 0 5px;"><strong style="color:#B0B5C8;">Your professor:</strong> ${tw.cls}</p>
+            <p style="font-size:12px;color:#8A93A8;line-height:1.55;margin:0;"><strong style="color:#A78BFA;">The MCAT:</strong> ${tw.exam}</p>
+          </div>` : ''}
+      </div>
+
+      <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;"
+              onclick="startMidtermDrill('${u.topicId}', '${u.subId}')">Drill ${u.label} →</button>
+      <button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;display:block;width:100%;text-align:center;margin-top:8px;padding:4px 0;-webkit-tap-highlight-color:transparent;"
+              onclick="startMidtermSetup()">Edit plan</button>
+    </div>`;
+}
+
+function screenMidterm() {
+  const d = S.mtDraft || { courseId: null, subIds: [], date: '' };
+  const picks = [...S.courses];
+  const units = d.courseId ? courseUnits(d.courseId) : [];
+  const days  = d.date ? daysUntil(d.date) : null;
+  const ready = !!(d.courseId && d.date && days !== null && days >= 0);
+
+  const courseBtns = picks.length ? picks.map(cid => {
+    const c = COURSES.find(x => x.id === cid);
+    if (!c) return '';
+    const on = d.courseId === cid;
+    return `<button class="topic-pick-btn" style="${on ? 'border-color:rgba(245,179,106,0.5);background:rgba(245,179,106,0.08);' : ''}" onclick="mtPickCourse('${cid}')">
+      <span class="tp-name" style="color:${on ? '#F5B36A' : '#F0F2F8'};">${c.name}</span>
+      <span class="tp-arrow" style="color:${on ? '#F5B36A' : '#767E96'};">${on ? '✓' : ''}</span>
+    </button>`;
+  }).join('') : `<p style="font-size:13px;color:#8A93A8;line-height:1.55;">Pick your courses first, then set up an exam.</p>
+                 <button class="btn btn-ghost" onclick="go('courses')">Choose my courses</button>`;
+
+  return `
+    <div class="screen">
+      <div class="brief-topbar">
+        <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Midterm Mode
+        </button>
+      </div>
+
+      <h2 style="margin-bottom:5px;">Exam coming up?</h2>
+      <p style="font-size:14px;margin-bottom:20px;">Tell Waypoint what it covers and when. You'll get a day-by-day plan — and the MCAT version of everything on it, so the work counts twice.</p>
+
+      <p class="label" style="margin-bottom:8px;">Which class</p>
+      ${courseBtns}
+
+      ${d.courseId && units.length ? `
+        <div class="section-divider"></div>
+        <p class="label" style="margin-bottom:6px;">What's on it</p>
+        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Pick the units your exam covers. Leave it empty and we'll cover the whole course.</p>
+        ${units.map(u => {
+          const key = u.subId + '|' + u.topicId;
+          const on = d.subIds.indexOf(key) !== -1;
+          return `<button class="topic-pick-btn" style="${on ? 'border-color:rgba(245,179,106,0.5);background:rgba(245,179,106,0.08);' : ''}" onclick="mtToggleUnit('${key}')">
+            <span style="flex:1;text-align:left;">
+              <span class="tp-name" style="color:${on ? '#F5B36A' : '#F0F2F8'};">${u.label}</span>
+              <span style="display:block;font-size:11px;color:#767E96;margin-top:2px;">${u.count} question${u.count !== 1 ? 's' : ''}</span>
+            </span>
+            <span class="tp-arrow" style="color:${on ? '#F5B36A' : '#444B62'};">${on ? '✓' : '+'}</span>
+          </button>`;
+        }).join('')}
+      ` : ''}
+
+      ${d.courseId ? `
+        <div class="section-divider"></div>
+        <p class="label" style="margin-bottom:8px;">When is it</p>
+        <input type="date" id="mt-date" value="${d.date}" min="${isoDate()}"
+               onchange="mtSetDate(this.value)"
+               style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:6px;">
+        ${d.date && days !== null && days < 0
+          ? `<p style="font-size:12px;color:#F4B48A;margin-bottom:12px;">That date has already passed — pick a day from today onward.</p>`
+          : d.date && days !== null
+            ? `<p style="font-size:12px;color:#8A93A8;margin-bottom:12px;">${days === 0 ? 'Exam day — one focused session, then rest.' : `${days + 1} study day${days ? 's' : ''} including today.`}</p>`
+            : `<div style="margin-bottom:12px;"></div>`}
+
+        <button class="btn btn-primary" ${ready ? '' : 'disabled'} onclick="saveMidterm()">${S.midterm ? 'Update my plan' : 'Build my plan'}</button>
+        ${S.midterm ? `<button class="btn btn-ghost" onclick="clearMidterm();go('brief');">Cancel this exam</button>` : ''}
+      ` : ''}
+    </div>`;
+}
+
 // ── TWIST OF THE DAY ──────────────────────────────────────────────────────────
 // Surfaces Waypoint's single most differentiated asset — the professor-vs-MCAT
 // "Twist" — on the Home screen, rotating once per day. A real reason to return
@@ -5406,8 +5668,13 @@ function screenBrief() {
   const milestone = getMilestone();
   // Semester Sync leads. If it already points at the same topic, the directive
   // card would just say the same thing twice — so it stands down.
+  // An imminent exam outranks the week feed — that's what they're actually
+  // studying for. Both cards stand down anything that would repeat them.
+  const midtermHTML  = midtermCardHTML();
   const semesterHTML = semesterCardHTML();
   const semesterTopicIds = new Set(thisWeekUnits().map(u => u.topic.id));
+  const mtPlan = midtermPlan();
+  if (mtPlan && mtPlan.today) semesterTopicIds.add(mtPlan.today.topicId);
 
   let directiveHTML = '';
   const directive = getDirectiveTopic();
@@ -5485,8 +5752,18 @@ function screenBrief() {
         </div>
       </div>
 
+      ${midtermHTML}
       ${semesterHTML}
       ${directiveHTML}
+      ${midtermHTML ? '' : `
+        <button style="width:100%;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.2);border-radius:12px;padding:13px 16px;margin-bottom:22px;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;-webkit-tap-highlight-color:transparent;"
+                onclick="startMidtermSetup()">
+          <span>
+            <span style="display:block;font-size:14px;font-weight:600;color:#F0F2F8;margin-bottom:2px;">Exam coming up?</span>
+            <span style="font-size:12px;color:#8A93A8;">Get a countdown plan — and the MCAT version of everything on it.</span>
+          </span>
+          <span style="color:#F5B36A;font-size:18px;flex-shrink:0;">→</span>
+        </button>`}
 
       <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px;">
         <div style="position:relative;flex-shrink:0;width:112px;height:112px;">
@@ -6923,7 +7200,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, breakdown:10, about:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, breakdown:10, about:10, midterm:10 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -6995,6 +7272,7 @@ function render() {
     case 'complete': html += screenComplete(); break;
     case 'settings': html += screenSettings(); break;
     case 'about': html += screenAbout(); break;
+    case 'midterm': html += screenMidterm(); break;
     case 'breakdown': html += screenBreakdown(); break;
     case 'quicklog':          html += screenQuickLog();         break;
     case 'quicklog-subtopic': html += screenQuickLogSubtopic(); break;
