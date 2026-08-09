@@ -5370,6 +5370,37 @@ function toggleFresh(tid) {
   render();
 }
 
+// The faded topic the student is least able to do. Accuracy first, then whichever
+// has gone longest untouched. Only faded qualifies: fading is still holding, and
+// unpinned has no accuracy to be weakest at.
+function weakestFaded() {
+  return freshnessSummary().faded
+    .map(f => { const t = topicTally(f.tid); return { ...f, pct: t.total ? t.right / t.total : 0 }; })
+    .sort((a, b) => (a.pct - b.pct) || (b.days - a.days))[0] || null;
+}
+
+// The cap on how often retention may lead the Today card: two fixed weekdays.
+// The alternative -- recording which days led with retention -- would need a new
+// key, and sessionHistory can't stand in for it: it only knows about sessions
+// that were finished, not cards that were shown. Sunday and Monday are the
+// Brief's, so a retention lead there would never be seen.
+const RETENTION_DAYS = [2, 6];  // Tuesday and Saturday
+function retentionLeadsToday(now = new Date()) {
+  return RETENTION_DAYS.indexOf(now.getDay()) !== -1;
+}
+
+// "the spring" while it's still this year, "spring 2025" once it isn't — a
+// faded topic is 180+ days old, so both are reachable.
+const SEASONS = ['winter','winter','spring','spring','spring','summer',
+                 'summer','summer','fall','fall','fall','winter'];
+function seasonPhrase(iso) {
+  const d = new Date(iso || '');
+  if (isNaN(d)) return null;
+  const yr = d.getUTCFullYear();
+  return yr === new Date().getFullYear() ? `the ${SEASONS[d.getUTCMonth()]}`
+                                         : `${SEASONS[d.getUTCMonth()]} ${yr}`;
+}
+
 // ── SCREEN RENDERERS ──────────────────────────────────────────────────────────
 
 function sectionBarsHTML() {
@@ -6333,6 +6364,23 @@ function todayPick(skip = null) {
              onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')`,
              run: () => startWeekDrill(wk.topic.id, wk.subId),
              link: { label: 'Not what you\'re covering? →', onclick: `openPaceFix('${wk.courseId}')` } };
+  }
+
+  // Faded ground gets to lead, but only twice a week — semester-synced work is
+  // what a student is actually being graded on, and it keeps the other five days.
+  // A student with no faded topics never reaches this branch at all.
+  if (retentionLeadsToday()) {
+    const r = weakestFaded();
+    if (r && !skipped(r.tid)) {
+      const when = seasonPhrase(S.topicLastSeen[r.tid]);
+      const n = repinCount(r.tid);
+      return { label: 'Still yours', accent: '#F5B36A',
+               title: `${n} question${n !== 1 ? 's' : ''} on ${r.topic.name}`,
+               reason: when ? `You last practiced this in ${when} — keep holding it.`
+                            : 'You covered this a while back — keep holding it.',
+               onclick: `repin('${r.tid}')`,
+               run: () => repin(r.tid) };
+    }
   }
 
   const d = getDirectiveTopic();
