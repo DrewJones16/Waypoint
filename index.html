@@ -4942,6 +4942,9 @@ const TILE_NAMES = {
 };
 
 function sectionedMapHTML() {
+  // Off entirely until the student has practiced something — see freshnessActive().
+  const live = freshnessActive();
+  const open = live ? S._freshOpen : null;
   return MCAT_SECTIONS.map(sec => {
     const secTopics  = TOPICS.filter(t => t.mcat === sec.id);
     const secTotal   = secTopics.reduce((s, t) => s + t.w, 0);
@@ -4953,7 +4956,7 @@ function sectionedMapHTML() {
       const covered    = t.course && S.courses.has(t.course);
       const inProgress = t.course && S.courseStatus[t.course] === 'in-progress';
       if (!t.course) { // CARS — ongoing, not course-gated
-        return `<div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:7px;padding:8px 9px;flex:1;min-width:72px;max-width:100%;overflow:hidden;">
+        return `<div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:7px;padding:8px 9px;flex:1;min-width:92px;max-width:100%;overflow:hidden;">
           <div style="font-size:11px;color:#F5B36A;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
             <div style="font-size:11px;color:#8A93A8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-style:italic;">ongoing</div>
@@ -4963,17 +4966,29 @@ function sectionedMapHTML() {
       }
       if (covered) {
         const statusIcon = inProgress ? `<span class="pulse-dot" style="width:5px;height:5px;margin-right:3px;"></span>` : '✓ ';
-        return `<div style="background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius:7px;padding:8px 9px;flex:1;min-width:72px;max-width:100%;overflow:hidden;">
+        // Coverage chrome never changes with freshness: covered ground stays
+        // green and stays earned. Only the small status line carries the state,
+        // and for fresh it stays exactly the line it has always been.
+        let status = `<div style="font-size:11px;color:#2DB88A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${t.disp}</div>`;
+        const f = live ? topicFreshness(t.id) : null;
+        if (f && f.state !== 'fresh') {
+          const m = FRESH_META[f.state];
+          status = `<div style="font-size:11px;color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.word}</div>`;
+        }
+        const inner = `
           <div style="font-size:11px;color:#4DE3AB;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-            <div style="font-size:11px;color:#2DB88A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${t.disp}</div>
+            ${status}
             <div style="font-size:11px;font-weight:700;color:#1D9E75;flex-shrink:0;margin-left:4px;">${t.w}%</div>
-          </div>
-        </div>`;
+          </div>`;
+        const box = 'background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius:7px;padding:8px 9px;flex:1;min-width:92px;max-width:100%;overflow:hidden;';
+        if (!f) return `<div style="${box}">${inner}</div>`;
+        return `<button onclick="toggleFresh('${t.id}')" aria-expanded="${open === t.id}" title="${f.why.replace(/"/g, '&quot;')}"
+          style="${box}text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;${open === t.id ? 'box-shadow:0 0 0 1px rgba(255,255,255,0.18);' : ''}">${inner}</button>`;
       }
       // locked / addable — tap to add the course that unlocks it
       const cName = (COURSES.find(c => c.id === t.course) || {}).name || 'a course';
-      return `<button onclick="go('courses')" title="Add ${cName} to unlock +${t.w}%" style="background:#101319;border:1px dashed rgba(255,255,255,0.15);border-radius:7px;padding:8px 9px;flex:1;min-width:72px;max-width:100%;overflow:hidden;cursor:pointer;text-align:left;font-family:inherit;">
+      return `<button onclick="go('courses')" title="Add ${cName} to unlock +${t.w}%" style="background:#101319;border:1px dashed rgba(255,255,255,0.15);border-radius:7px;padding:8px 9px;flex:1;min-width:92px;max-width:100%;overflow:hidden;cursor:pointer;text-align:left;font-family:inherit;">
         <div style="font-size:11px;color:#8A93A8;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
           <div style="font-size:11px;color:#767E96;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${t.disp}</div>
@@ -4991,7 +5006,11 @@ function sectionedMapHTML() {
         <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:10px;overflow:hidden;">
           <div class="sec-bar-fill" data-w="${secPct}" style="height:100%;width:0%;background:#1D9E75;border-radius:2px;transition:width 1.2s ease;"></div>
         </div>
+        <!-- 92px floor, not 72: the state word has to fit beside the weight
+             at 375px. Six and nine topics wrap to the same number of rows
+             three-across as they did four-across, so the map is no taller. -->
         <div style="display:flex;flex-wrap:wrap;gap:5px;">${tiles}</div>
+        ${open && secTopics.some(t => t.id === open) ? freshDetailHTML(open) : ''}
       </div>`;
   }).join('');
 }
@@ -5175,125 +5194,156 @@ function getMasteredTopic() {
   </div>`;
 }
 
-// ── SCREEN RENDERERS ──────────────────────────────────────────────────────────
+// ── FRESHNESS: WHAT YOU STILL HOLD ────────────────────────────────────────────
+// Waypoint has recorded topicLastSeen and per-question accuracy since the first
+// session and never said either out loud. This says it. Everything below is
+// derived at render time from data that already exists — no new key, no cache,
+// no migration. Change a course status or finish a session and the whole layer
+// re-derives on the next paint.
+//
+//   fresh    — practiced in the last 60 days, or the class is in session now
+//   fading   — 60-180 days ago (90-240 when the topic is strong: strong ground
+//              fades slower, and the "why" line says so)
+//   faded    — past that window, and only for a course marked done
+//   unpinned — course done, topic never practiced. Deliberately NOT "faded":
+//              Waypoint can't claim you're losing something it never verified.
+//
+// The frame is possession, never loss. Fading is normal, stated plainly, and
+// fixable in one tap.
+const FRESH = {
+  freshDays: { normal: 60,  strong: 90  },
+  fadeDays:  { normal: 180, strong: 240 },
+  strongPct: 0.8,   // lifetime accuracy that earns the longer window
+  strongMin: 5,     // ...over at least this many answered questions
+};
 
-// ── RETENTION / "STAYING SHARP" ───────────────────────────────────────────────
-// The honest depth signal that sits beside coverage (breadth). Coverage says what
-// your classes have EXPOSED you to; this says what you can actually still DO, using
-// real practice accuracy + time-decay (the testing/spacing effect). Deliberately
-// only judges topics you've actually practiced — no scary "of everything covered"
-// denominator — so it stays truthful without ever reading "you're behind."
-function topicRetention(tid) {
-  const topic = TOPICS.find(t => t.id === tid);
-  if (!topic || !topic.course || !S.courses.has(topic.course)) return null;
-  let right = 0, wrong = 0, recentR = 0, recentSeen = 0;
+const FRESH_META = {
+  fresh:    { word: 'holding',  color: '#2DB88A', hollow: false },
+  fading:   { word: 'fading',   color: '#F5B36A', hollow: false },
+  faded:    { word: 'faded',    color: '#F08060', hollow: false },
+  unpinned: { word: 'unpinned', color: '#8A93A8', hollow: true  },
+};
+
+const MONTH_NAMES = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+
+// Lifetime right/wrong on a topic, across every question in the bank.
+function topicTally(tid) {
+  let right = 0, wrong = 0;
   QUESTIONS.forEach(q => {
     if (q.topic !== tid) return;
     const s = S.qStats[q.id];
-    if (!s) return;
-    right += s.right; wrong += s.wrong;
-    if (s.last !== undefined) { recentSeen++; if (s.last) recentR++; } // most-recent outcome per question
+    if (s) { right += s.right; wrong += s.wrong; }
   });
-  const total = right + wrong;
-  // Need a real sample before any verdict — a 2/3 start shouldn't earn a mastery call.
-  const MIN = 4;
-  if (total < MIN) return { tid, topic, status: 'untested', total, pct: null, days: null };
-  const lifetime = right / total;
-  // Recency: fraction of practiced questions whose MOST RECENT answer was correct.
-  // Blended with lifetime so a rough first week can be redeemed by genuine improvement
-  // (the exact gain the product exists to produce) instead of dragging forever.
-  const recent = recentSeen ? recentR / recentSeen : lifetime;
-  const eff = 0.5 * lifetime + 0.5 * recent;
-  const seen = S.topicLastSeen[tid];
-  const days = seen ? Math.floor((Date.now() - new Date(seen)) / 86400000) : null;
-  // Expanding-interval spacing: strongly-owned topics decay slower.
-  const strong = eff >= 0.9 && total >= 6;
-  const fadeAt = strong ? 21 : 10;
-  let status;
-  if (eff < 0.7)                            status = 'shaky';   // not reliable yet
-  else if (eff < 0.8)                       status = 'fading';  // borderline — worth a refresh
-  else if (days !== null && days >= fadeAt) status = 'fading';  // time-decayed
-  else                                      status = 'sharp';   // >=80% and recent
-  return { tid, topic, status, total, pct: Math.round(eff * 100), days };
+  return { right, wrong, total: right + wrong };
 }
 
-function retentionSummary(excludeId = null) {
-  const states = TOPICS
-    .filter(t => t.course && S.courses.has(t.course))
-    .map(t => topicRetention(t.id))
-    .filter(Boolean);
-  const practiced = states.filter(s => s.status !== 'untested');
-  const sharp  = practiced.filter(s => s.status === 'sharp');
-  const fading = practiced.filter(s => s.status === 'fading');
-  const shaky  = practiced.filter(s => s.status === 'shaky');
-  const untested = states.filter(s => s.status === 'untested');
-  // The single best thing to refresh: weakest accuracy first, then most time-decayed.
-  // excludeId lets the caller skip a topic that's already being actioned elsewhere
-  // (the "Do this now" directive) so we never show two CTAs for the same topic.
-  const pick = arr => arr.filter(s => s.tid !== excludeId);
-  const action = pick(shaky).sort((a, b) => a.pct - b.pct)[0]
-              || pick(fading).sort((a, b) => (b.days || 0) - (a.days || 0))[0]
-              || null;
-  return { practiced, sharp, fading, shaky, untested, action };
+// The same phrase whether the state it explains is fresh or faded — it's the
+// same fact either way, and only the fact is ours to state.
+function lastPracticedPhrase(days, iso) {
+  if (days === 0) return 'Practiced today.';
+  if (days === 1) return 'Practiced yesterday.';
+  if (days < 14)  return `Practiced ${days} days ago.`;
+  const d = new Date(iso);
+  if (isNaN(d)) return `Practiced ${days} days ago.`;
+  const thisYear = d.getUTCFullYear() === new Date().getUTCFullYear();
+  return `Last practiced in ${MONTH_NAMES[d.getUTCMonth()]}${thisYear ? '' : ' ' + d.getUTCFullYear()}.`;
 }
 
-// Refresh a slipping topic straight from the retention card — tracked so we can
-// measure whether the honest signal actually drives spaced practice.
-function masteryRefresh(tid) {
-  if (window.plausible) plausible('mastery_refresh', { props: { topic: tid } });
-  startQuickLog(tid, null);
-}
+function topicFreshness(tid) {
+  const topic = TOPICS.find(t => t.id === tid);
+  if (!topic || !topic.course || !S.courses.has(topic.course)) return null;
+  const inClass    = S.courseStatus[topic.course] === 'in-progress';
+  const courseName = (COURSES.find(c => c.id === topic.course) || {}).name || 'the course';
+  const iso  = S.topicLastSeen[tid];
+  const ms   = Date.parse(iso || '');
+  const days = isNaN(ms) ? null : Math.max(0, Math.floor((Date.now() - ms) / 86400000));
 
-function stayingSharpHTML() {
-  // Exclude whatever the "Do this now" directive is already surfacing so the two
-  // surfaces never show a duplicate CTA for the same topic (status here, action there).
-  const directive = getDirectiveTopic();
-  const directiveId = directive ? directive.topic.id : null;
-  const { practiced, sharp, fading, shaky, untested, action } = retentionSummary(directiveId);
-  if (practiced.length < 2) return ''; // not enough practice to say anything honest yet
-  const slipping = fading.length + shaky.length;
+  const tally  = topicTally(tid);
+  const strong = tally.total >= FRESH.strongMin && tally.right / tally.total >= FRESH.strongPct;
+  const key    = strong ? 'strong' : 'normal';
 
-  let body;
-  if (slipping === 0) {
-    // Everything practiced is holding — but be honest about what's NOT yet tested,
-    // and make that the next action rather than implying blanket readiness.
-    const sN = sharp.length;
-    const held = `<strong style="color:#4DE3AB;">${sN} topic${sN !== 1 ? 's' : ''}</strong> you've practiced ${sN !== 1 ? 'are' : 'is'} holding strong`;
-    if (untested.length > 0) {
-      const pickU = untested.filter(s => s.tid !== directiveId).sort((a, b) => b.topic.w - a.topic.w)[0];
-      const tail = pickU
-        ? `<button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="masteryRefresh('${pickU.tid}')">Test ${pickU.topic.name} — see where you stand →</button>`
-        : `<p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0;">Your next one to test is queued up top in Do this now.</p>`;
-      body = `<p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 10px;">The ${held}. <strong style="color:#8A93A8;">${untested.length}</strong> covered topic${untested.length !== 1 ? 's' : ''} haven't been tested yet.</p>${tail}`;
-    } else {
-      body = `<p style="font-size:13px;color:#767E96;line-height:1.55;margin:0;">Every topic you've covered is practiced and holding strong. That's genuinely walking-in-ready — keep it warm.</p>`;
-    }
+  let state, why;
+  if (days === null) {
+    // Never practiced. Being in the class right now is a schedule fact, not a
+    // knowledge claim, so it reads fresh — and the line says exactly that.
+    state = inClass ? 'fresh' : 'unpinned';
+    why   = inClass ? `You're in ${courseName} now.`
+                    : `Never practiced since finishing ${courseName}.`;
+  } else if (inClass) {
+    state = 'fresh';
+    why   = `${lastPracticedPhrase(days, iso)} You're in ${courseName} now.`;
   } else {
-    const chips = [...shaky, ...fading].slice(0, 3).map(s => {
-      const color = s.status === 'shaky' ? '#F08060' : '#F5B36A';
-      return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#8A93A8;background:rgba(255,255,255,0.04);border-radius:8px;padding:4px 9px;"><span style="width:6px;height:6px;border-radius:50%;background:${color};"></span>${s.topic.name}</span>`;
-    }).join('');
-    const lead = sharp.length > 0
-      ? `<strong style="color:#4DE3AB;">${sharp.length} topic${sharp.length !== 1 ? 's' : ''}</strong> still sharp. <strong style="color:#F5B36A;">${slipping}</strong> starting to fade.`
-      : `<strong style="color:#F5B36A;">${slipping} topic${slipping !== 1 ? 's' : ''}</strong> could use a quick refresh.`;
-    const cta = action
-      ? `<button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;text-align:left;padding:2px 0;-webkit-tap-highlight-color:transparent;" onclick="masteryRefresh('${action.tid}')">Lock ${action.topic.name} back in — 5 questions →</button>`
-      : `<p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0;">Your top one to refresh is already queued up top in Do this now.</p>`;
-    body = `
-      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 10px;">${lead}</p>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${chips}</div>
-      ${cta}`;
+    state = days < FRESH.freshDays[key] ? 'fresh'
+          : days < FRESH.fadeDays[key]  ? 'fading'
+          :                               'faded';
+    why   = lastPracticedPhrase(days, iso) + (strong ? ' Strong here — holds longer.' : '');
   }
-
-  return `
-      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;margin:14px 0 4px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <span style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.08em;">Staying sharp</span>
-          <span style="font-size:11px;color:#767E96;">retention, not just coverage</span>
-        </div>
-        ${body}
-      </div>`;
+  return { tid, topic, state, days, strong, why, courseName };
 }
+
+function freshnessSummary() {
+  const states = TOPICS.filter(t => t.course && S.courses.has(t.course))
+                       .map(t => topicFreshness(t.id))
+                       .filter(Boolean);
+  const of = st => states.filter(s => s.state === st);
+  return { states, total: states.length,
+           practiced: states.filter(s => s.days !== null).length,
+           fresh: of('fresh'), fading: of('fading'), faded: of('faded'), unpinned: of('unpinned') };
+}
+
+// Signed-out, brand-new, or simply never practiced: there is no holding to
+// report, only a blank record. The layer stays entirely off rather than
+// labelling a route the app has never tested.
+function freshnessActive() {
+  const f = freshnessSummary();
+  return f.total > 0 && f.practiced > 0;
+}
+
+// One line above the map. Fresh carries no colour — the counts that need a
+// tap are the only ones that get one.
+function freshnessLineHTML() {
+  const f = freshnessSummary();
+  if (!f.total || !f.practiced) return '';
+  const held = f.fresh.length;
+  const noun = `covered topic${f.total !== 1 ? 's' : ''}`;
+  const head = held === f.total ? `Holding all ${f.total} ${noun}`
+                                : `Holding ${held} of ${f.total} ${noun}`;
+  const parts = [];
+  ['fading','faded','unpinned'].forEach(st => {
+    if (f[st].length) parts.push(`<span style="color:${FRESH_META[st].color};">${f[st].length} ${st}</span>`);
+  });
+  const sep = `<span style="color:#4A5165;"> · </span>`;
+  return `
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 ${parts.length ? '3px' : '12px'};">
+        <strong style="color:#4DE3AB;">${head}</strong>${parts.length ? sep + parts.join(sep) : '.'}
+      </p>
+      ${parts.length ? `<p style="font-size:11px;color:#767E96;margin:0 0 12px;">Tap a topic to see why.</p>` : ''}`;
+}
+
+// The one-line "why", opened from a tile. Full width and below the row so the
+// tile grid keeps its shape at 375px.
+function freshDetailHTML(tid) {
+  const f = topicFreshness(tid);
+  if (!f) return '';
+  const m = FRESH_META[f.state];
+  return `
+        <div style="margin-top:7px;background:rgba(255,255,255,0.03);border:1px solid ${m.color}44;border-radius:9px;padding:11px 13px;">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:5px;">
+            <span style="width:7px;height:7px;border-radius:50%;box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1.5px solid ${m.color};"></span>
+            <span style="font-size:13px;font-weight:700;color:#F0F2F8;">${f.topic.name}</span>
+            <span style="font-size:11px;font-weight:700;color:${m.color};text-transform:uppercase;letter-spacing:0.07em;">${m.word}</span>
+          </div>
+          <p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0;">${f.why}</p>
+        </div>`;
+}
+
+function toggleFresh(tid) {
+  S._freshOpen = (S._freshOpen === tid) ? null : tid;
+  render();
+}
+
+// ── SCREEN RENDERERS ──────────────────────────────────────────────────────────
 
 function sectionBarsHTML() {
   const SECS = [
@@ -6870,13 +6920,13 @@ function screenReveal() {
           </div>
         </details>` : ''}
 
+      ${freshnessLineHTML()}
       <div id="sectioned-map"></div>
 
       ${cov > 0 ? `
         <div class="section-divider"></div>
         <p class="label" style="margin-bottom:6px;">Your edge so far</p>
         ${sectionBarsHTML()}
-        ${stayingSharpHTML()}
         ${S.sessionHistory.length > 1 ? sparklineHTML(S.sessionHistory) : ''}
       ` : ''}
 
