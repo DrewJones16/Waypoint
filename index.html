@@ -1182,7 +1182,7 @@ const TAB_ICONS = {
   settings: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
 };
 
-const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings', 'midterm'];
+const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings', 'midterm', 'pace'];
 
 function tabBarHTML() {
   // Two destinations, not four. Log is an action (reached from Today), and
@@ -4290,6 +4290,8 @@ const S = {
   nudgeDismissed: {}, // {topicId: 'YYYY-MM-DD'} — nudge for this topic dismissed on this date
   semStart:  null,    // 'YYYY-MM-DD' — first day of the current semester (Semester Sync)
   semPrompt: null,    // 'dismissed' once the user has waved off the semester-start ask
+  paceOffset: {},     // {courseId: ±weeks} — the student's correction to our pacing guess
+  paceCourse: null,   // transient: the course being re-anchored on the pace screen
   midterm:   null,    // { courseId, subIds:[...], date:'YYYY-MM-DD' } — active Midterm Mode plan
   mtDraft:   null,    // transient: the plan being built on the Midterm setup screen
   briefs:    [],      // [{weekStart, coverage, totalAnswered, ...}] — Sunday Brief snapshots
@@ -4306,7 +4308,7 @@ const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastD
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
                  'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
-                 'wp_upcoming'];
+                 'wp_upcoming','wp_pace_offset'];
 
 // The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
 // files (which users share and store) and out of the cloud payload. It is
@@ -4317,7 +4319,7 @@ const AUTH_KEY = 'waypoint_auth';
 // so a restore validates these up front rather than discovering it after reload.
 const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_qstats','wp_history',
                       'wp_milestones','wp_cov_milestones','wp_topic_last_seen','wp_nudge_dismissed',
-                      'wp_midterm','wp_briefs','wp_upcoming'];
+                      'wp_midterm','wp_briefs','wp_upcoming','wp_pace_offset'];
 
 // Discovered by prefix, not by list: a backup taken on a newer build that writes
 // keys this build has never heard of still round-trips them intact.
@@ -4352,6 +4354,9 @@ function save() {
     prompted:      S.semPrompt || null,
     exam:          S.midterm || null,
   }));
+  // The student's own correction to our pacing guess. Its own key, so it survives
+  // independently of the semester date it adjusts.
+  localStorage.setItem('wp_pace_offset', JSON.stringify(S.paceOffset));
   localStorage.setItem('wp_briefs', JSON.stringify(S.briefs.slice(-12)));
   localStorage.setItem('wp_brief_seen', S.briefSeen || '');
   localStorage.setItem('wp_remind_asked', S.remindAsked ? '1' : '');
@@ -4410,6 +4415,20 @@ function load() {
       S.semStart  = localStorage.getItem('wp_sem_start')  || null;
       S.semPrompt = localStorage.getItem('wp_sem_prompt') || null;
       migratedUpcoming = true;
+    }
+    // Its own try for the same reason as wp_upcoming: a damaged offset map is a
+    // wrong recommendation, not a reason to lose four semesters of progress.
+    const po = localStorage.getItem('wp_pace_offset');
+    if (po) {
+      try {
+        const parsed = JSON.parse(po);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          Object.keys(parsed).forEach(k => {
+            const n = parseInt(parsed[k], 10);
+            if (!isNaN(n)) S.paceOffset[k] = n;
+          });
+        }
+      } catch(e) { console.warn('[Waypoint] wp_pace_offset unreadable — ignoring:', e); }
     }
     const br = localStorage.getItem('wp_briefs');
     if (br) { const p = JSON.parse(br); if (Array.isArray(p)) S.briefs = p; }
@@ -5330,17 +5349,34 @@ function semesterWeek(startISO = S.semStart, now = new Date()) {
   return Math.floor(days / 7) + 1;
 }
 
+// PACING is a guess — a typical syllabus, not this student's. Every course
+// carries its own correction, so a class running two weeks behind the table gets
+// re-anchored once and stays right for the rest of the term.
+function paceOffset(courseId) {
+  const n = S.paceOffset[courseId];
+  return typeof n === 'number' && !isNaN(n) ? n : 0;
+}
+
+// The week of the pacing table this course is actually on.
+function effectiveWeek(courseId, base = semesterWeek()) {
+  return base === null ? null : base + paceOffset(courseId);
+}
+
 // What each in-progress course typically covers in the current week.
 // Returns [] when there's nothing to say — no semester set, no in-progress
-// course, or the semester has run past the pacing table.
+// course, or every course has run past the pacing table.
 function thisWeekUnits(week = semesterWeek()) {
-  if (!week || week < 1 || week > SEMESTER_WEEKS) return [];
+  if (!week) return [];
   const out = [];
   for (const courseId of S.courses) {
     if (S.courseStatus[courseId] !== 'in-progress') continue;
     const table = PACING[courseId];
     if (!table) continue;
-    const entry = table[week - 1];
+    // Range-checked per course, not once up front: a correction can put one class
+    // back inside the table while another has genuinely run past the end of it.
+    const ew = effectiveWeek(courseId, week);
+    if (ew < 1 || ew > SEMESTER_WEEKS) continue;
+    const entry = table[ew - 1];
     if (!entry) continue;
     const [topicId, subId] = entry;
     const topic = TOPICS.find(t => t.id === topicId);
@@ -5350,10 +5386,100 @@ function thisWeekUnits(week = semesterWeek()) {
     // Only offer it if the drill will actually have questions to serve.
     const count = QUESTIONS.filter(q => q.topic === topicId).length;
     if (!count) continue;
-    out.push({ courseId, courseName: course ? course.name : courseId,
+    out.push({ courseId, courseName: course ? course.name : courseId, week: ew,
                topic, subId, subLabel: sub ? sub.label : topic.name });
   }
   return out;
+}
+
+// The course's units in the order the pacing table walks them, one row per unit
+// rather than one per week — a student picking "we're on titrations" shouldn't
+// have to choose between the two weeks that both say titrations.
+function courseTimeline(courseId) {
+  const table = PACING[courseId] || [];
+  const seen = {};
+  const out = [];
+  table.forEach(([topicId, subId], i) => {
+    const key = topicId + '|' + subId;
+    if (seen[key]) return;
+    const topic = TOPICS.find(t => t.id === topicId);
+    if (!topic) return;
+    if (!QUESTIONS.some(q => q.topic === topicId)) return;
+    const sub = (SUBTOPICS[topicId] || []).find(s => s.id === subId);
+    seen[key] = true;
+    out.push({ week: i + 1, topicId, subId, topic,
+               label: sub ? sub.label : topic.name });
+  });
+  return out;
+}
+
+// Entered from the Today card when our pick is wrong.
+function openPaceFix(courseId) {
+  S.paceCourse = courseId;
+  if (window.plausible) plausible('pace_fix_open');
+  go('pace');
+}
+
+// One correction, permanently applied: re-anchor the table so the unit they
+// picked is this week's, then serve it straight away.
+function setPaceUnit(courseId, week, topicId, subId) {
+  const base = semesterWeek();
+  if (base !== null) {
+    const offset = week - base;
+    if (offset === 0) delete S.paceOffset[courseId];
+    else S.paceOffset[courseId] = offset;
+    save();
+    if (window.plausible) plausible('pace_fix_set', { props: { offset: String(offset) } });
+  }
+  S.paceCourse = null;
+  startWeekDrill(topicId, subId);
+}
+
+function clearPaceOffset(courseId) {
+  delete S.paceOffset[courseId];
+  save();
+  render();
+}
+
+function screenPace() {
+  const courseId = S.paceCourse;
+  const course   = COURSES.find(c => c.id === courseId);
+  const units    = courseId ? courseTimeline(courseId) : [];
+  if (!course || !units.length) { go('brief'); return ''; }
+
+  const current = effectiveWeek(courseId);
+  const entry   = (PACING[courseId] || [])[current - 1];
+  const currentKey = entry ? entry[0] + '|' + entry[1] : '';
+  const offset  = paceOffset(courseId);
+
+  return `
+    <div class="screen">
+      <div class="brief-topbar">
+        <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back
+        </button>
+      </div>
+
+      <h2 style="margin-bottom:5px;">What is ${course.name} on right now?</h2>
+      <p style="font-size:14px;margin-bottom:6px;">Waypoint guessed from a typical syllabus. Pick what your class is actually covering and every week after this one follows from your answer.</p>
+      ${offset !== 0 ? `<p style="font-size:12px;color:#767E96;line-height:1.55;margin-bottom:6px;">Currently running ${Math.abs(offset)} week${Math.abs(offset) !== 1 ? 's' : ''} ${offset > 0 ? 'ahead of' : 'behind'} the default pacing.
+        <button style="background:none;border:none;padding:0;color:#8A93A8;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;-webkit-tap-highlight-color:transparent;" onclick="clearPaceOffset('${courseId}')">Reset</button></p>` : ''}
+      <div style="height:14px;"></div>
+
+      ${units.map(u => {
+        const on = (u.topicId + '|' + u.subId) === currentKey;
+        return `<button class="topic-pick-btn" style="${on ? 'border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.08);' : ''}" onclick="setPaceUnit('${courseId}', ${u.week}, '${u.topicId}', '${u.subId}')">
+          <span style="flex:1;text-align:left;">
+            <span class="tp-name" style="color:${on ? '#A78BFA' : '#F0F2F8'};">${u.label}</span>
+            <span style="display:block;font-size:11px;color:#767E96;margin-top:2px;">${on ? 'What we assumed you\'re on' : u.topic.name}</span>
+          </span>
+          <span class="tp-arrow" style="color:${on ? '#A78BFA' : '#767E96'};">${on ? '✓' : '→'}</span>
+        </button>`;
+      }).join('')}
+
+      <p style="font-size:12px;color:#767E96;line-height:1.55;margin-top:14px;">Picking one starts 5 questions on it right away.</p>
+    </div>`;
 }
 
 // True once we should ask for the semester start: they have a class in progress
@@ -5984,7 +6110,8 @@ function todayPick() {
     return { label: 'This week in class', accent: '#A78BFA',
              title: `5 questions on ${wk.subLabel}`,
              reason: `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
-             onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')` };
+             onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')`,
+             fixCourse: wk.courseId };
   }
 
   const d = getDirectiveTopic();
@@ -6054,6 +6181,7 @@ function todayCardHTML() {
       <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.25;margin-bottom:8px;">${p.title}</div>
       <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 14px;">${p.reason}</p>
       <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;" onclick="${p.onclick}">Start →</button>
+      ${p.fixCourse ? `<button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-bottom:-10px;-webkit-tap-highlight-color:transparent;" onclick="openPaceFix('${p.fixCourse}')">Not what you're covering? →</button>` : ''}
     </div>`;
 }
 
@@ -7620,7 +7748,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -7693,6 +7821,7 @@ function render() {
     case 'settings': html += screenSettings(); break;
     case 'about': html += screenAbout(); break;
     case 'midterm': html += screenMidterm(); break;
+    case 'pace':    html += screenPace();    break;
     case 'quicklog':          html += screenQuickLog();         break;
     case 'quicklog-subtopic': html += screenQuickLogSubtopic(); break;
     case 'quicklogdone':      html += screenQuickLogDone();     break;
