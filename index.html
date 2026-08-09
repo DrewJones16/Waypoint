@@ -5862,29 +5862,55 @@ function effectiveWeek(courseId, base = semesterWeek()) {
 // What each in-progress course typically covers in the current week.
 // Returns [] when there's nothing to say — no semester set, no in-progress
 // course, or every course has run past the pacing table.
+// One unit, assembled from a topic/subtopic pair. Shared by both sources so a
+// syllabus-driven pick and a PACING-driven pick are the same shape downstream —
+// nothing past this point needs to know which table it came from.
+function weekUnit(courseId, ew, topicId, subId, syllabusLabel) {
+  const topic = TOPICS.find(t => t.id === topicId);
+  if (!topic) return null;
+  // Only offer it if the drill will actually have questions to serve.
+  if (!QUESTIONS.some(q => q.topic === topicId)) return null;
+  const sub = (SUBTOPICS[topicId] || []).find(s => s.id === subId);
+  const course = COURSES.find(c => c.id === courseId);
+  return { courseId, courseName: course ? course.name : courseId, week: ew,
+           topic, subId, subLabel: sub ? sub.label : topic.name,
+           syllabusLabel: syllabusLabel || null };
+}
+
+// What a course is covering in a given week — from the student's own syllabus
+// when they've given us one, from the typical pacing table when they haven't.
+// Returns [] rather than falling back: a syllabus that says "exam week" or that
+// simply ran out has answered the question, and overriding it with a guess would
+// undo the whole point of asking for it.
+function courseWeekUnits(courseId, ew) {
+  const syl = S.syllabus[courseId];
+  if (syl) {
+    const row = syl.weeks.find(w => w.week === ew);
+    if (!row) return [];
+    return row.unitIds
+      .map(id => { const u = unitFromId(id); return u ? weekUnit(courseId, ew, u.topicId, u.subId, row.label) : null; })
+      .filter(Boolean);
+  }
+  const entry = (PACING[courseId] || [])[ew - 1];
+  if (!entry) return [];
+  const u = weekUnit(courseId, ew, entry[0], entry[1]);
+  return u ? [u] : [];
+}
+
 function thisWeekUnits(week = semesterWeek()) {
   if (!week) return [];
   const out = [];
   for (const courseId of S.courses) {
     if (S.courseStatus[courseId] !== 'in-progress') continue;
-    const table = PACING[courseId];
-    if (!table) continue;
+    // A course with a syllabus needs no pacing table; one without needs both.
+    if (!S.syllabus[courseId] && !PACING[courseId]) continue;
     // Range-checked per course, not once up front: a correction can put one class
     // back inside the table while another has genuinely run past the end of it.
     const ew = effectiveWeek(courseId, week);
     if (ew < 1 || ew > SEMESTER_WEEKS) continue;
-    const entry = table[ew - 1];
-    if (!entry) continue;
-    const [topicId, subId] = entry;
-    const topic = TOPICS.find(t => t.id === topicId);
-    if (!topic) continue;
-    const sub = (SUBTOPICS[topicId] || []).find(s => s.id === subId);
-    const course = COURSES.find(c => c.id === courseId);
-    // Only offer it if the drill will actually have questions to serve.
-    const count = QUESTIONS.filter(q => q.topic === topicId).length;
-    if (!count) continue;
-    out.push({ courseId, courseName: course ? course.name : courseId, week: ew,
-               topic, subId, subLabel: sub ? sub.label : topic.name });
+    // Empty is a real answer — an exam week contributes nothing and the card
+    // moves on to the next class rather than forcing a pick out of it.
+    out.push(...courseWeekUnits(courseId, ew));
   }
   return out;
 }
@@ -5893,10 +5919,20 @@ function thisWeekUnits(week = semesterWeek()) {
 // rather than one per week — a student picking "we're on titrations" shouldn't
 // have to choose between the two weeks that both say titrations.
 function courseTimeline(courseId) {
-  const table = PACING[courseId] || [];
+  // The correction loop works the same way over either schedule — it re-anchors
+  // a week number. What changes is which weeks it's offering, and for a student
+  // who handed us their syllabus the only defensible list is theirs.
+  const syl = S.syllabus[courseId];
+  const pairs = syl
+    ? syl.weeks.flatMap(w => w.unitIds.map(id => {
+        const u = unitFromId(id);
+        return u ? [w.week, u.topicId, u.subId] : null;
+      }).filter(Boolean))
+    : (PACING[courseId] || []).map(([topicId, subId], i) => [i + 1, topicId, subId]);
+
   const seen = {};
   const out = [];
-  table.forEach(([topicId, subId], i) => {
+  pairs.forEach(([week, topicId, subId]) => {
     const key = topicId + '|' + subId;
     if (seen[key]) return;
     const topic = TOPICS.find(t => t.id === topicId);
@@ -5904,10 +5940,16 @@ function courseTimeline(courseId) {
     if (!QUESTIONS.some(q => q.topic === topicId)) return;
     const sub = (SUBTOPICS[topicId] || []).find(s => s.id === subId);
     seen[key] = true;
-    out.push({ week: i + 1, topicId, subId, topic,
-               label: sub ? sub.label : topic.name });
+    out.push({ week, topicId, subId, topic, label: sub ? sub.label : topic.name });
   });
   return out;
+}
+
+// The unit the card is currently assuming, so the pace screen can tick it.
+// Reads whichever schedule that course is actually running on.
+function currentUnitKey(courseId) {
+  const units = courseWeekUnits(courseId, effectiveWeek(courseId));
+  return units.length ? units[0].topic.id + '|' + units[0].subId : '';
 }
 
 // Entered from the Today card when our pick is wrong.
@@ -5944,10 +5986,9 @@ function screenPace() {
   const units    = courseId ? courseTimeline(courseId) : [];
   if (!course || !units.length) { go('brief'); return ''; }
 
-  const current = effectiveWeek(courseId);
-  const entry   = (PACING[courseId] || [])[current - 1];
-  const currentKey = entry ? entry[0] + '|' + entry[1] : '';
-  const offset  = paceOffset(courseId);
+  const currentKey = currentUnitKey(courseId);
+  const offset     = paceOffset(courseId);
+  const fromSyl    = !!S.syllabus[courseId];
 
   return `
     <div class="screen">
@@ -5959,7 +6000,9 @@ function screenPace() {
       </div>
 
       <h2 style="margin-bottom:5px;">What is ${course.name} on right now?</h2>
-      <p style="font-size:15px;margin-bottom:6px;">Waypoint guessed from a typical syllabus. Pick what your class is actually covering and every week after this one follows from your answer.</p>
+      <p style="font-size:15px;margin-bottom:6px;">${fromSyl
+        ? 'These are the weeks from your syllabus. If the class has drifted from it, pick where you actually are and every week after this one shifts with you.'
+        : 'Waypoint guessed from a typical syllabus. Pick what your class is actually covering and every week after this one follows from your answer.'}</p>
       ${offset !== 0 ? `<p style="font-size:13px;color:#767E96;line-height:1.55;margin-bottom:6px;">Currently running ${Math.abs(offset)} week${Math.abs(offset) !== 1 ? 's' : ''} ${offset > 0 ? 'ahead of' : 'behind'} the default pacing.
         <button style="background:none;border:none;padding:0;color:#8A93A8;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline;-webkit-tap-highlight-color:transparent;" onclick="clearPaceOffset('${courseId}')">Reset</button></p>` : ''}
       <div style="height:14px;"></div>
@@ -5969,7 +6012,7 @@ function screenPace() {
         return `<button class="topic-pick-btn" style="${on ? 'border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.08);' : ''}" onclick="setPaceUnit('${courseId}', ${u.week}, '${u.topicId}', '${u.subId}')">
           <span style="flex:1;text-align:left;">
             <span class="tp-name" style="color:${on ? '#A78BFA' : '#F0F2F8'};">${u.label}</span>
-            <span style="display:block;font-size:11px;color:#767E96;margin-top:2px;">${on ? 'What we assumed you\'re on' : u.topic.name}</span>
+            <span style="display:block;font-size:11px;color:#767E96;margin-top:2px;">${on ? (fromSyl ? 'Where your syllabus puts you' : 'What we assumed you\'re on') : u.topic.name}</span>
           </span>
           <span class="tp-arrow" style="color:${on ? '#A78BFA' : '#767E96'};">${on ? '✓' : '→'}</span>
         </button>`;
@@ -5983,7 +6026,10 @@ function screenPace() {
 // that we have a pacing table for, and they haven't answered or dismissed yet.
 function shouldAskSemesterStart() {
   if (S.semStart || S.semPrompt === 'dismissed') return false;
-  return [...S.courses].some(c => S.courseStatus[c] === 'in-progress' && PACING[c]);
+  // A syllabus is a schedule without an anchor — it says what week 6 covers,
+  // not which week it is now. So a syllabus course needs the start date at
+  // least as much as a pacing-table one does.
+  return [...S.courses].some(c => S.courseStatus[c] === 'in-progress' && (PACING[c] || S.syllabus[c]));
 }
 
 function saveSemesterStart(value) {
@@ -6558,6 +6604,16 @@ function screenMidterm() {
 // Edge Function and needs a signed-in user. That's the one thing in Waypoint
 // that does. Everything else still works with no account at all.
 
+// A syllabus label is the only text in Waypoint that a student authors and the
+// app renders back. It arrives from their clipboard, survives a round trip
+// through cloud sync, and lands in innerHTML on two screens — so it gets escaped
+// every single time it's drawn, not just where it looks risky.
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 const SYLLABUS_FN = SUPABASE_URL + '/functions/v1/parse-syllabus';
 const SYLLABUS_TIMEOUT = 90000;   // an unhurried read of a long syllabus
 const SYLLABUS_MAX_WEEK = 20;
@@ -6749,9 +6805,27 @@ const SYL_CARD = 'background:#131520;border:1px solid rgba(255,255,255,0.07);bor
 
 function syllabusEntryHTML(courseId) {
   const has = !!S.syllabus[courseId];
-  return `<button onclick="openSyllabus('${courseId}')" style="background:none;border:none;padding:0;min-height:44px;display:flex;align-items:center;gap:6px;font-family:inherit;font-size:11px;font-weight:600;color:${has ? '#4DE3AB' : '#2DB88A'};cursor:pointer;-webkit-tap-highlight-color:transparent;">
-    ${has ? '✓ Syllabus added — replace it →' : 'Have the syllabus? →'}
-  </button>`;
+  const btn = (label, onclick, color) =>
+    `<button onclick="${onclick}" style="background:none;border:none;padding:0;min-height:44px;display:flex;align-items:center;font-family:inherit;font-size:11px;font-weight:600;color:${color};cursor:pointer;-webkit-tap-highlight-color:transparent;">${label}</button>`;
+  if (!has) return btn('Have the syllabus? →', `openSyllabus('${courseId}')`, '#2DB88A');
+  // Removing is quiet and sits after replacing, because replacing is what a
+  // student who got one week wrong actually wants.
+  return `<span style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;">
+      ${btn('✓ Syllabus added — replace it →', `openSyllabus('${courseId}')`, '#4DE3AB')}
+      ${btn('Remove', `removeSyllabus('${courseId}')`, '#767E96')}
+    </span>`;
+}
+
+// Hands the course back to the typical pacing table, which is exactly where it
+// was before — nothing else in the app remembers a syllabus was ever here.
+function removeSyllabus(courseId) {
+  const course = COURSES.find(c => c.id === courseId);
+  if (!confirm(`Remove your ${course ? course.name : ''} syllabus? Waypoint goes back to pacing that class from a typical schedule.`)) return;
+  delete S.syllabus[courseId];
+  save();
+  if (window.plausible) plausible('syllabus_removed', { props: { course: courseId } });
+  render();
+  showToast('Syllabus removed. Back to the typical pacing.');
 }
 
 function sylWeekRowHTML(w, i, units) {
@@ -6767,7 +6841,7 @@ function sylWeekRowHTML(w, i, units) {
           <span style="font-size:11px;font-weight:700;color:#767E96;text-transform:uppercase;letter-spacing:0.07em;">Week ${w.week}</span>
           ${w.unitIds.length ? `<button onclick="sylDropWeek(${i})" style="background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;">Clear</button>` : ''}
         </div>
-        <p style="font-size:13px;color:#F0F2F8;line-height:1.5;margin:0 0 8px;">${w.label || '<span style="color:#767E96;font-style:italic;">(no topic listed)</span>'}</p>
+        <p style="font-size:13px;color:#F0F2F8;line-height:1.5;margin:0 0 8px;">${w.label ? esc(w.label) : '<span style="color:#767E96;font-style:italic;">(no topic listed)</span>'}</p>
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
           ${chips}
           ${w.unitIds.length ? '' : `<span style="font-size:11px;color:#767E96;font-style:italic;">No MCAT content this week</span>`}
@@ -7107,9 +7181,14 @@ function todayPick(skip = null) {
 
   const wk = rotateWeekUnits(thisWeekUnits()).find(u => !skipped(u.topic.id));
   if (wk) {
+    // When it came from their syllabus, say so in their words. "Your syllabus
+    // has X this week" is checkable against the paper on their desk; "your
+    // class is covering it now" is our inference either way.
     return { label: 'This week in class', accent: '#A78BFA',
              title: `5 questions on ${wk.subLabel}`,
-             reason: `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
+             reason: wk.syllabusLabel
+               ? `Your syllabus has <strong style="color:#B0B5C8;">${esc(wk.syllabusLabel)}</strong> this week.`
+               : `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
              onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')`,
              run: () => startWeekDrill(wk.topic.id, wk.subId),
              link: { label: 'Not what you\'re covering? →', onclick: `openPaceFix('${wk.courseId}')` } };
