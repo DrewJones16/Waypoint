@@ -1016,7 +1016,7 @@
 <!-- Persistent desktop dashboard rail (sibling of #app; never re-rendered; hidden <1000px).
      Live values are populated by syncDesktopShell() on every render(). -->
 <aside class="dt-shell dt-empty" aria-hidden="true">
-  <button class="dt-brand" onclick="go('landing')">
+  <button class="dt-brand" onclick="logoTap()">
     <span class="dt-brand-mark">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/><polyline points="12 8 12 12 14.5 14.5"/><circle cx="12" cy="12" r="1.2" fill="#1D9E75" stroke="none"/>
@@ -5779,14 +5779,15 @@ function unitTwist(unit) {
   return parts.exam ? { ...parts, qId: q.id } : null;
 }
 
-// One label for one entry point. What it says depends on what's already set,
-// but it always opens the same screen.
+// One label for one entry point. What it says depends on what's already set, but
+// it always opens the same screen — and every variant names the thing it acts on,
+// so the link is legible without having to tap it to find out.
 function upcomingLinkLabel() {
   const mt = midtermPlan();
-  if (mt && !mt.past) return 'Edit what’s coming up →';
-  if (mt && mt.past)  return 'Set up your next exam →';
-  if (S.semStart)     return 'Add an exam →';
-  return 'Add what’s coming up →';
+  if (mt && !mt.past) return 'Edit your exam plan →';
+  if (mt && mt.past)  return 'Set up an exam →';
+  if (S.semStart)     return 'Set up an exam →';
+  return 'Set your semester start →';
 }
 
 function mtSetSemester(v) {
@@ -6327,7 +6328,7 @@ function screenBrief() {
   return `
     <div class="screen">
       <div class="brief-topbar">
-        <button onclick="go('landing')" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
+        <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
           <div style="width:30px;height:30px;background:rgba(29,158,117,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="9"/>
@@ -6338,7 +6339,7 @@ function screenBrief() {
           <span class="disp" style="font-size:14px;font-weight:600;color:#F0F2F8;">Waypoint</span>
         </button>
         <div style="display:flex;align-items:center;gap:10px;">
-          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 4px;margin:-11px 0;font-family:inherit;font-size:13px;font-weight:700;color:#4DE3AB;-webkit-tap-highlight-color:transparent;">${cov}%</button>` : ''}
+          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.28);border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;margin:-11px 0;font-family:inherit;font-size:13px;font-weight:700;color:#4DE3AB;-webkit-tap-highlight-color:transparent;">Route · ${cov}%</button>` : ''}
           ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C2622A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size:13px;font-weight:600;color:#C2622A;">${S.streak}</span></div>` : ''}
           <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-11px -10px -11px 0;-webkit-tap-highlight-color:transparent;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
@@ -6348,7 +6349,7 @@ function screenBrief() {
 
       ${todayCardHTML()}
 
-      <button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="go('quicklog')">Other things to study →</button>
+      <button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="go('quicklog')">Practice a specific topic →</button>
       <button style="background:none;border:none;font-size:13px;color:#8A93A8;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
     </div>`;
 }
@@ -7235,6 +7236,12 @@ function screenError() {
 }
 
 // ── ACTIONS ───────────────────────────────────────────────────────────────────
+
+// The logo is a way home, not a way out. Only someone with no route yet has any
+// business landing back on the marketing page.
+function logoTap() {
+  go(S.courses.size > 0 ? 'brief' : 'landing');
+}
 
 function go(screen) {
   if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
