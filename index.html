@@ -5948,34 +5948,24 @@ function screenMidterm() {
   return `
     <div class="screen">
       <div class="brief-topbar">
-        <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A90A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+        <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          Midterm Mode
+          Back
         </button>
       </div>
 
       <h2 style="margin-bottom:5px;">What's coming up?</h2>
-      <p style="font-size:14px;margin-bottom:20px;">Two dates are all Waypoint needs to know what to put in front of you each day.</p>
+      <p style="font-size:14px;margin-bottom:20px;">An exam date is what Waypoint needs to build a countdown. Your semester start is what keeps Today in step with your classes.</p>
 
-      <p class="label" style="margin-bottom:6px;">Your semester</p>
-      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:10px;">When it started, so Today can lead with what your classes are covering this week.${S.semStart && semesterWeek() ? ` You're in week ${semesterWeek()}.` : ''}</p>
-      <input type="date" id="sem-date" value="${S.semStart || ''}" max="${isoDate()}"
-             onchange="mtSetSemester(this.value)"
-             style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:6px;">
-      ${S.semStart ? `<button style="background:none;border:none;font-size:12px;color:#8A93A8;cursor:pointer;font-family:inherit;display:flex;align-items:center;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="mtSetSemester('')">Clear semester</button>` : '<div style="height:10px;"></div>'}
-
-      <div class="section-divider"></div>
-
-      <p class="label" style="margin-bottom:6px;">An exam</p>
-      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Optional. Adds a countdown plan weighted to what it covers.</p>
+      <p class="label" style="margin-bottom:6px;">Your exam</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:14px;">A countdown plan, weighted to whatever the exam covers.</p>
 
       <p class="label" style="margin-bottom:8px;">Which class</p>
       ${courseBtns}
 
       ${d.courseId && units.length ? `
-        <div class="section-divider"></div>
-        <p class="label" style="margin-bottom:6px;">What's on it</p>
-        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Pick the units your exam covers. Leave it empty and we'll cover the whole course.</p>
+        <p class="label" style="margin-top:18px;margin-bottom:6px;">What's on it</p>
+        <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">These are MCAT topic names — pick whatever overlaps with the chapters your exam covers. Not sure? Leave it empty and the plan covers the whole course.</p>
         ${units.map(u => {
           const key = u.subId + '|' + u.topicId;
           const on = d.subIds.indexOf(key) !== -1;
@@ -5990,8 +5980,7 @@ function screenMidterm() {
       ` : ''}
 
       ${d.courseId ? `
-        <div class="section-divider"></div>
-        <p class="label" style="margin-bottom:8px;">When is it</p>
+        <p class="label" style="margin-top:18px;margin-bottom:8px;">When is it</p>
         <input type="date" id="mt-date" value="${d.date}" min="${isoDate()}"
                onchange="mtSetDate(this.value)"
                style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:6px;">
@@ -6004,6 +5993,15 @@ function screenMidterm() {
         <button class="btn btn-primary" ${ready ? '' : 'disabled'} onclick="saveMidterm()">${S.midterm ? 'Update my plan' : 'Build my plan'}</button>
         ${S.midterm ? `<button class="btn btn-ghost" onclick="clearMidterm();go('brief');">Cancel this exam</button>` : ''}
       ` : ''}
+
+      <div class="section-divider"></div>
+
+      <p class="label" style="margin-bottom:6px;">Your semester</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:10px;">Separate from any exam. When the term started, so Today can lead with what your classes are covering this week.${S.semStart && semesterWeek() ? ` You're in week ${semesterWeek()}.` : ''}</p>
+      <input type="date" id="sem-date" value="${S.semStart || ''}" max="${isoDate()}"
+             onchange="mtSetSemester(this.value)"
+             style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:6px;">
+      ${S.semStart ? `<button style="background:none;border:none;font-size:12px;color:#8A93A8;cursor:pointer;font-family:inherit;display:flex;align-items:center;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="mtSetSemester('')">Clear semester</button>` : '<div style="height:10px;"></div>'}
     </div>`;
 }
 
