@@ -5306,9 +5306,12 @@ function freshnessLineHTML() {
   const f = freshnessSummary();
   if (!f.total || !f.practiced) return '';
   const held = f.fresh.length;
+  // "all 1 covered topic" — a student whose only course is Gen Chem II has
+  // exactly one, so the one-topic route gets its own wording.
   const noun = `covered topic${f.total !== 1 ? 's' : ''}`;
-  const head = held === f.total ? `Holding all ${f.total} ${noun}`
-                                : `Holding ${held} of ${f.total} ${noun}`;
+  const head = held !== f.total   ? `Holding ${held} of ${f.total} ${noun}`
+             : f.total === 1      ? 'Holding your one covered topic'
+             :                      `Holding all ${f.total} ${noun}`;
   const parts = [];
   ['fading','faded','unpinned'].forEach(st => {
     if (f[st].length) parts.push(`<span style="color:${FRESH_META[st].color};">${f[st].length} ${st}</span>`);
@@ -5422,9 +5425,10 @@ function holdingLine() {
       ? `${em(oldest(h.newlyFaded).topic.name)} is now faded — one re-pin session brings it back.`
       : `${em(n + ' topics')} are now faded — one re-pin session brings the oldest back.`;
   } else if (h.fading.length + h.faded.length + h.unpinned.length === 0) {
-    text = `Holding steady across ${em('all ' + h.total + ' topic' + (h.total !== 1 ? 's' : ''))}.`;
+    text = h.total === 1 ? `Holding steady on ${em('your one topic')}.`
+                         : `Holding steady across ${em('all ' + h.total + ' topics')}.`;
   } else {
-    text = `Still holding ${em(h.fresh.length + ' of ' + h.total)} topics — nothing new started fading.`;
+    text = `Still holding ${em(h.fresh.length + ' of ' + h.total)} topic${h.total !== 1 ? 's' : ''} — nothing new started fading.`;
   }
   return `<p style="font-size:13px;color:#767E96;line-height:1.55;margin:0 0 12px;">${text}</p>`;
 }
