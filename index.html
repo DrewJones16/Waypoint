@@ -5321,12 +5321,38 @@ function freshnessLineHTML() {
       ${parts.length ? `<p style="font-size:11px;color:#767E96;margin:0 0 12px;">Tap a topic to see why.</p>` : ''}`;
 }
 
+// A re-pin is 10 questions, or the whole topic if the bank holds fewer. Orgo I,
+// Physics I and Physics II are short today, and the button says the real number
+// rather than promising ten and delivering seven.
+const REPIN_TARGET = 10;
+function repinCount(tid) {
+  return Math.min(REPIN_TARGET, QUESTIONS.filter(q => q.topic === tid).length);
+}
+
+// The one action a slipping topic gets. It's a real session: streak-eligible,
+// history-recorded, and it stamps topicLastSeen on completion like any other —
+// which is what flips this same tile back to fresh on the way back.
+function repin(tid) {
+  const f = topicFreshness(tid);
+  if (window.plausible) plausible('repin', { props: { topic: tid, state: f ? f.state : 'unknown' } });
+  S._freshOpen = tid;   // land back on the Route with the new state already open
+  // `repin` carries the state we came FROM: by the time the done screen renders,
+  // topicLastSeen has been stamped and the topic already reads fresh.
+  startQuickLog(tid, null, null, { count: repinCount(tid), repin: (f && f.state) || 'faded' });
+  if (S.quickLog) S.quickLog.streakEligible = true;
+}
+
 // The one-line "why", opened from a tile. Full width and below the row so the
 // tile grid keeps its shape at 375px.
 function freshDetailHTML(tid) {
   const f = topicFreshness(tid);
   if (!f) return '';
   const m = FRESH_META[f.state];
+  // Fresh ground is holding, so it gets no action — nothing to fix is not a
+  // reason to ask for work.
+  const n = repinCount(tid);
+  const action = f.state === 'fresh' ? '' : `
+          <button onclick="repin('${tid}')" style="margin-top:11px;width:100%;min-height:44px;padding:0 14px;background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius:9px;color:#4DE3AB;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${f.state === 'unpinned' ? 'Pin it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
   return `
         <div style="margin-top:7px;background:rgba(255,255,255,0.03);border:1px solid ${m.color}44;border-radius:9px;padding:11px 13px;">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:5px;">
@@ -5335,6 +5361,7 @@ function freshDetailHTML(tid) {
             <span style="font-size:11px;font-weight:700;color:${m.color};text-transform:uppercase;letter-spacing:0.07em;">${m.word}</span>
           </div>
           <p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0;">${f.why}</p>
+          ${action}
         </div>`;
 }
 
@@ -6958,7 +6985,7 @@ function screenQuestion() {
         Exit
       </button>
       <div class="q-meta">
-        <span class="q-count">${S.quickLog ? 'Quick check' : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
+        <span class="q-count">${S.quickLog ? (S.quickLog.repin ? 'Re-pin' : 'Quick check') : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
         <div style="display:flex;gap:6px;align-items:center;">
           <span style="font-size:11px;font-weight:600;background:rgba(255,255,255,0.07);color:#8A93A8;padding:3px 8px;border-radius:10px;letter-spacing:0.04em;">MCAT-style</span>
           <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicObj.disp : ''}</span>
@@ -7275,6 +7302,24 @@ function screenQuickLogDone() {
     if (sub) subtopicLabel = sub.label;
   }
 
+  // A re-pin ends where it started. topicLastSeen was stamped a moment ago in
+  // next(), so the tile this session was launched from already reads fresh —
+  // sending them to the Route is the proof, not a promise.
+  if (ql && ql.repin) {
+    const first = ql.repin === 'unpinned';
+    return `
+    <div class="screen">
+      <p class="label">${first ? 'Pinned' : 'Re-pinned'}</p>
+      <h2 style="margin-bottom:4px;">${topic ? topic.name : 'Topic'} — ${first ? 'pinned' : 'holding again'}.</h2>
+      <p style="font-size:15px;margin-bottom:20px;">${correct}/${total} correct. ${first
+        ? 'That\'s the first time your route has anything to say about this one.'
+        : 'Your route says you\'re holding it, because you just showed that you are.'}</p>
+
+      <button class="btn btn-primary" onclick="go('reveal')">See it on my route →</button>
+      <button class="btn btn-ghost" onclick="go('brief')">Back to Home</button>
+    </div>`;
+  }
+
   return `
     <div class="screen">
       <p class="label">Logged</p>
@@ -7417,7 +7462,11 @@ function startSession() {
 }
 
 // "Syllabus Sync" quick-log — 3 questions on a topic (optionally filtered to a subtopic)
-function startQuickLog(topicId, subtopicId, leadQId) {
+// `opts` carries anything the question screen has to know before its FIRST paint:
+// {count} for a longer session, {repin} for the state a re-pin came from. Flags
+// set by the caller after this returns arrive one render too late.
+function startQuickLog(topicId, subtopicId, leadQId, opts) {
+  const o = opts || {};
   S.quickLogTopic = null; // clear topic-picker state
   const allPool = QUESTIONS.filter(q => q.topic === topicId);
   let pool = allPool;
@@ -7441,11 +7490,11 @@ function startQuickLog(topicId, subtopicId, leadQId) {
     const lead = allPool.find(q => q.id === leadQId);
     if (lead) pool = [lead, ...pool.filter(q => q.id !== leadQId)];
   }
-  S.session  = pool.slice(0, Math.min(3, pool.length));
+  S.session  = pool.slice(0, Math.min(o.count || 3, pool.length));
   S.idx      = 0;
   S.answers  = [];
   S.answered = null;
-  S.quickLog = { topicId, subtopicId: subtopicId || null, subtopicFallback };
+  S.quickLog = { topicId, subtopicId: subtopicId || null, subtopicFallback, repin: o.repin || null };
   if (!S.session.length) {
     go('brief');
     return;
