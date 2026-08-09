@@ -6172,38 +6172,62 @@ function landingTwistHTML() {
 // Everything retrospective — ring, section bars, sparkline, staying sharp,
 // milestones, claim, Twist of the Day — lives on Route.
 
-function todayPick() {
+// Topics the student has already worked today. Passed as `skip` when they ask for
+// more, so "another 5" is genuinely another five and not the same unit again.
+function topicsSeenToday() {
+  const today = isoDate();
+  return new Set(Object.keys(S.topicLastSeen).filter(k => S.topicLastSeen[k] === today));
+}
+
+// `skip` drops a branch whose topic has already been covered today and lets the
+// ladder fall through to the next one. Empty by default — the first pick of the
+// day answers "what should I do right now?" with no exclusions.
+function todayPick(skip = null) {
+  const skipped = tid => !!(skip && skip.has(tid));
+
   const mt = midtermPlan();
-  if (mt && !mt.past && mt.days <= 14 && mt.today) {
+  if (mt && !mt.past && mt.days <= 14 && mt.today && !skipped(mt.today.topicId)) {
     return { label: 'Before your exam', accent: '#F5B36A',
              title: `5 questions on ${mt.today.label}`,
              reason: mt.days === 0 ? `Your ${mt.courseName} exam is today.`
                    : mt.days === 1 ? `Your ${mt.courseName} exam is tomorrow.`
                    : `Your ${mt.courseName} exam is in ${mt.days} days.`,
              onclick: `startMidtermDrill('${mt.today.topicId}', '${mt.today.subId}')`,
+             run: () => startMidtermDrill(mt.today.topicId, mt.today.subId),
              link: { label: 'See the full plan →', onclick: `go('examplan')` } };
   }
 
-  const wk = thisWeekUnits()[0];
+  const wk = thisWeekUnits().find(u => !skipped(u.topic.id));
   if (wk) {
     return { label: 'This week in class', accent: '#A78BFA',
              title: `5 questions on ${wk.subLabel}`,
              reason: `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
              onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')`,
+             run: () => startWeekDrill(wk.topic.id, wk.subId),
              link: { label: 'Not what you\'re covering? →', onclick: `openPaceFix('${wk.courseId}')` } };
   }
 
   const d = getDirectiveTopic();
-  if (d) {
+  if (d && !skipped(d.topic.id)) {
     const t = d.topic;
     const reason = d.reason === 'retention'   ? `You covered it ${weeksAgo(d.days)}.`
                  : d.reason === 'in-progress' ? `You're taking it in class right now.`
                  : `${t.w}% of the exam.`;
     return { label: 'Do this now', accent: '#1D9E75',
              title: `5 questions on ${t.name}`, reason,
-             onclick: `startQuickLog('${t.id}', null)` };
+             onclick: `startQuickLog('${t.id}', null)`,
+             run: () => startQuickLog(t.id, null) };
   }
   return null;
+}
+
+// Finishing a session used to end on a card with nothing to tap. The reward keeps
+// the emphasis; this is the quiet way back in for whoever wants it. A mixed
+// session from the whole route is the floor when every branch is already covered.
+function keepGoing() {
+  if (window.plausible) plausible('keep_going');
+  const p = todayPick(topicsSeenToday());
+  if (p && p.run) p.run(); else startSession();
 }
 
 // True once the student has finished a session today.
@@ -6229,7 +6253,8 @@ function todayCardHTML() {
           <div style="font-size:16px;font-weight:700;color:#F0F2F8;line-height:1.3;margin-bottom:12px;">${d.topic ? d.topic.name : 'Your'} — the MCAT twist</div>
           <p style="font-size:12px;color:#8A93A8;line-height:1.6;margin:0 0 6px;"><strong style="color:#B0B5C8;">In class:</strong> ${cls}</p>
           ${exam ? `<p style="font-size:12px;color:#8A93A8;line-height:1.6;margin:0;"><strong style="color:#A78BFA;">On the MCAT:</strong> ${exam}</p>` : ''}
-        </div>`;
+        </div>
+        <button style="background:none;border:none;font-size:13px;color:#8A93A8;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-14px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going — another 5 →</button>`;
     }
   }
 
