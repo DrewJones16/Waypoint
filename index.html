@@ -7164,70 +7164,51 @@ function screenQuickLog() {
       </div>`;
   }
 
+  // One screen, not two. Topics are headings you read past; subtopics are the
+  // thing you actually came to tap, so they're the rows — and only the ones with
+  // questions behind them, because a row that can't deliver is worse than absent.
+  const sections = myTopics.map(t => {
+    const topicQs = QUESTIONS.filter(q => q.topic === t.id);
+    if (!topicQs.length) return '';
+    const subs = (SUBTOPICS[t.id] || [])
+      .map(sub => ({ sub, count: topicQs.filter(q => (q.subtopic || SUBTOPIC_TAGS[q.id]) === sub.id).length }))
+      .filter(x => x.count > 0);
+
+    const rows = subs.map(({ sub, count }) => `
+      <button class="topic-pick-btn" onclick="startQuickLog('${t.id}', '${sub.id}')">
+        <span style="flex:1;text-align:left;">
+          <span class="tp-name">${sub.label}</span>
+          <span style="display:block;font-size:11px;color:#767E96;margin-top:1px;">${count} question${count !== 1 ? 's' : ''}</span>
+        </span>
+        <span class="tp-arrow">→</span>
+      </button>`).join('');
+
+    // "All of X" is the whole-topic row — the only one offered when a topic has
+    // no tagged subtopics, and a catch-all underneath when it does.
+    const all = `
+      <button class="topic-pick-btn"${subs.length ? ' style="border-color:rgba(255,255,255,0.05);opacity:0.7;"' : ''} onclick="startQuickLog('${t.id}', null)">
+        <span style="flex:1;text-align:left;">
+          <span class="tp-name"${subs.length ? ' style="color:#767E96;"' : ''}>All of ${t.name}</span>
+          <span style="display:block;font-size:11px;color:#767E96;margin-top:1px;">${topicQs.length} question${topicQs.length !== 1 ? 's' : ''}</span>
+        </span>
+        <span class="tp-arrow"${subs.length ? ' style="color:#767E96;"' : ''}>→</span>
+      </button>`;
+
+    return `
+      <div style="display:flex;align-items:center;gap:9px;margin:22px 0 8px;">
+        <span class="q-tag ${sectionTag(t.mcat)}">${sectionIcon(t.mcat)}${t.disp}</span>
+        <span style="font-size:13px;font-weight:700;color:#F0F2F8;letter-spacing:-0.01em;">${t.name}</span>
+      </div>
+      ${rows}${all}`;
+  }).join('');
+
   return `
     <div class="screen">
       <p class="label">Syllabus Sync</p>
       <h2 style="margin-bottom:5px;">What are you covering right now?</h2>
-      <p style="font-size:15px;margin-bottom:20px;">Pick a topic and we'll let you drill down to exactly what's on your syllabus this week.</p>
+      <p style="font-size:15px;margin-bottom:4px;">Tap the unit your class is on and the questions start straight away.</p>
 
-      <div>
-        ${myTopics.map(t => {
-          const hasSubs = SUBTOPICS[t.id] && SUBTOPICS[t.id].length > 0;
-          return `
-          <button class="topic-pick-btn" onclick="${hasSubs ? `pickQuickLogTopic('${t.id}')` : `startQuickLog('${t.id}', null)`}">
-            <span class="q-tag ${sectionTag(t.mcat)}">${sectionIcon(t.mcat)}${t.disp}</span>
-            <span class="tp-name">${t.name}</span>
-            <span class="tp-arrow">${hasSubs ? '›' : '→'}</span>
-          </button>`;
-        }).join('')}
-      </div>
-    </div>`;
-}
-
-function screenQuickLogSubtopic() {
-  const topicId = S.quickLogTopic;
-  const topic   = topicId && TOPICS.find(t => t.id === topicId);
-  if (!topic) { go('quicklog'); return ''; }
-
-  const subs = SUBTOPICS[topicId] || [];
-
-  // Pre-compute counts so we can show how many questions each subtopic has
-  const allTopicQs = QUESTIONS.filter(q => q.topic === topicId);
-  const subCounts  = {};
-  subs.forEach(s => {
-    subCounts[s.id] = allTopicQs.filter(q => (q.subtopic || SUBTOPIC_TAGS[q.id]) === s.id).length;
-  });
-
-  return `
-    <div class="screen">
-      <button onclick="go('quicklog')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-size:13px;margin-bottom:16px;-webkit-tap-highlight-color:transparent;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        Back
-      </button>
-      <p class="label">Syllabus Sync</p>
-      <h2 style="margin-bottom:5px;">${topic.name}</h2>
-      <p style="font-size:15px;margin-bottom:20px;">What are you covering in class right now? We'll focus questions on exactly that unit.</p>
-
-      <div>
-        ${subs.map(sub => {
-          const count = subCounts[sub.id] || 0;
-          const enoughQs = count >= 3;
-          return `
-          <button class="topic-pick-btn" onclick="startQuickLog('${topicId}', '${sub.id}')">
-            <span style="flex:1;text-align:left;">
-              <span class="tp-name">${sub.label}</span>
-              <span style="display:block;font-size:11px;color:${enoughQs ? '#767E96' : '#8A93A8'};margin-top:1px;">${count} question${count !== 1 ? 's' : ''}</span>
-            </span>
-            <span class="tp-arrow">→</span>
-          </button>`;
-        }).join('')}
-
-        <button class="topic-pick-btn" style="border-color:rgba(255,255,255,0.05);opacity:0.7;" onclick="startQuickLog('${topicId}', null)">
-          <span class="tp-name" style="color:#767E96;">All of ${topic.name}</span>
-          <span style="font-size:11px;color:#767E96;margin-left:auto;margin-right:8px;">${allTopicQs.length} questions</span>
-          <span class="tp-arrow" style="color:#767E96;">→</span>
-        </button>
-      </div>
+      ${sections}
     </div>`;
 }
 
@@ -7383,11 +7364,6 @@ function startSession() {
   }
   if (window.plausible) plausible('session_start');
   go('question');
-}
-
-function pickQuickLogTopic(topicId) {
-  S.quickLogTopic = topicId;
-  go('quicklog-subtopic');
 }
 
 // "Syllabus Sync" quick-log — 3 questions on a topic (optionally filtered to a subtopic)
@@ -8011,7 +7987,9 @@ function render() {
     case 'pace':    html += screenPace();    break;
     case 'examplan': html += screenExamPlan(); break;
     case 'quicklog':          html += screenQuickLog();         break;
-    case 'quicklog-subtopic': html += screenQuickLogSubtopic(); break;
+    // Retired: topic and subtopic are one screen now. A stale S.screen (an
+    // interrupted session, a tab left open across the deploy) lands on it.
+    case 'quicklog-subtopic': S.screen = 'quicklog'; html += screenQuickLog(); break;
     case 'quicklogdone':      html += screenQuickLogDone();     break;
     // A retired screen name (an old bookmark, or 'breakdown' now that it lives
     // inline on Route) must never render an empty shell.
