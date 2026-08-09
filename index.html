@@ -4308,6 +4308,8 @@ const S = {
   courses:        new Set(),
   courseStatus:   {},          // {courseId: 'in-progress'|'completed'}
   courseWhen:     {},          // {courseId: '2025-fall'} — the term a done course was taken
+  syllabus:       {},          // {courseId: {weeks:[{week,label,unitIds}], addedAt}} — the real schedule
+  syl:            null,        // transient: the syllabus being pasted, parsed and confirmed
   session:        [],
   idx:            0,
   answers:        [],   // [{qId, chosen, correct}]
@@ -4340,7 +4342,7 @@ const S = {
 // Single source of truth for the keys Waypoint owns. Backup, restore and reset
 // all read from here (or from the wp_ prefix scan below), so a key added in a
 // future release is covered everywhere the moment it's listed.
-const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_year','wp_streak','wp_lastDate','wp_qstats',
+const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
                  'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
@@ -4353,7 +4355,7 @@ const AUTH_KEY = 'waypoint_auth';
 
 // Keys whose value must be valid JSON. load() wipes everything if a parse throws,
 // so a restore validates these up front rather than discovering it after reload.
-const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_qstats','wp_history',
+const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_qstats','wp_history',
                       'wp_milestones','wp_cov_milestones','wp_topic_last_seen','wp_nudge_dismissed',
                       'wp_midterm','wp_briefs','wp_upcoming','wp_pace_offset'];
 
@@ -4374,6 +4376,7 @@ function save() {
   localStorage.setItem('wp_courses',       JSON.stringify([...S.courses]));
   localStorage.setItem('wp_course_status', JSON.stringify(S.courseStatus));
   localStorage.setItem('wp_course_when',   JSON.stringify(S.courseWhen));
+  localStorage.setItem('wp_syllabus',      JSON.stringify(S.syllabus));
   localStorage.setItem('wp_year',     S.year || '');
   localStorage.setItem('wp_streak',   String(S.streak));
   localStorage.setItem('wp_lastDate', S.lastDate || '');
@@ -4432,6 +4435,22 @@ function load() {
           });
         }
       } catch(e) { console.warn('[Waypoint] wp_course_when unreadable — ignoring:', e); }
+    }
+    // Same shape of care, and for the same reason: a student's real class
+    // schedule is worth keeping, but a damaged copy of it is worth less than
+    // their streak and their history. Validated course by course, so one bad
+    // entry costs that course its syllabus and nothing else costs anything.
+    const syl = localStorage.getItem('wp_syllabus');
+    if (syl) {
+      try {
+        const parsed = JSON.parse(syl);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          Object.keys(parsed).forEach(cid => {
+            const clean = sanitizeSyllabus(parsed[cid], cid);
+            if (clean) S.syllabus[cid] = clean;
+          });
+        }
+      } catch(e) { console.warn('[Waypoint] wp_syllabus unreadable — ignoring:', e); }
     }
     S.year     = localStorage.getItem('wp_year')     || null;
     S.streak   = parseInt(localStorage.getItem('wp_streak')   || '0', 10);
@@ -5462,7 +5481,13 @@ function courseWhenHTML(id) {
   if (!S.courses.has(id)) return '';
   const wrap = inner => `<div style="padding:0 2px 9px 26px;">${inner}</div>`;
   if (S.courseStatus[id] === 'in-progress') {
-    return wrap(`<span style="font-size:11px;color:#767E96;">${termLabel(currentTerm())} · taking it now</span>`);
+    // A class you're in the middle of is the only kind with a live schedule, so
+    // it's the only kind offered the syllabus. Sits beside the term rather than
+    // above it: same row of facts about the same class.
+    return wrap(`<span style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:11px;color:#767E96;">${termLabel(currentTerm())} · taking it now</span>
+        ${syllabusEntryHTML(id)}
+      </span>`);
   }
   if (S._whenOpen === id) return wrap(termPickerHTML(id));
   const t = termLabel(S.courseWhen[id]);
@@ -6499,6 +6524,367 @@ function screenMidterm() {
              onchange="mtSetSemester(this.value)"
              style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:15px;margin-bottom:6px;">
       ${S.semStart ? `<button style="background:none;border:none;font-size:13px;color:#8A93A8;cursor:pointer;font-family:inherit;display:flex;align-items:center;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="mtSetSemester('')">Clear semester</button>` : '<div style="height:10px;"></div>'}
+
+      ${(() => {
+        // The classes that have a live weekly schedule to hand over. A student
+        // with none in progress isn't shown this at all — there'd be nothing to
+        // offer it for.
+        const live = COURSES.filter(c => S.courseStatus[c.id] === 'in-progress');
+        if (!live.length) return '';
+        return `
+      <div class="section-divider"></div>
+      <p class="label" style="margin-bottom:6px;">Your syllabus</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Waypoint paces your classes from a typical schedule. Hand over the real one and it follows your actual weeks instead.</p>
+      ${live.map(c => `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:#131520;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 13px;margin-bottom:8px;">
+          <span style="font-size:13px;color:#F0F2F8;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;">${c.name}</span>
+          ${syllabusEntryHTML(c.id)}
+        </div>`).join('')}`;
+      })()}
+    </div>`;
+}
+
+// ── SYLLABUS ──────────────────────────────────────────────────────────────────
+// "This week in class" has always been a guess — a typical Bio II, not the
+// student's. This turns the guess into knowledge: they hand over the schedule
+// section of their real syllabus, a server-side parse maps each week onto
+// Waypoint units, and they check it line by line before any of it is kept.
+//
+// The model maps; the student confirms. Nothing that comes back becomes state
+// without passing through the confirm screen, and a parse that fails leaves the
+// app exactly where it was — on the static pacing table.
+//
+// The parse needs an AI key, which can't ship to a browser, so it runs in an
+// Edge Function and needs a signed-in user. That's the one thing in Waypoint
+// that does. Everything else still works with no account at all.
+
+const SYLLABUS_FN = SUPABASE_URL + '/functions/v1/parse-syllabus';
+const SYLLABUS_TIMEOUT = 90000;   // an unhurried read of a long syllabus
+const SYLLABUS_MAX_WEEK = 20;
+
+// A unit id is topic + subtopic, which is the grain Semester Sync already
+// thinks in — the same pair PACING stores and thisWeekUnits() hands to a drill.
+function unitId(topicId, subId) { return topicId + ':' + subId; }
+
+function unitFromId(id) {
+  const [topicId, subId] = String(id || '').split(':');
+  const topic = TOPICS.find(t => t.id === topicId);
+  const sub   = topic ? (SUBTOPICS[topicId] || []).find(s => s.id === subId) : null;
+  return (topic && sub) ? { topicId, subId, topic, sub, label: sub.label } : null;
+}
+
+// What the model is allowed to choose from. Reuses courseUnits(), which already
+// drops any subtopic the question bank can't serve — offering the student a
+// mapping that can never become a drill would be a promise Waypoint can't keep.
+function syllabusUnits(courseId) {
+  return courseUnits(courseId).map(u => ({ id: unitId(u.topicId, u.subId), label: u.label }));
+}
+
+// The server validates before it answers; this validates again on the way in
+// from storage, where a hand-edited value or a damaged backup can arrive
+// instead. Returns null when there's nothing salvageable.
+function sanitizeSyllabus(raw, courseId) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const known = new Set(syllabusUnits(courseId).map(u => u.id));
+  const seen = new Set();
+  const weeks = (Array.isArray(raw.weeks) ? raw.weeks : []).map(w => {
+    if (!w || typeof w !== 'object') return null;
+    const n = parseInt(w.week, 10);
+    if (isNaN(n) || n < 1 || n > SYLLABUS_MAX_WEEK || seen.has(n)) return null;
+    seen.add(n);
+    return {
+      week: n,
+      label: typeof w.label === 'string' ? w.label.slice(0, 300) : '',
+      unitIds: Array.isArray(w.unitIds)
+        ? [...new Set(w.unitIds.filter(id => typeof id === 'string' && known.has(id)))]
+        : [],
+    };
+  }).filter(Boolean).sort((a, b) => a.week - b.week);
+  if (!weeks.length) return null;
+  return { weeks, addedAt: typeof raw.addedAt === 'string' ? raw.addedAt : isoDate() };
+}
+
+// ── The parse call ────────────────────────────────────────────────────────────
+
+async function parseSyllabus(courseId, payload) {
+  const token = await freshToken();
+  if (!token) return { ok: false, message: 'Sign in first — your syllabus syncs with your account.' };
+
+  const course = COURSES.find(c => c.id === courseId);
+  const body = {
+    courseId,
+    courseName: course ? course.name : courseId,
+    units: syllabusUnits(courseId),
+    ...payload,
+  };
+
+  // A long syllabus is a slow read, and a stalled request that never resolves
+  // would leave the student on the parsing screen forever.
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), SYLLABUS_TIMEOUT) : null;
+
+  try {
+    const r = await fetch(SYLLABUS_FN, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + token,
+                 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl ? ctrl.signal : undefined,
+    });
+    const j = await r.json().catch(() => null);
+    // The function answers every failure with a line meant to be read, so when
+    // there is one it beats anything this side could invent.
+    if (!r.ok || !j || !j.ok) {
+      return { ok: false, message: (j && j.message) ||
+        'Couldn\'t read that just now. Waypoint will keep using the typical pacing.' };
+    }
+    return j;
+  } catch(e) {
+    const aborted = e && e.name === 'AbortError';
+    console.warn('[Waypoint] syllabus parse failed:', e);
+    return { ok: false, message: aborted
+      ? 'That took too long to read. Try pasting just the weekly schedule.'
+      : 'Couldn\'t reach Waypoint just now. Check your connection and try again.' };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// ── Flow ──────────────────────────────────────────────────────────────────────
+
+function openSyllabus(courseId) {
+  S.syl = { courseId, phase: authSession() ? 'paste' : 'signin',
+            text: '', error: '', result: null, picker: null };
+  if (window.plausible) plausible('syllabus_open', { props: { course: courseId } });
+  go('syllabus');
+}
+
+// The paste box must not re-render while it's being typed into — a render
+// rebuilds the textarea and the caret jumps to the end. Only the button's
+// enabled state changes, so only the button is touched.
+function sylPasteInput(el) {
+  if (!S.syl) return;
+  S.syl.text = el.value;
+  const btn = document.getElementById('syl-go');
+  if (btn) btn.disabled = el.value.trim().length < 40;
+}
+
+async function runSyllabusParse() {
+  const d = S.syl;
+  if (!d || !d.text || d.text.trim().length < 40) return;
+  d.phase = 'parsing';
+  d.error = '';
+  render();
+
+  const res = await parseSyllabus(d.courseId, { text: d.text.trim() });
+  if (!S.syl || S.syl.courseId !== d.courseId) return;   // they left mid-parse
+
+  if (!res.ok) {
+    S.syl.phase = 'paste';
+    S.syl.error = res.message;
+    render();
+    return;
+  }
+  S.syl.result = res;
+  S.syl.phase  = 'confirm';
+  render();
+}
+
+function sylOpenPicker(i) {
+  if (!S.syl) return;
+  S.syl.picker = (S.syl.picker === i) ? null : i;
+  render();
+}
+
+function sylToggleUnit(i, id) {
+  const w = S.syl && S.syl.result && S.syl.result.weeks[i];
+  if (!w) return;
+  const at = w.unitIds.indexOf(id);
+  if (at === -1) w.unitIds.push(id); else w.unitIds.splice(at, 1);
+  render();
+}
+
+function sylDropWeek(i) {
+  const w = S.syl && S.syl.result && S.syl.result.weeks[i];
+  if (!w) return;
+  w.unitIds = [];
+  render();
+}
+
+// The only moment any of this becomes state, and it happens after the student
+// has read every row.
+function acceptSyllabus() {
+  const d = S.syl;
+  if (!d || !d.result) return;
+  const clean = sanitizeSyllabus({ weeks: d.result.weeks, addedAt: isoDate() }, d.courseId);
+  if (!clean) { d.phase = 'confirm'; d.error = 'Nothing left to save — map at least one week.'; return render(); }
+
+  S.syllabus[d.courseId] = clean;
+  save();
+  // Course id only. What a student's syllabus says is theirs, and it is not
+  // something Waypoint needs to know in aggregate to see whether this works.
+  if (window.plausible) plausible('syllabus_accepted', { props: { course: d.courseId } });
+
+  // A start date Waypoint doesn't have yet is worth one tap to offer, and worth
+  // nothing to insist on — Semester Sync already works without it.
+  if (d.result.termStart && !S.semStart) { d.phase = 'term'; return render(); }
+  finishSyllabus();
+}
+
+function useSyllabusTermStart() {
+  const d = S.syl;
+  if (d && d.result && d.result.termStart) { S.semStart = d.result.termStart; save(); }
+  finishSyllabus();
+}
+
+function finishSyllabus() {
+  S.syl = null;
+  go('brief');
+  showToast('Syllabus saved. Today follows your real schedule now.');
+}
+
+// ── Screens ───────────────────────────────────────────────────────────────────
+
+const SYL_CARD = 'background:#131520;border:1px solid rgba(255,255,255,0.07);border-radius:10px;';
+
+function syllabusEntryHTML(courseId) {
+  const has = !!S.syllabus[courseId];
+  return `<button onclick="openSyllabus('${courseId}')" style="background:none;border:none;padding:0;min-height:44px;display:flex;align-items:center;gap:6px;font-family:inherit;font-size:11px;font-weight:600;color:${has ? '#4DE3AB' : '#2DB88A'};cursor:pointer;-webkit-tap-highlight-color:transparent;">
+    ${has ? '✓ Syllabus added — replace it →' : 'Have the syllabus? →'}
+  </button>`;
+}
+
+function sylWeekRowHTML(w, i, units) {
+  const open = S.syl.picker === i;
+  const chips = w.unitIds.map(id => {
+    const u = unitFromId(id);
+    return `<button onclick="sylToggleUnit(${i},'${id}')" title="Remove" style="background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.4);border-radius:7px;min-height:32px;padding:0 9px;font-family:inherit;font-size:11px;font-weight:600;color:#C4B5FD;cursor:pointer;-webkit-tap-highlight-color:transparent;">${u ? u.label : id} ×</button>`;
+  }).join('');
+
+  return `
+      <div style="${SYL_CARD}padding:12px 13px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
+          <span style="font-size:11px;font-weight:700;color:#767E96;text-transform:uppercase;letter-spacing:0.07em;">Week ${w.week}</span>
+          ${w.unitIds.length ? `<button onclick="sylDropWeek(${i})" style="background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;">Clear</button>` : ''}
+        </div>
+        <p style="font-size:13px;color:#F0F2F8;line-height:1.5;margin:0 0 8px;">${w.label || '<span style="color:#767E96;font-style:italic;">(no topic listed)</span>'}</p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          ${chips}
+          ${w.unitIds.length ? '' : `<span style="font-size:11px;color:#767E96;font-style:italic;">No MCAT content this week</span>`}
+          <button onclick="sylOpenPicker(${i})" aria-expanded="${open}" style="background:none;border:1px dashed rgba(255,255,255,0.18);border-radius:7px;min-height:32px;padding:0 10px;font-family:inherit;font-size:11px;font-weight:600;color:#8A93A8;cursor:pointer;-webkit-tap-highlight-color:transparent;">${open ? 'Done' : (w.unitIds.length ? 'Change' : 'Add')}</button>
+        </div>
+        ${open ? `
+          <div style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,0.07);display:flex;flex-wrap:wrap;gap:6px;">
+            ${units.map(u => {
+              const on = w.unitIds.indexOf(u.id) !== -1;
+              return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'rgba(167,139,250,0.16)' : 'transparent'};border:1px solid ${on ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.1)'};border-radius:7px;min-height:34px;padding:0 10px;font-family:inherit;font-size:11px;font-weight:600;color:${on ? '#C4B5FD' : '#B0B5C8'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
+            }).join('')}
+          </div>` : ''}
+      </div>`;
+}
+
+function screenSyllabus() {
+  const d = S.syl;
+  if (!d) { S.screen = 'brief'; return screenBrief(); }
+  const course = COURSES.find(c => c.id === d.courseId);
+  const name = course ? course.name : 'this course';
+
+  const back = `
+      <div class="brief-topbar">
+        <button onclick="S.syl=null;go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-family:inherit;font-size:15px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back
+        </button>
+      </div>`;
+
+  // Sign-in is a real requirement here, so it's explained rather than enforced
+  // silently. Everything else in Waypoint still works without an account.
+  if (d.phase === 'signin') {
+    return `
+    <div class="screen">
+      ${back}
+      <p class="label">Your syllabus</p>
+      <h2 style="margin-bottom:6px;">This one needs an account.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Your class schedule is worth keeping, so it syncs with your account rather than living in one browser. Everything else in Waypoint works without one.</p>
+      <button class="btn btn-primary" onclick="S.syl=null;go('settings')">Sign in →</button>
+      <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Not now</button>
+    </div>`;
+  }
+
+  if (d.phase === 'parsing') {
+    return `
+    <div class="screen">
+      <div style="height:24px;"></div>
+      <p class="label">Reading your syllabus</p>
+      <h2 style="margin-bottom:6px;">Working through the weeks…</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">This takes a few seconds. You'll get to check every week before anything is saved.</p>
+      <div style="${SYL_CARD}padding:16px;display:flex;align-items:center;gap:11px;">
+        <span class="pulse-dot" style="width:8px;height:8px;margin:0;"></span>
+        <span style="font-size:13px;color:#8A93A8;">${name}</span>
+      </div>
+    </div>`;
+  }
+
+  if (d.phase === 'term') {
+    return `
+    <div class="screen">
+      <div style="height:24px;"></div>
+      <p class="label">One more thing</p>
+      <h2 style="margin-bottom:6px;">Is this when your term started?</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Your syllabus says <strong style="color:#F0F2F8;">${d.result.termStart}</strong>. Waypoint uses it to work out which week you're in — you can change it any time.</p>
+      <button class="btn btn-primary" onclick="useSyllabusTermStart()">Use that date →</button>
+      <button class="btn btn-ghost" onclick="finishSyllabus()">Skip</button>
+    </div>`;
+  }
+
+  if (d.phase === 'confirm') {
+    const weeks = d.result.weeks;
+    // The honest empty answer. A syllabus with no weekly schedule in it is a
+    // real outcome, and inventing one would be worse than saying so — the
+    // student would trust it.
+    if (!weeks.length || d.result.confidence === 'low') {
+      return `
+    <div class="screen">
+      ${back}
+      <p class="label">Your syllabus</p>
+      <h2 style="margin-bottom:6px;">Couldn't find a weekly schedule in that.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Waypoint will keep using the typical pacing for ${name}, which works fine. If your syllabus does have a week-by-week table, paste just that part and try again.</p>
+      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">Try another paste →</button>
+      <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Leave it</button>
+    </div>`;
+    }
+
+    const units   = syllabusUnits(d.courseId);
+    const mapped  = weeks.filter(w => w.unitIds.length).length;
+    return `
+    <div class="screen">
+      ${back}
+      <p class="label">Check this over</p>
+      <h2 style="margin-bottom:6px;">${weeks.length} week${weeks.length !== 1 ? 's' : ''} from your ${name} syllabus.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:6px;">The bold line is your syllabus's own words. The chips are what Waypoint will practise that week — tap any of them to change it.</p>
+      <p style="font-size:13px;color:#767E96;line-height:1.55;margin-bottom:16px;">${mapped} of ${weeks.length} week${weeks.length !== 1 ? 's' : ''} mapped to MCAT content. Weeks with none are usually exams or breaks — that's fine to leave empty.</p>
+      ${d.error ? `<p style="font-size:13px;color:#F4B48A;margin-bottom:12px;">${d.error}</p>` : ''}
+      ${weeks.map((w, i) => sylWeekRowHTML(w, i, units)).join('')}
+      <div style="height:6px;"></div>
+      <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right — save it →</button>
+      <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;render();">Start over</button>
+    </div>`;
+  }
+
+  // paste
+  const ready = (d.text || '').trim().length >= 40;
+  return `
+    <div class="screen">
+      ${back}
+      <p class="label">Your syllabus</p>
+      <h2 style="margin-bottom:6px;">Paste your ${name} schedule.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:14px;">The week-by-week part is what matters — the whole syllabus is fine too. Waypoint reads it, maps each week onto MCAT topics, and shows you the result to check before anything is saved.</p>
+      ${d.error ? `<p style="font-size:13px;color:#F4B48A;line-height:1.55;margin-bottom:12px;">${d.error}</p>` : ''}
+      <textarea id="syl-text" oninput="sylPasteInput(this)" rows="10" spellcheck="false"
+        placeholder="Week 1: Muscle structure and contraction&#10;Week 2: Cardiac cycle&#10;Week 3: Midterm exam&#10;…"
+        style="width:100%;box-sizing:border-box;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:15px;line-height:1.5;resize:vertical;margin-bottom:10px;-webkit-appearance:none;">${d.text || ''}</textarea>
+      <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:14px;">Waypoint reads your syllabus and keeps the schedule in your account. The text itself isn't stored on our servers.</p>
+      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">Read my syllabus →</button>
     </div>`;
 }
 
@@ -8437,7 +8823,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -8512,6 +8898,7 @@ function render() {
     case 'midterm': html += screenMidterm(); break;
     case 'pace':    html += screenPace();    break;
     case 'examplan': html += screenExamPlan(); break;
+    case 'syllabus': html += screenSyllabus(); break;
     case 'quicklog':          html += screenQuickLog();         break;
     // Retired: topic and subtopic are one screen now. A stale S.screen (an
     // interrupted session, a tab left open across the deploy) lands on it.
