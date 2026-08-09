@@ -4283,6 +4283,7 @@ const S = {
   mtDraft:   null,    // transient: the plan being built on the Midterm setup screen
   briefs:    [],      // [{weekStart, coverage, totalAnswered, ...}] — Sunday Brief snapshots
   briefSeen: null,    // weekStart of the most recently dismissed brief
+  remindAsked: 0,     // the daily-reminder offer is made once, after session 3
 };
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
@@ -4293,7 +4294,8 @@ const S = {
 const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
-                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen'];
+                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
+                 'wp_upcoming'];
 
 // The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
 // files (which users share and store) and out of the cloud payload. It is
@@ -4304,7 +4306,7 @@ const AUTH_KEY = 'waypoint_auth';
 // so a restore validates these up front rather than discovering it after reload.
 const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_qstats','wp_history',
                       'wp_milestones','wp_cov_milestones','wp_topic_last_seen','wp_nudge_dismissed',
-                      'wp_midterm','wp_briefs'];
+                      'wp_midterm','wp_briefs','wp_upcoming'];
 
 // Discovered by prefix, not by list: a backup taken on a newer build that writes
 // keys this build has never heard of still round-trips them intact.
@@ -4332,12 +4334,16 @@ function save() {
   localStorage.setItem('wp_cov_milestones', JSON.stringify(S.covMilestonesShown));
   localStorage.setItem('wp_topic_last_seen', JSON.stringify(S.topicLastSeen));
   localStorage.setItem('wp_nudge_dismissed', JSON.stringify(S.nudgeDismissed));
-  localStorage.setItem('wp_sem_start',  S.semStart  || '');
-  localStorage.setItem('wp_sem_prompt', S.semPrompt || '');
-  if (S.midterm) localStorage.setItem('wp_midterm', JSON.stringify(S.midterm));
-  else localStorage.removeItem('wp_midterm');
+  // One object for everything time-based. The legacy wp_sem_* / wp_midterm keys
+  // are read on load for migration but never written again.
+  localStorage.setItem('wp_upcoming', JSON.stringify({
+    semesterStart: S.semStart || null,
+    prompted:      S.semPrompt || null,
+    exam:          S.midterm || null,
+  }));
   localStorage.setItem('wp_briefs', JSON.stringify(S.briefs.slice(-12)));
   localStorage.setItem('wp_brief_seen', S.briefSeen || '');
+  localStorage.setItem('wp_remind_asked', S.remindAsked ? '1' : '');
   // Stamp every write so cloud sync can tell which side is newer. Harmless and
   // inert when logged out; schedulePush() returns immediately without a session.
   localStorage.setItem('wp_updated_at', new Date().toISOString());
@@ -4346,6 +4352,7 @@ function save() {
 
 function load() {
   let migrated = false;
+  let migratedUpcoming = false;
   try {
     const c = localStorage.getItem('wp_courses');
     if (c) S.courses = new Set(JSON.parse(c));
@@ -4375,16 +4382,35 @@ function load() {
     const nd = localStorage.getItem('wp_nudge_dismissed');
     if (nd) S.nudgeDismissed = JSON.parse(nd);
     // Semester Sync — absent for every existing user, which simply means "not asked yet".
-    S.semStart  = localStorage.getItem('wp_sem_start')  || null;
-    S.semPrompt = localStorage.getItem('wp_sem_prompt') || null;
+    // Semester Sync + Midterm Mode now live in one object. Migration is idempotent
+    // and runs on every load, so a stale tab (or an old build syncing legacy keys
+    // back down from the cloud) heals itself on the next open instead of losing data.
+    const up = localStorage.getItem('wp_upcoming');
+    if (up) {
+      // Parsed in its own try: scheduling is optional data, so a damaged value
+      // here must not trip load()'s catch and wipe courses, streak and history.
+      let u = null;
+      try { u = JSON.parse(up); } catch(e) { console.warn('[Waypoint] wp_upcoming unreadable — ignoring:', e); }
+      u = (u && typeof u === 'object') ? u : {};
+      S.semStart  = u.semesterStart || null;
+      S.semPrompt = u.prompted || null;
+      S.midterm   = (u.exam && u.exam.courseId && u.exam.date && Array.isArray(u.exam.subIds)) ? u.exam : null;
+    } else {
+      S.semStart  = localStorage.getItem('wp_sem_start')  || null;
+      S.semPrompt = localStorage.getItem('wp_sem_prompt') || null;
+      migratedUpcoming = true;
+    }
     const br = localStorage.getItem('wp_briefs');
     if (br) { const p = JSON.parse(br); if (Array.isArray(p)) S.briefs = p; }
     S.briefSeen = localStorage.getItem('wp_brief_seen') || null;
-    const mt = localStorage.getItem('wp_midterm');
-    if (mt) {
-      const parsed = JSON.parse(mt);
-      // Ignore a malformed or half-written plan rather than letting it break Home.
-      S.midterm = (parsed && parsed.courseId && parsed.date && Array.isArray(parsed.subIds)) ? parsed : null;
+    S.remindAsked = localStorage.getItem('wp_remind_asked') ? 1 : 0;
+    if (migratedUpcoming) {
+      const mt = localStorage.getItem('wp_midterm');
+      if (mt) {
+        const parsed = JSON.parse(mt);
+        // Ignore a malformed or half-written plan rather than letting it break Home.
+        S.midterm = (parsed && parsed.courseId && parsed.date && Array.isArray(parsed.subIds)) ? parsed : null;
+      }
     }
 
     // Reset streak if more than 1 day has passed
@@ -4395,7 +4421,10 @@ function load() {
 
     // Persist a back-filled migration immediately, so a backup taken before the
     // user's next action is a complete snapshot rather than a partial one.
-    if (migrated) save();
+    if (migrated || migratedUpcoming) save();
+    if (migratedUpcoming) {
+      ['wp_sem_start','wp_sem_prompt','wp_midterm'].forEach(k => localStorage.removeItem(k));
+    }
   } catch(e) {
     // Corrupted or unparseable localStorage — wipe all Waypoint keys and start fresh.
     // Silent recovery: new users see the landing screen, not an error.
@@ -5613,6 +5642,26 @@ function unitTwist(unit) {
   return parts.exam ? { ...parts, qId: q.id } : null;
 }
 
+// One label for one entry point. What it says depends on what's already set,
+// but it always opens the same screen.
+function upcomingLinkLabel() {
+  const mt = midtermPlan();
+  if (mt && !mt.past) return 'Edit what’s coming up →';
+  if (mt && mt.past)  return 'Set up your next exam →';
+  if (S.semStart)     return 'Add an exam →';
+  return 'Add what’s coming up →';
+}
+
+function mtSetSemester(v) {
+  if (!v) { S.semStart = null; S.semPrompt = 'answered'; save(); return render(); }
+  const d = new Date(v + 'T00:00:00');
+  if (isNaN(d.getTime())) return;
+  S.semStart = v; S.semPrompt = 'answered';
+  save();
+  if (window.plausible) plausible('semester_start_set', { props: { week: String(semesterWeek()) } });
+  render();
+}
+
 function startMidtermSetup() {
   const inProg = [...S.courses].filter(c => S.courseStatus[c] === 'in-progress');
   const pick = S.midterm ? S.midterm.courseId : (inProg[0] || [...S.courses][0] || null);
@@ -5689,8 +5738,20 @@ function screenMidterm() {
         </button>
       </div>
 
-      <h2 style="margin-bottom:5px;">Exam coming up?</h2>
-      <p style="font-size:14px;margin-bottom:20px;">Tell Waypoint what it covers and when. You'll get a day-by-day plan — and the MCAT version of everything on it, so the work counts twice.</p>
+      <h2 style="margin-bottom:5px;">What's coming up?</h2>
+      <p style="font-size:14px;margin-bottom:20px;">Two dates are all Waypoint needs to know what to put in front of you each day.</p>
+
+      <p class="label" style="margin-bottom:6px;">Your semester</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:10px;">When it started, so Today can lead with what your classes are covering this week.${S.semStart && semesterWeek() ? ` You're in week ${semesterWeek()}.` : ''}</p>
+      <input type="date" id="sem-date" value="${S.semStart || ''}" max="${isoDate()}"
+             onchange="mtSetSemester(this.value)"
+             style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:14px;margin-bottom:6px;">
+      ${S.semStart ? `<button style="background:none;border:none;font-size:12px;color:#8A93A8;cursor:pointer;font-family:inherit;display:flex;align-items:center;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="mtSetSemester('')">Clear semester</button>` : '<div style="height:10px;"></div>'}
+
+      <div class="section-divider"></div>
+
+      <p class="label" style="margin-bottom:6px;">An exam</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Optional. Adds a countdown plan weighted to what it covers.</p>
 
       <p class="label" style="margin-bottom:8px;">Which class</p>
       ${courseBtns}
@@ -6012,14 +6073,7 @@ function screenBrief() {
       ${todayCardHTML()}
 
       <button style="background:none;border:none;font-size:13px;color:#2DB88A;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="go('quicklog')">Other things to study →</button>
-      ${(() => {
-        const mt = midtermPlan();
-        // A finished exam still counts as "no exam coming up" — otherwise a stale
-        // plan would hide the only way to set the next one.
-        if (mt && !mt.past) return '';
-        const label = (mt && mt.past) ? 'Set up your next exam →' : 'Exam coming up? →';
-        return `<button style="background:none;border:none;font-size:13px;color:#8A93A8;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${label}</button>`;
-      })()}
+      <button style="background:none;border:none;font-size:13px;color:#8A93A8;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
     </div>`;
 }
 
@@ -6661,6 +6715,19 @@ function getRetentionHTML(sessionAnswers) {
     </div>`;
 }
 
+// The reminder is worth asking for exactly once, after the habit has started
+// forming. Asking on every results screen is what made it noise.
+function remindOnceHTML() {
+  if (S.remindAsked) return '';
+  if (S.sessionHistory.length < 3) return '';
+  return `
+    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+      <p style="font-size:13px;color:#B0B5C8;line-height:1.55;margin:0 0 10px;">Three sessions in. Want a daily nudge on your calendar?</p>
+      <button class="btn btn-share" style="margin:0;" id="reminder-btn" onclick="S.remindAsked=1;save();setReminder(this);">Set a daily reminder</button>
+      <button style="background:none;border:none;font-size:12px;color:#8A93A8;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;justify-content:center;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="S.remindAsked=1;save();render();">No thanks</button>
+    </div>`;
+}
+
 function screenComplete() {
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
@@ -6706,8 +6773,16 @@ function screenComplete() {
        </div>`
     : '';
 
+  // One closing line, not three stacked cards. Most specific wins: what you
+  // actually fixed beats a generic topic read, which beats a spaced-repetition
+  // reminder the user has already internalised.
   const topicInsight = getTopicInsight();
   const retention    = getRetentionHTML(S.answers);
+  const closingLine = fixedCount > 0
+    ? `<p style="font-size:13px;color:#4DE3AB;line-height:1.55;margin:0 0 18px;">You fixed <strong>${fixedCount} question${fixedCount !== 1 ? 's' : ''}</strong> that had you stumped before.</p>`
+    : (topicInsight || retention || (wrong > 0
+        ? `<p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 18px;">The ones you missed will come back.</p>`
+        : ''));
 
   const scoreBanner = pct === 100
     ? `<div style="text-align:center;padding:12px 0 24px;">
@@ -6715,15 +6790,20 @@ function screenComplete() {
         <p style="font-size:15px;color:#4DE3AB;line-height:1.55;margin:0;">${scoreNote}</p>
        </div>`
     : `<h2>${scoreHeadline}</h2>
-       <p style="margin:6px 0 16px;font-size:15px;">${scoreNote}</p>
-       ${spacedRepNote}`;
+       <p style="margin:6px 0 16px;font-size:15px;">${scoreNote}</p>`;
 
   return `
     <div class="screen">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:-6px;">
+        <button onclick="shareCoverageCard('${S.streak >= 7 ? 'streak' : 'coverage'}', this)" title="Share my progress" aria-label="Share my progress"
+                style="background:none;border:none;cursor:pointer;color:#8A93A8;display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-10px -10px 0 0;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+        </button>
+      </div>
+
       ${scoreBanner}
 
-      ${fixedNote}
-      ${topicInsight}
+      ${closingLine}
 
       <div class="today-note">
         <span class="today-dot"></span>practiced today
@@ -6745,11 +6825,9 @@ function screenComplete() {
         </div>
       </div>
 
-      ${retention}
+      ${remindOnceHTML()}
 
-      <button class="btn btn-primary" id="reminder-btn" onclick="setReminder(this)">Set a daily reminder</button>
-      ${S.streak >= 7 ? `<button class="btn btn-share" onclick="shareCoverageCard('streak', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Share my streak</button>` : ''}
-      <button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>
+      <button class="btn btn-primary" onclick="go('brief')">Done &rarr;</button>
     </div>`;
 }
 
