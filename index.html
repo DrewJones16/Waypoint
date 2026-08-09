@@ -277,6 +277,40 @@
     color: #F0F2F8;
     background: rgba(29,158,117,0.2);
   }
+  /* Term chips — "when did you take it?" is one tap, so the chips are real tap
+     targets (38px tall, 44px of vertical room with the row gap) and wrap freely
+     at 375px rather than scrolling sideways. */
+  .term-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .term-chip {
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: #B0B5C8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .term-chip:active { opacity: 0.7; }
+  .term-chip.on {
+    border-color: rgba(29,158,117,0.5);
+    background: rgba(29,158,117,0.16);
+    color: #4DE3AB;
+  }
+  .term-chip.quiet { color: #767E96; }
+  /* The current term, offered as the likely answer. Outlined, never filled: a
+     suggestion the student hasn't confirmed must not look like a stored one. */
+  .term-chip.sug { border-color: rgba(29,158,117,0.4); color: #8FBFAE; }
   /* Pulsing activity dot */
   @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
   .pulse-dot {
@@ -4273,6 +4307,7 @@ const S = {
   year:           null,
   courses:        new Set(),
   courseStatus:   {},          // {courseId: 'in-progress'|'completed'}
+  courseWhen:     {},          // {courseId: '2025-fall'} — the term a done course was taken
   session:        [],
   idx:            0,
   answers:        [],   // [{qId, chosen, correct}]
@@ -4305,7 +4340,7 @@ const S = {
 // Single source of truth for the keys Waypoint owns. Backup, restore and reset
 // all read from here (or from the wp_ prefix scan below), so a key added in a
 // future release is covered everywhere the moment it's listed.
-const WP_KEYS = ['wp_courses','wp_course_status','wp_year','wp_streak','wp_lastDate','wp_qstats',
+const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_year','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
                  'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
@@ -4318,7 +4353,7 @@ const AUTH_KEY = 'waypoint_auth';
 
 // Keys whose value must be valid JSON. load() wipes everything if a parse throws,
 // so a restore validates these up front rather than discovering it after reload.
-const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_qstats','wp_history',
+const WP_JSON_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_qstats','wp_history',
                       'wp_milestones','wp_cov_milestones','wp_topic_last_seen','wp_nudge_dismissed',
                       'wp_midterm','wp_briefs','wp_upcoming','wp_pace_offset'];
 
@@ -4338,6 +4373,7 @@ function wpStorageKeys() {
 function save() {
   localStorage.setItem('wp_courses',       JSON.stringify([...S.courses]));
   localStorage.setItem('wp_course_status', JSON.stringify(S.courseStatus));
+  localStorage.setItem('wp_course_when',   JSON.stringify(S.courseWhen));
   localStorage.setItem('wp_year',     S.year || '');
   localStorage.setItem('wp_streak',   String(S.streak));
   localStorage.setItem('wp_lastDate', S.lastDate || '');
@@ -4381,6 +4417,21 @@ function load() {
       // Migrate: treat all existing courses as 'completed'
       S.courses.forEach(id => { S.courseStatus[id] = 'completed'; });
       migrated = true;
+    }
+    // Its own try, like wp_pace_offset below: which term a course was taken is a
+    // label on the history, never the history itself. A damaged map should cost
+    // the labels and nothing else. Values are validated one by one, so a single
+    // bad entry doesn't discard the terms that are still readable.
+    const cw = localStorage.getItem('wp_course_when');
+    if (cw) {
+      try {
+        const parsed = JSON.parse(cw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          Object.keys(parsed).forEach(k => {
+            if (TERM_RE.test(parsed[k])) S.courseWhen[k] = parsed[k];
+          });
+        }
+      } catch(e) { console.warn('[Waypoint] wp_course_when unreadable — ignoring:', e); }
     }
     S.year     = localStorage.getItem('wp_year')     || null;
     S.streak   = parseInt(localStorage.getItem('wp_streak')   || '0', 10);
@@ -4941,10 +4992,143 @@ const TILE_NAMES = {
   'research':'Research', 'cars':'CARS',
 };
 
-function sectionedMapHTML() {
-  // Off entirely until the student has practiced something — see freshnessActive().
-  const live = freshnessActive();
-  const open = live ? S._freshOpen : null;
+// 92px floor, not 72: the state word has to fit beside the weight at 375px.
+// Six and nine topics wrap to the same number of rows three-across as they did
+// four-across, so the map is no taller.
+const TILE_BOX = 'border-radius:7px;padding:8px 9px;flex:1;min-width:92px;max-width:100%;overflow:hidden;';
+const TILE_ROW = 'display:flex;flex-wrap:wrap;gap:5px;';
+
+// A topic the student has covered. Coverage chrome never changes with freshness:
+// covered ground stays green and stays earned. Only the small status line carries
+// the state, and for fresh it stays exactly the line it has always been.
+function coveredTileHTML(t, live, open) {
+  const inProgress = S.courseStatus[t.course] === 'in-progress';
+  const statusIcon = inProgress ? `<span class="pulse-dot" style="width:5px;height:5px;margin-right:3px;"></span>` : '✓ ';
+  let status = `<div style="font-size:11px;color:#2DB88A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${t.disp}</div>`;
+  const f = live ? topicFreshness(t.id) : null;
+  if (f && f.state !== 'fresh') {
+    const m = FRESH_META[f.state];
+    status = `<div style="font-size:11px;color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.word}</div>`;
+  }
+  const inner = `
+          <div style="font-size:11px;color:#4DE3AB;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+            ${status}
+            <div style="font-size:11px;font-weight:700;color:#1D9E75;flex-shrink:0;margin-left:4px;">${t.w}%</div>
+          </div>`;
+  const box = `background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);${TILE_BOX}`;
+  if (!f) return `<div style="${box}">${inner}</div>`;
+  return `<button onclick="toggleFresh('${t.id}')" aria-expanded="${open === t.id}" title="${f.why.replace(/"/g, '&quot;')}"
+          style="${box}text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;${open === t.id ? 'box-shadow:0 0 0 1px rgba(255,255,255,0.18);' : ''}">${inner}</button>`;
+}
+
+// Locked / addable — tap to add the course that unlocks it.
+function lockedTileHTML(t) {
+  const cName = (COURSES.find(c => c.id === t.course) || {}).name || 'a course';
+  return `<button onclick="go('courses')" title="Add ${cName} to unlock +${t.w}%" style="background:#101319;border:1px dashed rgba(255,255,255,0.15);${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
+        <div style="font-size:11px;color:#8A93A8;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+          <div style="font-size:11px;color:#767E96;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${t.disp}</div>
+          <div style="font-size:11px;font-weight:700;color:#8A93A8;flex-shrink:0;margin-left:4px;">+${t.w}%</div>
+        </div>
+      </button>`;
+}
+
+// CARS — ongoing, not course-gated, and so never on the timeline: it belongs to
+// no semester the student ever registered for.
+function carsTileHTML(t) {
+  return `<div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);${TILE_BOX}">
+          <div style="font-size:11px;color:#F5B36A;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+            <div style="font-size:11px;color:#8A93A8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-style:italic;">ongoing</div>
+            <div style="font-size:11px;font-weight:700;color:#B98B3E;flex-shrink:0;margin-left:4px;">${t.w}%</div>
+          </div>
+        </div>`;
+}
+
+// Covered courses bucketed by the term they were taken, newest first. An untagged
+// course lands in one bucket keyed 'unset', which ranks below every real term and
+// so sorts to the end on its own — no special case in the sort.
+function termGroups() {
+  const byTerm = new Map();
+  COURSES.forEach(c => {
+    if (!S.courses.has(c.id)) return;
+    const key = courseTerm(c.id) || 'unset';
+    if (!byTerm.has(key)) byTerm.set(key, []);
+    byTerm.get(key).push(c);
+  });
+  return [...byTerm.entries()].map(([term, courses]) => {
+    const ids    = courses.map(c => c.id);
+    const topics = TOPICS.filter(t => t.course && ids.indexOf(t.course) !== -1);
+    return { term, courses, topics,
+             weight: topics.reduce((s, t) => s + t.w, 0),
+             now:    courses.some(c => S.courseStatus[c.id] === 'in-progress') };
+  }).sort((a, b) => termRank(b.term) - termRank(a.term));
+}
+
+// ── THE TIMELINE ──────────────────────────────────────────────────────────────
+// Covered ground, semester by semester, newest first — the student's own academic
+// history rather than an abstract list of topics. Untagged courses keep their
+// place at the end with the one chip that dates them; they are never a prompt, a
+// modal or a nag, and everything on the Route works untouched without them.
+function termTimelineHTML(live, open) {
+  const groups = termGroups();
+  if (!groups.length) return '';
+
+  return groups.map(g => {
+    const unset = g.term === 'unset';
+    const label = unset ? 'Term not set' : termLabel(g.term);
+    // A term you're still inside hasn't banked its weight yet, and the header says
+    // which of the two numbers it is rather than quietly picking one. The untagged
+    // pile isn't a term at all, so it gets no total: a single figure over a stack
+    // of unrelated classes would read as the weight of the first one.
+    const worth = unset ? '' : g.now ? `worth ${g.weight}% when you finish`
+                                     : `${g.weight}% of the exam`;
+
+    // Laid out by course, not by topic: the chip that fixes this belongs to a
+    // class, and the tiles under it show exactly what dating that class would
+    // place on the timeline. Every other group needs only its course names.
+    const body = unset
+      ? g.courses.map(c => {
+          const ts = TOPICS.filter(t => t.course === c.id);
+          const w  = ts.reduce((s, t) => s + t.w, 0);
+          return `
+        <div style="margin-bottom:11px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+            <span style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;">
+              <span style="font-size:12px;font-weight:600;color:#B0B5C8;">${c.name}</span>
+              ${S._whenOpen === c.id ? '' : `<button class="term-chip quiet" style="min-height:32px;font-size:11px;padding:0 10px;" onclick="toggleWhen('${c.id}')">Took this in… →</button>`}
+            </span>
+            <span style="font-size:11px;color:#767E96;flex-shrink:0;">${w}%</span>
+          </div>
+          ${S._whenOpen === c.id ? `<div style="margin-bottom:8px;">${termPickerHTML(c.id)}</div>` : ''}
+          <div style="${TILE_ROW}">${ts.map(t => coveredTileHTML(t, live, open)).join('')}</div>
+        </div>`;
+        }).join('')
+      : `<div style="${TILE_ROW}">${g.topics.map(t => coveredTileHTML(t, live, open)).join('')}</div>`;
+
+    return `
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:${unset ? '#767E96' : '#B0B5C8'};text-transform:uppercase;letter-spacing:0.07em;">
+            ${g.now ? '<span class="pulse-dot" style="width:5px;height:5px;margin-right:0;"></span>' : ''}${label}
+          </div>
+          ${worth ? `<div style="font-size:11px;color:#767E96;flex-shrink:0;">${worth}</div>` : ''}
+        </div>
+        ${unset ? '' : `<p style="font-size:11px;color:#767E96;margin:0 0 8px;line-height:1.45;">${g.courses.map(c => c.name).join(' · ')}</p>`}
+        ${body}
+        ${open && g.topics.some(t => t.id === open) ? freshDetailHTML(open) : ''}
+      </div>`;
+  }).join('');
+}
+
+// ── WHAT'S STILL LOCKED ───────────────────────────────────────────────────────
+// The section map, unchanged in everything but which tiles it holds: covered
+// ground has moved up into the timeline, so what's left here is the ground the
+// student hasn't claimed. The per-section header keeps both numbers, so "12 of
+// 25% in Bio" is still readable at a glance — it's just now the caption on
+// what's missing rather than on a mix of both.
+function lockedMapHTML() {
   return MCAT_SECTIONS.map(sec => {
     const secTopics  = TOPICS.filter(t => t.mcat === sec.id);
     const secTotal   = secTopics.reduce((s, t) => s + t.w, 0);
@@ -4952,50 +5136,10 @@ function sectionedMapHTML() {
     const secPct     = Math.round(secCovered / secTotal * 100);
     const hasAny     = secCovered > 0;
 
-    const tiles = secTopics.map(t => {
-      const covered    = t.course && S.courses.has(t.course);
-      const inProgress = t.course && S.courseStatus[t.course] === 'in-progress';
-      if (!t.course) { // CARS — ongoing, not course-gated
-        return `<div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:7px;padding:8px 9px;flex:1;min-width:92px;max-width:100%;overflow:hidden;">
-          <div style="font-size:11px;color:#F5B36A;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-            <div style="font-size:11px;color:#8A93A8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-style:italic;">ongoing</div>
-            <div style="font-size:11px;font-weight:700;color:#B98B3E;flex-shrink:0;margin-left:4px;">${t.w}%</div>
-          </div>
-        </div>`;
-      }
-      if (covered) {
-        const statusIcon = inProgress ? `<span class="pulse-dot" style="width:5px;height:5px;margin-right:3px;"></span>` : '✓ ';
-        // Coverage chrome never changes with freshness: covered ground stays
-        // green and stays earned. Only the small status line carries the state,
-        // and for fresh it stays exactly the line it has always been.
-        let status = `<div style="font-size:11px;color:#2DB88A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${t.disp}</div>`;
-        const f = live ? topicFreshness(t.id) : null;
-        if (f && f.state !== 'fresh') {
-          const m = FRESH_META[f.state];
-          status = `<div style="font-size:11px;color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius:50%;box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.word}</div>`;
-        }
-        const inner = `
-          <div style="font-size:11px;color:#4DE3AB;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-            ${status}
-            <div style="font-size:11px;font-weight:700;color:#1D9E75;flex-shrink:0;margin-left:4px;">${t.w}%</div>
-          </div>`;
-        const box = 'background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius:7px;padding:8px 9px;flex:1;min-width:92px;max-width:100%;overflow:hidden;';
-        if (!f) return `<div style="${box}">${inner}</div>`;
-        return `<button onclick="toggleFresh('${t.id}')" aria-expanded="${open === t.id}" title="${f.why.replace(/"/g, '&quot;')}"
-          style="${box}text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;${open === t.id ? 'box-shadow:0 0 0 1px rgba(255,255,255,0.18);' : ''}">${inner}</button>`;
-      }
-      // locked / addable — tap to add the course that unlocks it
-      const cName = (COURSES.find(c => c.id === t.course) || {}).name || 'a course';
-      return `<button onclick="go('courses')" title="Add ${cName} to unlock +${t.w}%" style="background:#101319;border:1px dashed rgba(255,255,255,0.15);border-radius:7px;padding:8px 9px;flex:1;min-width:92px;max-width:100%;overflow:hidden;cursor:pointer;text-align:left;font-family:inherit;">
-        <div style="font-size:11px;color:#8A93A8;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-          <div style="font-size:11px;color:#767E96;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${t.disp}</div>
-          <div style="font-size:11px;font-weight:700;color:#8A93A8;flex-shrink:0;margin-left:4px;">+${t.w}%</div>
-        </div>
-      </button>`;
-    }).join('');
+    const rest = secTopics.filter(t => !t.course || !S.courses.has(t.course));
+    if (!rest.length) return '';   // nothing left to unlock here — the timeline has it all
+
+    const tiles = rest.map(t => t.course ? lockedTileHTML(t) : carsTileHTML(t)).join('');
 
     return `
       <div style="margin-bottom:22px;">
@@ -5006,13 +5150,25 @@ function sectionedMapHTML() {
         <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:10px;overflow:hidden;">
           <div class="sec-bar-fill" data-w="${secPct}" style="height:100%;width:0%;background:#1D9E75;border-radius:2px;transition:width 1.2s ease;"></div>
         </div>
-        <!-- 92px floor, not 72: the state word has to fit beside the weight
-             at 375px. Six and nine topics wrap to the same number of rows
-             three-across as they did four-across, so the map is no taller. -->
-        <div style="display:flex;flex-wrap:wrap;gap:5px;">${tiles}</div>
-        ${open && secTopics.some(t => t.id === open) ? freshDetailHTML(open) : ''}
+        <div style="${TILE_ROW}">${tiles}</div>
       </div>`;
   }).join('');
+}
+
+function sectionedMapHTML() {
+  // Off entirely until the student has practiced something — see freshnessActive().
+  const live = freshnessActive();
+  const open = live ? S._freshOpen : null;
+  const timeline = termTimelineHTML(live, open);
+  const locked   = lockedMapHTML();
+  // Headings only earn their place once there are two blocks to tell apart. A
+  // student with no courses sees exactly the map they saw before this sprint.
+  const head = text => `<p style="font-size:11px;font-weight:700;color:#4A5165;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 10px;">${text}</p>`;
+  // "Your semesters", not "where you've been": the newest group is the term the
+  // student is sitting in right now, and a past-tense heading would misname it.
+  if (!timeline) return locked;
+  return (timeline ? head('Your semesters') + timeline : '')
+       + (locked   ? `<div class="section-divider"></div>` + head('Still to unlock') + locked : '');
 }
 
 // ── SPARKLINE ─────────────────────────────────────────────────────────────────
@@ -5194,6 +5350,158 @@ function getMasteredTopic() {
   </div>`;
 }
 
+// ── TERMS: WHEN A COURSE WAS TAKEN ────────────────────────────────────────────
+// A premed's history runs in semesters, not years — "Fall 2025" is how they'd say
+// it out loud, so it's what Waypoint stores and shows. One key, one shape:
+// wp_course_when maps courseId → '2025-fall'. Everything else is derived.
+//
+// Spring covers January through May, summer June and July, fall August through
+// December — the sequence US academic calendars actually keep. A course tagged
+// with a term Waypoint can't parse is treated as untagged, never as an error.
+
+const TERM_SEASONS = ['spring','summer','fall'];
+const TERM_LABELS  = { spring:'Spring', summer:'Summer', fall:'Fall' };
+const TERM_RE      = /^(\d{4})-(spring|summer|fall)$/;
+
+function termId(year, season) { return year + '-' + season; }
+function seasonOfMonth(m)     { return m <= 4 ? 'spring' : m <= 6 ? 'summer' : 'fall'; }
+
+function termLabel(id) {
+  const m = TERM_RE.exec(id || '');
+  return m ? TERM_LABELS[m[2]] + ' ' + m[1] : null;
+}
+
+// Chronological rank, so terms sort without string trickery. An unparseable or
+// absent term ranks below every real one, which is exactly where the untagged
+// group belongs: after the dated history, not inside it.
+function termRank(id) {
+  const m = TERM_RE.exec(id || '');
+  return m ? parseInt(m[1], 10) * 3 + TERM_SEASONS.indexOf(m[2]) : -1;
+}
+
+// Semester Sync already asked for a start date once. When that date is recent
+// enough to be the term the student is actually sitting in, it beats guessing
+// from today's date — it's the one day they typed themselves. A stale start left
+// over from a past semester falls back to the calendar rather than backdating
+// every course tagged from here on.
+const SEM_START_TRUSTED_DAYS = 150;
+function currentTerm(now = new Date()) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(S.semStart || '');
+  if (m) {
+    const start = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    if (!isNaN(start) && Math.abs(now - start) / 86400000 <= SEM_START_TRUSTED_DAYS) {
+      return termId(start.getUTCFullYear(), seasonOfMonth(start.getUTCMonth()));
+    }
+  }
+  return termId(now.getFullYear(), seasonOfMonth(now.getMonth()));
+}
+
+// The n most recent terms, newest first — the picker's chips.
+function recentTerms(n, now = new Date()) {
+  const m = TERM_RE.exec(currentTerm(now));
+  let y = parseInt(m[1], 10), si = TERM_SEASONS.indexOf(m[2]);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push(termId(y, TERM_SEASONS[si]));
+    if (--si < 0) { si = TERM_SEASONS.length - 1; y--; }
+  }
+  return out;
+}
+
+// A course you're taking right now needs no asking: it's this term by definition.
+// Only a finished course carries a date Waypoint can't derive, so only a finished
+// course is ever asked about. Returns null when the term is genuinely unknown —
+// every surface treats that as "say nothing", never as a gap to nag about.
+function courseTerm(id) {
+  if (!S.courses.has(id)) return null;
+  if (S.courseStatus[id] === 'in-progress') return currentTerm();
+  const t = S.courseWhen[id];
+  return TERM_RE.test(t || '') ? t : null;
+}
+
+// Done courses still missing a term. The Route offers these a chip; nothing else
+// in the app changes because of them.
+function untaggedCourses() {
+  return COURSES.filter(c => S.courses.has(c.id)
+                          && S.courseStatus[c.id] !== 'in-progress'
+                          && !courseTerm(c.id));
+}
+
+// ── THE "WHEN DID YOU TAKE IT?" PICKER ────────────────────────────────────────
+// One row of chips, most recent first, one tap, and a way out. Six terms — two
+// academic years — covers nearly every course a premed has finished; "Earlier"
+// opens four years for anyone further along. It is never a form and never a
+// modal, and "Not sure" is a real answer that costs nothing.
+
+const TERM_CHIPS = 6, TERM_CHIPS_MORE = 12;
+
+function termPickerHTML(id) {
+  const cur = S.courseWhen[id] || null;
+  let terms  = recentTerms(S._whenMore ? TERM_CHIPS_MORE : TERM_CHIPS);
+  // A term saved before the window slid past it still has to be visible, or the
+  // student's own answer disappears from the picker that holds it.
+  if (cur && terms.indexOf(cur) === -1) {
+    terms = terms.concat([cur]).sort((a, b) => termRank(b) - termRank(a));
+  }
+  const sug  = cur ? null : currentTerm();
+  const more = !S._whenMore;
+  return `
+      <p style="font-size:11px;color:#767E96;margin:0 0 6px;">When did you take it?</p>
+      <div class="term-row">
+        ${terms.map(t => `<button class="term-chip${cur === t ? ' on' : (t === sug ? ' sug' : '')}" onclick="setCourseTerm('${id}','${t}')">${termLabel(t)}</button>`).join('')}
+        ${more ? `<button class="term-chip quiet" onclick="showMoreTerms()">Earlier…</button>` : ''}
+        <button class="term-chip quiet" onclick="setCourseTerm('${id}',null)">Not sure</button>
+      </div>`;
+}
+
+// What sits under a course row on the courses screen: the term when it's known,
+// the invitation when it isn't, the picker while it's open — and for a course
+// you're taking now, the term Waypoint already worked out, stated once so the
+// student can see it's right.
+function courseWhenHTML(id) {
+  if (!S.courses.has(id)) return '';
+  const wrap = inner => `<div style="padding:0 2px 9px 26px;">${inner}</div>`;
+  if (S.courseStatus[id] === 'in-progress') {
+    return wrap(`<span style="font-size:11px;color:#767E96;">${termLabel(currentTerm())} · taking it now</span>`);
+  }
+  if (S._whenOpen === id) return wrap(termPickerHTML(id));
+  const t = termLabel(S.courseWhen[id]);
+  return wrap(`<button class="term-chip${t ? ' on' : ' quiet'}" style="min-height:34px;font-size:11px;padding:0 10px;" onclick="toggleWhen('${id}')">${t || 'Took this in… →'}</button>`);
+}
+
+// The courses screen patches in place rather than re-rendering — a full render
+// replays the fade-up and throws the scroll position while the student is part
+// way down a list of twelve classes. Twelve innerHTML writes is cheaper than
+// tracking which two rows changed.
+function paintCourseWhen() {
+  if (S.screen !== 'courses') { render(); return; }
+  COURSES.forEach(c => {
+    const box = document.getElementById('cwhen-' + c.id);
+    if (box) box.innerHTML = courseWhenHTML(c.id);
+  });
+}
+
+function setCourseTerm(id, term) {
+  if (term && TERM_RE.test(term)) S.courseWhen[id] = term;
+  else delete S.courseWhen[id];
+  if (window.plausible) plausible('course_term', { props: { answer: term || 'not_sure' } });
+  S._whenOpen = null;
+  S._whenMore = false;
+  save();
+  paintCourseWhen();
+}
+
+function toggleWhen(id) {
+  S._whenOpen = (S._whenOpen === id) ? null : id;
+  S._whenMore = false;
+  paintCourseWhen();
+}
+
+function showMoreTerms() {
+  S._whenMore = true;
+  paintCourseWhen();
+}
+
 // ── FRESHNESS: WHAT YOU STILL HOLD ────────────────────────────────────────────
 // Waypoint has recorded topicLastSeen and per-question accuracy since the first
 // session and never said either out loud. This says it. Everything below is
@@ -5263,13 +5571,20 @@ function topicFreshness(tid) {
   const strong = tally.total >= FRESH.strongMin && tally.right / tally.total >= FRESH.strongPct;
   const key    = strong ? 'strong' : 'normal';
 
+  // Semester data sharpens the "why", never the arithmetic. A term the student
+  // never tagged simply drops out of the sentence, and the line still explains
+  // itself from the practice record alone.
+  const when   = termLabel(courseTerm(topic.course));
+  const lower  = s => s.charAt(0).toLowerCase() + s.slice(1);
+
   let state, why;
   if (days === null) {
     // Never practiced. Being in the class right now is a schedule fact, not a
     // knowledge claim, so it reads fresh — and the line says exactly that.
     state = inClass ? 'fresh' : 'unpinned';
     why   = inClass ? `You're in ${courseName} now.`
-                    : `Never practiced since finishing ${courseName}.`;
+          : when    ? `Never practiced since ${when}.`
+          :           `Never practiced since finishing ${courseName}.`;
   } else if (inClass) {
     state = 'fresh';
     why   = `${lastPracticedPhrase(days, iso)} You're in ${courseName} now.`;
@@ -5277,9 +5592,11 @@ function topicFreshness(tid) {
     state = days < FRESH.freshDays[key] ? 'fresh'
           : days < FRESH.fadeDays[key]  ? 'fading'
           :                               'faded';
-    why   = lastPracticedPhrase(days, iso) + (strong ? ' Strong here — holds longer.' : '');
+    const practiced = lastPracticedPhrase(days, iso);
+    why = (when ? `Took this ${when} · ${lower(practiced)}` : practiced)
+        + (strong ? ' Strong here — holds longer.' : '');
   }
-  return { tid, topic, state, days, strong, why, courseName };
+  return { tid, topic, state, days, strong, when, why, courseName };
 }
 
 function freshnessSummary() {
@@ -6418,11 +6735,16 @@ function todayPick(skip = null) {
   if (retentionLeadsToday()) {
     const r = weakestFaded();
     if (r && !skipped(r.tid)) {
+      // The term is the better fact when it's known: "you finished this in Spring
+      // 2025" is the student's own calendar, where "you last practiced in the
+      // spring" is only ours. Untagged courses fall back to the practice date.
+      const term = termLabel(courseTerm(r.topic.course));
       const when = seasonPhrase(S.topicLastSeen[r.tid]);
       const n = repinCount(r.tid);
       return { label: 'Still yours', accent: '#F5B36A',
                title: `${n} question${n !== 1 ? 's' : ''} on ${r.topic.name}`,
-               reason: when ? `You last practiced this in ${when} — keep holding it.`
+               reason: term ? `You finished this in ${term} — keep holding it.`
+                     : when ? `You last practiced this in ${when} — keep holding it.`
                             : 'You covered this a while back — keep holding it.',
                onclick: `repin('${r.tid}')`,
                run: () => repin(r.tid) };
@@ -6949,6 +7271,7 @@ function screenCourses() {
               </button>
               <div id="csb-${c.id}" style="display:flex;gap:5px;flex-shrink:0;">${courseButtonsHTML(c.id)}</div>
             </div>
+            <div id="cwhen-${c.id}">${courseWhenHTML(c.id)}</div>
             ${(S._expandedCourses && S._expandedCourses.has(c.id)) ? `<div class="course-topics-panel">${courseTopicsBreakdown(c.id)}</div>` : ''}`;
           }).join('')}
         `;}).join('')}
@@ -7458,6 +7781,10 @@ function logoTap() {
 
 function go(screen) {
   if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
+  // An open term picker belongs to the screen that opened it. Leaving is a way
+  // of not answering, which is allowed.
+  S._whenOpen = null;
+  S._whenMore = false;
   S.screen = screen;
   render();
 }
@@ -7507,11 +7834,17 @@ function setCourseState(id, newState) {
     S.courses.add(id);
     S.courseStatus[id] = newState;
   }
+  // Marking a course done is the one moment when "when did you take it?" is an
+  // easy question, so it's asked right there and nowhere else. Already answered,
+  // or not done at all, and nothing opens.
+  S._whenOpen = (S.courseStatus[id] === 'completed' && !S.courseWhen[id]) ? id : null;
+  S._whenMore = false;
   save();
   // Patch only what changed — no full re-render, so no fade-up replay or scroll jump.
   const box = document.getElementById('csb-' + id);
   if (!box) { render(); return; }
   box.innerHTML = courseButtonsHTML(id);
+  paintCourseWhen();
   const counter = document.getElementById('course-counter');
   if (counter) {
     const n = S.courses.size;
