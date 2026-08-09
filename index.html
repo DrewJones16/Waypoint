@@ -6172,6 +6172,39 @@ function landingTwistHTML() {
 // Everything retrospective — ring, section bars, sparkline, staying sharp,
 // milestones, claim, Twist of the Day — lives on Route.
 
+function dayOfYear(now = new Date()) {
+  const jan1  = Date.UTC(now.getFullYear(), 0, 1);
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((today - jan1) / 86400000);
+}
+
+// The most recent day the student drilled anything belonging to this course.
+// 0 when they never have, which is exactly the rank a neglected class deserves.
+function courseLastSeen(courseId) {
+  let latest = 0;
+  TOPICS.forEach(t => {
+    if (t.course !== courseId) return;
+    const ms = Date.parse(S.topicLastSeen[t.id] || '');
+    if (!isNaN(ms) && ms > latest) latest = ms;
+  });
+  return latest;
+}
+
+// thisWeekUnits() walks S.courses in insertion order, so the same class led the
+// Today card every day and the others were never recommended at all. Least
+// recently drilled goes first; a day-of-year rotation breaks ties, so a student
+// with three fresh classes and no history still sees the lead move each day.
+function rotateWeekUnits(units, now = new Date()) {
+  if (units.length < 2) return units;
+  const ranked = units.map((u, i) => ({ u, i, seen: courseLastSeen(u.courseId) }));
+  ranked.sort((a, b) => (a.seen - b.seen) || (a.i - b.i));
+  const coldest = ranked[0].seen;
+  const tied = ranked.filter(r => r.seen === coldest);
+  const rest = ranked.filter(r => r.seen !== coldest);
+  const off  = dayOfYear(now) % tied.length;
+  return tied.slice(off).concat(tied.slice(0, off)).concat(rest).map(r => r.u);
+}
+
 // Topics the student has already worked today. Passed as `skip` when they ask for
 // more, so "another 5" is genuinely another five and not the same unit again.
 function topicsSeenToday() {
@@ -6197,7 +6230,7 @@ function todayPick(skip = null) {
              link: { label: 'See the full plan →', onclick: `go('examplan')` } };
   }
 
-  const wk = thisWeekUnits().find(u => !skipped(u.topic.id));
+  const wk = rotateWeekUnits(thisWeekUnits()).find(u => !skipped(u.topic.id));
   if (wk) {
     return { label: 'This week in class', accent: '#A78BFA',
              title: `5 questions on ${wk.subLabel}`,
