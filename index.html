@@ -5389,6 +5389,46 @@ function retentionLeadsToday(now = new Date()) {
   return RETENTION_DAYS.indexOf(now.getDay()) !== -1;
 }
 
+// What changed this week, without storing anything about last week. A topic
+// "started fading this week" if it is fading AND sits within 7 days of the
+// boundary it crossed — which topicLastSeen alone is enough to say. The Brief
+// snapshots never needed a holding count.
+function holdingChange() {
+  const f = freshnessSummary();
+  const justCrossed = s => {
+    const key = s.strong ? 'strong' : 'normal';
+    const edge = s.state === 'fading' ? FRESH.freshDays[key] : FRESH.fadeDays[key];
+    return s.days !== null && s.days < edge + 7;
+  };
+  return { ...f, newlyFading: f.fading.filter(justCrossed), newlyFaded: f.faded.filter(justCrossed) };
+}
+
+// One sentence, never a list, never two. Picks whichever is truest for the week
+// and stays quiet rather than inventing a story when nothing moved.
+function holdingLine() {
+  if (!freshnessActive()) return '';
+  const h = holdingChange();
+  const em = s => `<strong style="color:#B0B5C8;">${s}</strong>`;
+  const oldest = arr => arr.slice().sort((a, b) => b.days - a.days)[0];
+  let text;
+  if (h.newlyFading.length) {
+    const n = h.newlyFading.length;
+    text = n === 1
+      ? `${em(oldest(h.newlyFading).topic.name)} started fading this week — one re-pin session covers it.`
+      : `${em(n + ' topics')} started fading this week — one re-pin session covers the ${n === 2 ? 'older one' : 'oldest'}.`;
+  } else if (h.newlyFaded.length) {
+    const n = h.newlyFaded.length;
+    text = n === 1
+      ? `${em(oldest(h.newlyFaded).topic.name)} is now faded — one re-pin session brings it back.`
+      : `${em(n + ' topics')} are now faded — one re-pin session brings the oldest back.`;
+  } else if (h.fading.length + h.faded.length + h.unpinned.length === 0) {
+    text = `Holding steady across ${em('all ' + h.total + ' topic' + (h.total !== 1 ? 's' : ''))}.`;
+  } else {
+    text = `Still holding ${em(h.fresh.length + ' of ' + h.total)} topics — nothing new started fading.`;
+  }
+  return `<p style="font-size:13px;color:#767E96;line-height:1.55;margin:0 0 12px;">${text}</p>`;
+}
+
 // "the spring" while it's still this year, "spring 2025" once it isn't — a
 // faded topic is 180+ days old, so both are reachable.
 const SEASONS = ['winter','winter','spring','spring','spring','summer',
@@ -5810,6 +5850,8 @@ function briefCardHTML() {
         ${stat(b.answered, 'this week')}
         ${stat(b.streak, b.streak === 1 ? 'day streak' : 'day streak')}
       </div>
+
+      ${holdingLine()}
 
       ${b.weakest && !b.quiet ? `<p style="font-size:13px;color:#767E96;line-height:1.55;margin:0 0 12px;">Weakest right now: <strong style="color:#B0B5C8;">${b.weakest.topic.name}</strong> at ${Math.round(b.weakest.accuracy * 100)}% across ${b.weakest.attempts} question${b.weakest.attempts !== 1 ? 's' : ''}.</p>` : ''}
 
