@@ -1182,7 +1182,7 @@ const TAB_ICONS = {
   settings: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
 };
 
-const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings', 'midterm', 'pace'];
+const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings', 'midterm', 'pace', 'examplan'];
 
 function tabBarHTML() {
   // Two destinations, not four. Log is an action (reached from Today), and
@@ -5840,6 +5840,84 @@ function clearMidterm() {
   render();
 }
 
+// Every date a session was finished on, as toDateString() keys. History keeps the
+// last 7, which is all a countdown of this length can ever need.
+function sessionDays() {
+  const set = new Set();
+  S.sessionHistory.forEach(h => {
+    if (!h || !h.date) return;
+    const d = new Date(h.date);
+    if (!isNaN(d.getTime())) set.add(d.toDateString());
+  });
+  return set;
+}
+
+// The plan midtermPlan() computes was invisible — the Today card served day one of
+// it and never showed the other eight. Seeing the whole arc is what turns "why this
+// unit?" into "because the plan says so, and I can see the plan."
+function screenExamPlan() {
+  const plan = midtermPlan();
+  if (!plan) { go('brief'); return ''; }
+
+  const back = `
+    <div class="brief-topbar">
+      <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-family:inherit;font-size:14px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        Back
+      </button>
+    </div>`;
+
+  if (plan.past) {
+    return `
+      <div class="screen">
+        ${back}
+        <h2 style="margin-bottom:5px;">Your ${plan.courseName} exam has passed.</h2>
+        <p style="font-size:14px;margin-bottom:20px;">Whatever it asked, you've now met at MCAT depth. Set the next one up whenever you're ready.</p>
+        <button class="btn btn-primary" onclick="startMidtermSetup()">Set up an exam</button>
+      </div>`;
+  }
+
+  const headline = plan.days === 0 ? `Your ${plan.courseName} exam is today.`
+                 : plan.days === 1 ? `1 day to your ${plan.courseName} exam`
+                 : `${plan.days} days to your ${plan.courseName} exam`;
+
+  const done  = sessionDays();
+  const today = new Date();
+  const rows  = plan.schedule.map((u, i) => {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    const isToday = i === 0;
+    const isExam  = i === plan.schedule.length - 1;
+    const isDone  = done.has(d.toDateString());
+    const date = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const mark = isDone
+      ? `<span style="color:#4DE3AB;font-size:13px;font-weight:700;flex-shrink:0;">✓</span>`
+      : `<span style="color:#444B62;font-size:13px;flex-shrink:0;">${isToday ? '→' : ''}</span>`;
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;margin-bottom:2px;${isToday ? 'background:rgba(245,179,106,0.09);border:1px solid rgba(245,179,106,0.28);' : 'border:1px solid transparent;'}">
+        <div style="width:74px;flex-shrink:0;font-size:11px;font-weight:600;color:${isToday ? '#F5B36A' : '#767E96'};">${isToday ? 'Today' : date}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:${isToday ? '#F0F2F8' : '#B0B5C8'};line-height:1.35;">${u ? u.label : '—'}</div>
+          ${isExam ? `<div style="font-size:11px;color:#767E96;margin-top:2px;">Exam day — one focused pass, then rest.</div>` : ''}
+        </div>
+        ${mark}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="screen">
+      ${back}
+      <h2 style="margin-bottom:5px;">${headline}</h2>
+      <p style="font-size:14px;margin-bottom:6px;">Weakest units land closest to the exam, when review sticks best.</p>
+      <p style="font-size:12px;color:#767E96;line-height:1.55;margin-bottom:18px;">${plan.schedule.length} study day${plan.schedule.length !== 1 ? 's' : ''}, one unit each. A day is ticked once you finish a session on it.</p>
+
+      ${rows}
+
+      <div style="height:16px;"></div>
+      ${plan.today ? `<button class="btn btn-primary" onclick="startMidtermDrill('${plan.today.topicId}', '${plan.today.subId}')">Start today's unit →</button>` : ''}
+      <button class="btn btn-ghost" onclick="startMidtermSetup()">Edit this plan</button>
+    </div>`;
+}
+
 // Midterm drills are deliberate exam prep, so they earn the streak like a full session.
 function startMidtermDrill(topicId, subId) {
   startQuickLog(topicId, subId);
@@ -6102,7 +6180,8 @@ function todayPick() {
              reason: mt.days === 0 ? `Your ${mt.courseName} exam is today.`
                    : mt.days === 1 ? `Your ${mt.courseName} exam is tomorrow.`
                    : `Your ${mt.courseName} exam is in ${mt.days} days.`,
-             onclick: `startMidtermDrill('${mt.today.topicId}', '${mt.today.subId}')` };
+             onclick: `startMidtermDrill('${mt.today.topicId}', '${mt.today.subId}')`,
+             link: { label: 'See the full plan →', onclick: `go('examplan')` } };
   }
 
   const wk = thisWeekUnits()[0];
@@ -6111,7 +6190,7 @@ function todayPick() {
              title: `5 questions on ${wk.subLabel}`,
              reason: `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
              onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')`,
-             fixCourse: wk.courseId };
+             link: { label: 'Not what you\'re covering? →', onclick: `openPaceFix('${wk.courseId}')` } };
   }
 
   const d = getDirectiveTopic();
@@ -6181,7 +6260,7 @@ function todayCardHTML() {
       <div style="font-size:19px;font-weight:700;color:#F0F2F8;line-height:1.25;margin-bottom:8px;">${p.title}</div>
       <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 14px;">${p.reason}</p>
       <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:14px;min-height:44px;" onclick="${p.onclick}">Start →</button>
-      ${p.fixCourse ? `<button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-bottom:-10px;-webkit-tap-highlight-color:transparent;" onclick="openPaceFix('${p.fixCourse}')">Not what you're covering? →</button>` : ''}
+      ${p.link ? `<button style="background:none;border:none;font-size:12px;color:#767E96;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-bottom:-10px;-webkit-tap-highlight-color:transparent;" onclick="${p.link.onclick}">${p.link.label}</button>` : ''}
     </div>`;
 }
 
@@ -7748,7 +7827,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -7822,6 +7901,7 @@ function render() {
     case 'about': html += screenAbout(); break;
     case 'midterm': html += screenMidterm(); break;
     case 'pace':    html += screenPace();    break;
+    case 'examplan': html += screenExamPlan(); break;
     case 'quicklog':          html += screenQuickLog();         break;
     case 'quicklog-subtopic': html += screenQuickLogSubtopic(); break;
     case 'quicklogdone':      html += screenQuickLogDone();     break;
