@@ -6580,7 +6580,7 @@ function screenMidterm() {
         return `
       <div class="section-divider"></div>
       <p class="label" style="margin-bottom:6px;">Your syllabus</p>
-      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Waypoint paces your classes from a typical schedule. Hand over the real one and it follows your actual weeks instead.</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Waypoint paces your classes from a typical schedule. Give it the real one and it maps your actual weeks onto MCAT topics instead.</p>
       ${live.map(c => `
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:#131520;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 13px;margin-bottom:8px;">
           <span style="font-size:13px;color:#F0F2F8;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;">${c.name}</span>
@@ -6862,11 +6862,15 @@ function syllabusEntryHTML(courseId) {
   const has = !!S.syllabus[courseId];
   const btn = (label, onclick, color) =>
     `<button onclick="${onclick}" style="background:none;border:none;padding:0;min-height:44px;display:flex;align-items:center;font-family:inherit;font-size:11px;font-weight:600;color:${color};cursor:pointer;-webkit-tap-highlight-color:transparent;">${label}</button>`;
-  if (!has) return btn('Have the syllabus? →', `openSyllabus('${courseId}')`, '#2DB88A');
+  // "Have the syllabus?" invited the comparison every competitor sets up: upload
+  // it, get your due dates back. Waypoint doesn't do that and shouldn't imply it
+  // — so the link names the thing it actually produces. A promise the product
+  // can't keep makes a perfect parse feel like a miss.
+  if (!has) return btn('Turn your syllabus into an MCAT plan →', `openSyllabus('${courseId}')`, '#2DB88A');
   // Removing is quiet and sits after replacing, because replacing is what a
   // student who got one week wrong actually wants.
   return `<span style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;">
-      ${btn('✓ Syllabus added — replace it →', `openSyllabus('${courseId}')`, '#4DE3AB')}
+      ${btn('✓ Mapped — replace it →', `openSyllabus('${courseId}')`, '#4DE3AB')}
       ${btn('Remove', `removeSyllabus('${courseId}')`, '#767E96')}
     </span>`;
 }
@@ -6945,8 +6949,8 @@ function screenSyllabus() {
     <div class="screen">
       <div style="height:24px;"></div>
       <p class="label">Reading your syllabus</p>
-      <h2 style="margin-bottom:6px;">Working through the weeks…</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">This takes a few seconds. You'll get to check every week before anything is saved.</p>
+      <h2 style="margin-bottom:6px;">Reading your syllabus — about 20 seconds.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Matching each week's topics to MCAT content. You'll see all of it before anything is saved.</p>
       <div style="${SYL_CARD}padding:16px;display:flex;align-items:center;gap:11px;">
         <span class="pulse-dot" style="width:8px;height:8px;margin:0;"></span>
         <span style="font-size:13px;color:#8A93A8;">${name}</span>
@@ -6994,7 +6998,7 @@ function screenSyllabus() {
       <p style="font-size:13px;color:#767E96;line-height:1.55;margin-bottom:16px;">${mapped} of ${weeks.length} week${weeks.length !== 1 ? 's' : ''} mapped to MCAT content. Weeks with none are usually exams or breaks — that's fine to leave empty.</p>
       ${d.error ? `<p style="font-size:13px;color:#F4B48A;margin-bottom:12px;">${d.error}</p>` : ''}
       ${weeks.map((w, i) => sylWeekRowHTML(w, i, units)).join('')}
-      <div style="height:6px;"></div>
+      <p style="font-size:13px;color:#767E96;line-height:1.6;margin:14px 0 12px;">Professors drift from their own syllabus. When yours does, <strong style="color:#8A93A8;">Not what you're covering?</strong> on Today puts Waypoint back in step in one tap — so this doesn't have to be perfect.</p>
       <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right — save it →</button>
       <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;render();">Start over</button>
     </div>`;
@@ -7006,8 +7010,9 @@ function screenSyllabus() {
     <div class="screen">
       ${back}
       <p class="label">Your syllabus</p>
-      <h2 style="margin-bottom:6px;">Hand over your ${name} schedule.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:14px;">Upload the PDF, or paste the week-by-week part. Waypoint reads it, maps each week onto MCAT topics, and shows you the result to check before anything is saved.</p>
+      <h2 style="margin-bottom:6px;">Turn your ${name} syllabus into an MCAT plan.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:8px;">Waypoint reads which topics your class covers each week — not your due dates — and lines them up with the MCAT.</p>
+      <p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:14px;">Upload the PDF or paste the schedule. You'll see the result and can change anything before it's saved.</p>
       ${d.error ? `<p style="font-size:13px;color:#F4B48A;line-height:1.55;margin-bottom:12px;">${d.error}</p>` : ''}
 
       ${d.file ? `
