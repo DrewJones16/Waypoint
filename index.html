@@ -6654,6 +6654,11 @@ function sanitizeSyllabus(raw, courseId) {
       unitIds: Array.isArray(w.unitIds)
         ? [...new Set(w.unitIds.filter(id => typeof id === 'string' && known.has(id)))]
         : [],
+      // Absent means this was saved before per-week confidence existed. Those
+      // schedules were already read and accepted by the student, so the honest
+      // default here is 'high' — the opposite of the server's, where an absent
+      // value means a fresh answer nobody has checked yet.
+      confidence: w.confidence === 'low' ? 'low' : 'high',
     };
   }).filter(Boolean).sort((a, b) => a.week - b.week);
   if (!weeks.length) return null;
@@ -6801,6 +6806,12 @@ async function runSyllabusParse() {
   render();
 }
 
+function sylToggleAll() {
+  if (!S.syl) return;
+  S.syl.showAll = !S.syl.showAll;
+  render();
+}
+
 function sylOpenPicker(i) {
   if (!S.syl) return;
   S.syl.picker = (S.syl.picker === i) ? null : i;
@@ -6887,7 +6898,18 @@ function removeSyllabus(courseId) {
   showToast('Syllabus removed. Back to the typical pacing.');
 }
 
-function sylWeekRowHTML(w, i, units) {
+// Why this row is being asked about. Derived rather than sent: the two cases
+// the model can be unsure in are distinguishable from the mapping itself, and
+// the contract stays one field wide. The label is already the loudest thing in
+// the row, so the reason doesn't repeat it back.
+function sylReasonHTML(w) {
+  const text = w.unitIds.length
+    ? 'Not certain about this one — worth checking against your syllabus.'
+    : 'Couldn\'t tell which topic this week means — pick one, or leave it empty if it\'s an exam or a break.';
+  return `<p style="font-size:11px;color:#F4B48A;line-height:1.5;margin:0 0 8px;">${text}</p>`;
+}
+
+function sylWeekRowHTML(w, i, units, reason) {
   const open = S.syl.picker === i;
   const chips = w.unitIds.map(id => {
     const u = unitFromId(id);
@@ -6900,7 +6922,8 @@ function sylWeekRowHTML(w, i, units) {
           <span style="font-size:11px;font-weight:700;color:#767E96;text-transform:uppercase;letter-spacing:0.07em;">Week ${w.week}</span>
           ${w.unitIds.length ? `<button onclick="sylDropWeek(${i})" style="background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;">Clear</button>` : ''}
         </div>
-        <p style="font-size:13px;color:#F0F2F8;line-height:1.5;margin:0 0 8px;">${w.label ? esc(w.label) : '<span style="color:#767E96;font-style:italic;">(no topic listed)</span>'}</p>
+        <p style="font-size:13px;color:#F0F2F8;line-height:1.5;margin:0 0 ${reason ? '6px' : '8px'};">${w.label ? esc(w.label) : '<span style="color:#767E96;font-style:italic;">(no topic listed)</span>'}</p>
+        ${reason ? sylReasonHTML(w) : ''}
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
           ${chips}
           ${w.unitIds.length ? '' : `<span style="font-size:11px;color:#767E96;font-style:italic;">No MCAT content this week</span>`}
@@ -6987,20 +7010,47 @@ function screenSyllabus() {
     </div>`;
     }
 
-    const units   = syllabusUnits(d.courseId);
-    const mapped  = weeks.filter(w => w.unitIds.length).length;
+    const units = syllabusUnits(d.courseId);
+
+    // Fifteen equal rows read as homework, and homework at the moment of first
+    // value is where people leave. So the screen asks about the weeks the model
+    // wasn't sure of and folds the rest away — still every one of them editable,
+    // one tap behind a summary. The original index rides along because that's
+    // what the edit handlers address; grouping must not renumber anything.
+    // Only an explicit "high" earns a fold. Anything else — "low", or a response
+    // from a deployment that predates the field — is shown. Getting this
+    // backwards would hide unchecked mappings behind a summary row nobody opens,
+    // which is the one outcome this screen exists to prevent. It is also not
+    // hypothetical: a client that shipped ahead of the function would collapse
+    // every week of every parse.
+    const rows = weeks.map((w, i) => ({ w, i }));
+    const settled = rows.filter(r => r.w.confidence === 'high');
+    const unsure  = rows.filter(r => r.w.confidence !== 'high');
+    const n = a => `${a.length} week${a.length !== 1 ? 's' : ''}`;
+
     return `
     <div class="screen">
       ${back}
-      <p class="label">Check this over</p>
+      <p class="label">${unsure.length ? 'A couple of questions' : 'Check this over'}</p>
       <h2 style="margin-bottom:6px;">${weeks.length} week${weeks.length !== 1 ? 's' : ''} from your ${name} syllabus.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:6px;">The bold line is your syllabus's own words. The chips are what Waypoint will practise that week — tap any of them to change it.</p>
-      <p style="font-size:13px;color:#767E96;line-height:1.55;margin-bottom:16px;">${mapped} of ${weeks.length} week${weeks.length !== 1 ? 's' : ''} mapped to MCAT content. Weeks with none are usually exams or breaks — that's fine to leave empty.</p>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:16px;">${unsure.length
+        ? `${n(settled)} came through clearly. ${n(unsure)} ${unsure.length === 1 ? 'is' : 'are'} ambiguous enough that I'd rather ask than guess — everything else is folded away below.`
+        : 'Every week came through clearly. Open them if you want a look, or save and get going.'}</p>
       ${d.error ? `<p style="font-size:13px;color:#F4B48A;margin-bottom:12px;">${d.error}</p>` : ''}
-      ${weeks.map((w, i) => sylWeekRowHTML(w, i, units)).join('')}
+
+      ${unsure.map(r => sylWeekRowHTML(r.w, r.i, units, true)).join('')}
+
+      ${settled.length ? `
+        <button onclick="sylToggleAll()" aria-expanded="${!!d.showAll}" style="width:100%;box-sizing:border-box;${SYL_CARD}padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:inherit;cursor:pointer;text-align:left;min-height:44px;-webkit-tap-highlight-color:transparent;">
+          <span style="font-size:13px;color:#F0F2F8;font-weight:600;"><span style="color:#4DE3AB;">✓</span> ${n(settled)} mapped</span>
+          <span style="font-size:11px;color:#8A93A8;font-weight:600;flex-shrink:0;">${d.showAll ? 'hide them' : 'review them'}</span>
+        </button>
+        ${d.showAll ? settled.map(r => sylWeekRowHTML(r.w, r.i, units, false)).join('') : ''}
+      ` : ''}
+
       <p style="font-size:13px;color:#767E96;line-height:1.6;margin:14px 0 12px;">Professors drift from their own syllabus. When yours does, <strong style="color:#8A93A8;">Not what you're covering?</strong> on Today puts Waypoint back in step in one tap — so this doesn't have to be perfect.</p>
       <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right — save it →</button>
-      <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;render();">Start over</button>
+      <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;S.syl.showAll=false;render();">Start over</button>
     </div>`;
   }
 

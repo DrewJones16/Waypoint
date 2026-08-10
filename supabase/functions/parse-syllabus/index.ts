@@ -76,11 +76,14 @@ const SCHEDULE_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          week:    { type: 'integer' },
-          label:   { type: 'string' },
-          unitIds: { type: 'array', items: { type: 'string' } },
+          week:       { type: 'integer' },
+          label:      { type: 'string' },
+          unitIds:    { type: 'array', items: { type: 'string' } },
+          // Per-week, distinct from the document-level confidence above: this
+          // one says whether the student needs to look at this row.
+          confidence: { type: 'string', enum: ['high', 'low'] },
         },
-        required: ['week', 'label', 'unitIds'],
+        required: ['week', 'label', 'unitIds', 'confidence'],
         additionalProperties: false,
       },
     },
@@ -104,6 +107,10 @@ How to read it:
 - Choose unit ids by what the week actually covers. A week can map to several units, or to one, or to none.
 - Weeks with no course content — exams, review sessions, breaks, holidays, project work, guest lectures — get an empty unitIds array. That is the correct answer for those weeks, not a reason to guess.
 - If a week covers material that has no matching unit in the list above, leave its unitIds empty. Do not stretch an unrelated id to cover it, and do not invent an id.
+- Set each week's "confidence" to say whether a person needs to check that row. This is the single most useful thing you can tell them, because it decides what they read and what they can skip.
+  - "high" when the week's text plainly names its topic and your mapping follows from it, and also when the text plainly says there is no course content — "Midterm exam", "Fall break", "No class". An empty unitIds you are sure about is a high-confidence answer, not a doubt.
+  - "low" when you had to guess: the text is vague or administrative ("Unit 3", "TBD", "Catch-up", "Continued", "Chapter 7" with no subject), it could reasonably map to more than one of the units above, or it looks like real course content that none of the available units covers.
+  - When you are genuinely torn, choose "low". Being asked about a week that was already right costs a student two seconds; a wrong mapping they were never shown costs them a semester of practising the wrong topic.
 - Set "termStart" to the date of the first day of instruction in YYYY-MM-DD form if the syllabus states it or it can be read directly off the schedule. Use null if it doesn't.
 - Set "confidence" to "high" when you found a real weekly schedule you could follow. Set it to "low" when the document has no weekly structure to extract — a policy-only syllabus, a reading list, or something that isn't a syllabus at all. In that case return an empty weeks array. An invented schedule is worse to the student than an honest "couldn't find one", because they will trust it.`;
 }
@@ -166,7 +173,12 @@ function validateSchedule(raw: unknown, knownUnitIds: Set<string>) {
         ? [...new Set(row.unitIds.filter((id): id is string => typeof id === 'string' && knownUnitIds.has(id)))]
         : [];
 
-      return { week, label, unitIds };
+      // Anything that isn't an explicit "high" is low. Over-asking costs the
+      // student a glance; under-asking hides a bad mapping behind a summary row
+      // they never opened, and they practise the wrong topic all term.
+      const confidence = row.confidence === 'high' ? 'high' : 'low';
+
+      return { week, label, unitIds, confidence };
     })
     .filter((w): w is { week: number; label: string; unitIds: string[] } => w !== null)
     .sort((a, b) => a.week - b.week);
