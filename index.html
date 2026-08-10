@@ -6816,10 +6816,15 @@ function syllabusStartWeek(id) {
   startWeekDrill(u.topicId, u.subId);
 }
 
+// Students do this once, with four syllabi open in front of them. The chooser
+// is the hub that keeps them in the flow: finish one, pick the next, never go
+// back out to the Route and in again. It's shown even when only one class is
+// left, because the ticked list is also the answer to "how far through am I".
 function syllabusAddAnother() {
-  const left = unmappedCourses();
-  if (!left.length) return finishSyllabus();
-  openSyllabus(left[0].id);
+  if (!unmappedCourses().length) return finishSyllabus();
+  S.syl = { phase: 'choose', courseId: null, text: '', file: null,
+            error: '', result: null, picker: null };
+  go('syllabus');
 }
 
 function sylToggleAll() {
@@ -7065,6 +7070,34 @@ function screenSyllabus() {
         <span class="pulse-dot" style="width:8px;height:8px;margin:0;"></span>
         <span style="font-size:13px;color:#8A93A8;">${name}</span>
       </div>
+    </div>`;
+  }
+
+  if (d.phase === 'choose') {
+    const live = COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
+    const left = live.filter(c => !S.syllabus[c.id]);
+    if (!left.length) { finishSyllabus(); return ''; }
+
+    return `
+    <div class="screen">
+      ${back}
+      <p class="label">Your semester</p>
+      <h2 style="margin-bottom:6px;">Which class next?</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">${live.length - left.length} of ${live.length} mapped. Stop whenever — the ones you skip keep their typical pacing and Waypoint won't ask again.</p>
+      ${live.map(c => S.syllabus[c.id]
+        // Already done. Shown, not offered: it's here so the set reads at a
+        // glance, and re-parsing by mistake would spend one of five.
+        ? `<div style="${SYL_CARD}padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;gap:9px;opacity:0.6;">
+             <span style="color:#4DE3AB;font-size:13px;">✓</span>
+             <span style="font-size:13px;color:#8A93A8;font-weight:600;">${c.name}</span>
+             <span style="font-size:11px;color:#767E96;margin-left:auto;">${S.syllabus[c.id].weeks.length} weeks</span>
+           </div>`
+        : `<button class="topic-pick-btn" onclick="openSyllabus('${c.id}')">
+             <span class="tp-name" style="color:#F0F2F8;">${c.name}</span>
+             <span class="tp-arrow" style="color:#2DB88A;">→</span>
+           </button>`).join('')}
+      <div style="height:10px;"></div>
+      <button class="btn btn-ghost" onclick="finishSyllabus()">Done for now</button>
     </div>`;
   }
 
