@@ -6710,9 +6710,57 @@ async function parseSyllabus(courseId, payload) {
 
 function openSyllabus(courseId) {
   S.syl = { courseId, phase: authSession() ? 'paste' : 'signin',
-            text: '', error: '', result: null, picker: null };
+            text: '', file: null, error: '', result: null, picker: null };
   if (window.plausible) plausible('syllabus_open', { props: { course: courseId } });
   go('syllabus');
+}
+
+// ── The PDF path ──────────────────────────────────────────────────────────────
+// The model reads a PDF natively as a document block, so the file goes up as
+// base64 and nothing on this side has to understand page layout. No PDF library
+// ships to the browser for this.
+
+const SYL_MAX_PDF = 5 * 1024 * 1024;
+
+function sylPickFile(input) {
+  const file = input && input.files && input.files[0];
+  input.value = '';                     // so re-picking the same file still fires
+  if (!file || !S.syl) return;
+
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (!isPdf) {
+    S.syl.error = 'That needs to be a PDF. If your syllabus is a Word file, paste the schedule instead.';
+    return render();
+  }
+  if (file.size > SYL_MAX_PDF) {
+    S.syl.error = `That file is ${(file.size / 1048576).toFixed(1)}MB — the limit is 5MB. Paste the schedule section instead, or export a smaller PDF.`;
+    return render();
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    if (!S.syl) return;
+    // readAsDataURL gives "data:application/pdf;base64,…" — the API wants the
+    // payload alone, and the newline-free form it already is.
+    const b64 = String(reader.result || '').replace(/^data:[^,]*,/, '');
+    if (!b64) { S.syl.error = 'That file came through empty. Try it again.'; return render(); }
+    S.syl.file  = { name: file.name, size: file.size, base64: b64 };
+    S.syl.error = '';
+    render();
+  };
+  reader.onerror = () => {
+    if (!S.syl) return;
+    S.syl.error = 'Couldn\'t read that file. Try it again, or paste the schedule instead.';
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+
+function sylClearFile() {
+  if (!S.syl) return;
+  S.syl.file = null;
+  S.syl.error = '';
+  render();
 }
 
 // The paste box must not re-render while it's being typed into — a render
@@ -6725,14 +6773,21 @@ function sylPasteInput(el) {
   if (btn) btn.disabled = el.value.trim().length < 40;
 }
 
+function sylReady(d) {
+  return !!(d && (d.file || (d.text || '').trim().length >= 40));
+}
+
 async function runSyllabusParse() {
   const d = S.syl;
-  if (!d || !d.text || d.text.trim().length < 40) return;
+  if (!sylReady(d)) return;
   d.phase = 'parsing';
   d.error = '';
   render();
 
-  const res = await parseSyllabus(d.courseId, { text: d.text.trim() });
+  // A file and a paste are the same request with a different payload — the
+  // parse, the confirm screen and everything after it never learn which it was.
+  const res = await parseSyllabus(d.courseId,
+    d.file ? { pdfBase64: d.file.base64 } : { text: d.text.trim() });
   if (!S.syl || S.syl.courseId !== d.courseId) return;   // they left mid-parse
 
   if (!res.ok) {
@@ -6945,19 +7000,43 @@ function screenSyllabus() {
     </div>`;
   }
 
-  // paste
-  const ready = (d.text || '').trim().length >= 40;
+  // paste / upload — two ways in, one request out
+  const ready = sylReady(d);
   return `
     <div class="screen">
       ${back}
       <p class="label">Your syllabus</p>
-      <h2 style="margin-bottom:6px;">Paste your ${name} schedule.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:14px;">The week-by-week part is what matters — the whole syllabus is fine too. Waypoint reads it, maps each week onto MCAT topics, and shows you the result to check before anything is saved.</p>
+      <h2 style="margin-bottom:6px;">Hand over your ${name} schedule.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:14px;">Upload the PDF, or paste the week-by-week part. Waypoint reads it, maps each week onto MCAT topics, and shows you the result to check before anything is saved.</p>
       ${d.error ? `<p style="font-size:13px;color:#F4B48A;line-height:1.55;margin-bottom:12px;">${d.error}</p>` : ''}
-      <textarea id="syl-text" oninput="sylPasteInput(this)" rows="10" spellcheck="false"
-        placeholder="Week 1: Muscle structure and contraction&#10;Week 2: Cardiac cycle&#10;Week 3: Midterm exam&#10;…"
-        style="width:100%;box-sizing:border-box;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:15px;line-height:1.5;resize:vertical;margin-bottom:10px;-webkit-appearance:none;">${d.text || ''}</textarea>
-      <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:14px;">Waypoint reads your syllabus and keeps the schedule in your account. The text itself isn't stored on our servers.</p>
+
+      ${d.file ? `
+        <div style="${SYL_CARD}padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
+          <span style="display:flex;align-items:center;gap:9px;min-width:0;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span style="min-width:0;">
+              <span style="display:block;font-size:13px;color:#F0F2F8;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.file.name)}</span>
+              <span style="display:block;font-size:11px;color:#767E96;margin-top:1px;">${(d.file.size / 1048576).toFixed(1)}MB · ready to read</span>
+            </span>
+          </span>
+          <button onclick="sylClearFile()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:11px;font-weight:600;color:#767E96;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;">Remove</button>
+        </div>
+      ` : `
+        <button onclick="document.getElementById('syl-file').click()" style="width:100%;box-sizing:border-box;background:none;border:1px dashed rgba(255,255,255,0.18);border-radius:10px;padding:15px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:13px;font-weight:600;color:#8A93A8;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload the PDF
+        </button>
+        <input type="file" id="syl-file" accept="application/pdf,.pdf"
+               style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
+               onchange="sylPickFile(this)">
+
+        <p style="text-align:center;font-size:11px;color:#4A5165;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">or paste it</p>
+        <textarea id="syl-text" oninput="sylPasteInput(this)" rows="9" spellcheck="false"
+          placeholder="Week 1: Muscle structure and contraction&#10;Week 2: Cardiac cycle&#10;Week 3: Midterm exam&#10;…"
+          style="width:100%;box-sizing:border-box;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:15px;line-height:1.5;resize:vertical;margin-bottom:10px;-webkit-appearance:none;">${esc(d.text || '')}</textarea>
+      `}
+
+      <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:14px;">Waypoint reads your syllabus and keeps the schedule in your account. The syllabus itself isn't stored on our servers.</p>
       <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">Read my syllabus →</button>
     </div>`;
 }
