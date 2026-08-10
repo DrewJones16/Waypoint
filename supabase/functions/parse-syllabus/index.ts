@@ -1,8 +1,9 @@
 // parse-syllabus — Waypoint's first server-side brain.
 //
-// Takes a student's actual syllabus (pasted text or an uploaded PDF) and returns
-// a week-by-week schedule mapped onto the Waypoint units for that course. The
-// model maps; the student confirms on the client before any of it becomes state.
+// Takes a student's actual syllabus — pasted text, an uploaded PDF, or photos of
+// the printed pages — and returns a week-by-week schedule mapped onto the
+// Waypoint units for that course. The model maps; the student confirms on the
+// client before any of it becomes state.
 //
 // Three things this function is careful about:
 //
@@ -50,6 +51,45 @@ const MAX_TEXT     = 200_000;   // a whole syllabus pasted in, with room to spar
 const MAX_UNITS    = 200;
 const MAX_LABEL    = 300;       // one week's topic line, not a paragraph
 
+// Photographed pages. A syllabus is often paper rather than a file — a printout
+// in a binder, a handout from advising, a page projected in a club meeting — and
+// a schedule routinely runs across two or three of them. Those pages are one
+// document: one request, one parse, one quota unit, however many it took.
+const MAX_IMAGES     = 6;
+const MAX_IMAGE_B64  = 3_000_000;    // ~2.2MB a page; the client downscales far under this
+const MAX_IMAGES_B64 = 9_000_000;    // and all of them together
+
+// Refused from the Content-Length header, before the body is ever buffered. A
+// student who skips the client's downscaling and sends six raw 8MB photos
+// deserves a sentence, not a timeout — and reading 48MB into memory to find that
+// out is how the timeout would happen.
+const MAX_REQUEST_BYTES = 14_000_000;
+
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+// What each format's first bytes look like once base64 has eaten them. Sniffing
+// beats the declared type: a mislabelled page would otherwise 400 at the API,
+// after the quota was spent, with nothing useful to tell the student.
+const IMAGE_MAGIC: Array<[string, string]> = [
+  ['/9j/',        'image/jpeg'],
+  ['iVBORw0KGgo', 'image/png'],
+  ['R0lGOD',      'image/gif'],
+  ['UklGR',       'image/webp'],
+];
+
+type Page = { media: string; data: string };
+
+function readImage(raw: unknown): Page | null {
+  if (typeof raw !== 'string') return null;
+  const declared = raw.match(/^data:([^;,]+)[^,]*,/);
+  const data = raw.replace(/^data:[^,]*,/, '').replace(/\s+/g, '');
+  if (!data || data.length > MAX_IMAGE_B64) return null;
+  const sniffed = IMAGE_MAGIC.find(([prefix]) => data.startsWith(prefix));
+  const media = sniffed ? sniffed[1]
+              : (declared && IMAGE_TYPES.has(declared[1]) ? declared[1] : '');
+  return media ? { media, data } : null;
+}
+
 const ALLOWED_ORIGINS = [
   'https://waypointmcat.com',
   'https://www.waypointmcat.com',
@@ -92,9 +132,20 @@ const SCHEDULE_SCHEMA = {
   additionalProperties: false,
 };
 
-function buildPrompt(courseName: string, units: Array<{ id: string; label: string }>) {
+function buildPrompt(courseName: string, units: Array<{ id: string; label: string }>, pages: number) {
   const list = units.map(u => `  ${u.id} — ${u.label}`).join('\n');
-  return `You are reading a college course syllabus for ${courseName} and extracting its weekly schedule.
+
+  // Photos fail in ways files don't, and the failures look like success from the
+  // outside: a cropped table still parses into a schedule, just the wrong one.
+  // These two lines are the whole difference between "here is half your
+  // semester, presented as all of it" and an honest answer.
+  const photos = pages ? `
+
+What you are looking at: ${pages} photograph${pages !== 1 ? 's' : ''} of a printed syllabus, in page order. Read them as one document — a schedule table often continues from one page onto the next, and a week split across two photos is still one week.
+
+Photographs go wrong in ways a file doesn't. If glare, an angle, a shadow or a cropped edge means you genuinely cannot read the schedule, return "confidence": "low" and an empty weeks array. Do not reconstruct what an unreadable region probably said. If you can read part of the schedule but the photo plainly cuts it off, return the weeks you can actually read and nothing more — a short honest schedule is recoverable, because the student can photograph the missing page; an invented one is not, because they will never know to.` : '';
+
+  return `You are reading a college course syllabus for ${courseName} and extracting its weekly schedule.${photos}
 
 Map each week of the syllabus to zero or more of these unit ids. These are the only ids that exist; there are no others to choose from:
 
@@ -253,6 +304,14 @@ Deno.serve(async (req) => {
   if (userErr || !userId) return fail('Your session expired. Sign in again.', 401, origin);
 
   // ── What did they send? ─────────────────────────────────────────────────────
+  // Size is checked from the header first, so an oversized request costs a
+  // sentence rather than a stalled read that ends in a gateway timeout the
+  // student can't act on.
+  const declaredBytes = Number(req.headers.get('content-length') || 0);
+  if (Number.isFinite(declaredBytes) && declaredBytes > MAX_REQUEST_BYTES) {
+    return fail('That\'s a lot of pages — try fewer, or crop to the schedule.', 413, origin);
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -281,12 +340,30 @@ Deno.serve(async (req) => {
     ? body.pdfBase64.replace(/^data:[^,]*,/, '').replace(/\s+/g, '')
     : '';
 
-  if (!text && !pdfBase64) return fail('Nothing was attached to read.', 400, origin);
+  const rawImages = Array.isArray(body.images) ? body.images : [];
+  if (rawImages.length > MAX_IMAGES) {
+    return fail(`That's more than ${MAX_IMAGES} pages — send the schedule pages on their own.`, 413, origin);
+  }
+  const images = rawImages.map(readImage);
+  // One unreadable page fails the request rather than being dropped: a schedule
+  // silently missing its second page is exactly the outcome the whole photo path
+  // has to avoid, and the student can retake a shot in five seconds.
+  if (images.some(p => p === null)) {
+    return fail('One of those pages didn\'t come through. Retake it, or paste the schedule instead.', 400, origin);
+  }
+  const pages = images as Page[];
+
+  if (!text && !pdfBase64 && !pages.length) return fail('Nothing was attached to read.', 400, origin);
   if (text.length > MAX_TEXT) {
     return fail('That\'s longer than a syllabus — paste just the schedule section.', 413, origin);
   }
   if (pdfBase64.length > MAX_PDF_B64) {
     return fail('That file is too big. Try a PDF under 5MB, or paste the schedule instead.', 413, origin);
+  }
+  // The header check above catches the honest oversized request; this catches the
+  // one that arrived chunked, with no length to check.
+  if (pages.reduce((n, p) => n + p.data.length, 0) > MAX_IMAGES_B64) {
+    return fail('That\'s a lot of pages — try fewer, or crop to the schedule.', 413, origin);
   }
 
   // ── Spend a parse ───────────────────────────────────────────────────────────
@@ -312,8 +389,10 @@ Deno.serve(async (req) => {
   // ── Read it ─────────────────────────────────────────────────────────────────
   const client = new Anthropic({ apiKey });
 
-  // The document block goes before the text block: the model reads the syllabus,
-  // then the instructions about what to do with it.
+  // The syllabus goes before the instructions: the model reads the document,
+  // then what to do with it. Photographed pages keep the order the student shot
+  // them in — a schedule table that runs onto a second page only reads correctly
+  // if page 2 follows page 1.
   const content: unknown[] = [];
   if (pdfBase64) {
     content.push({
@@ -321,10 +400,16 @@ Deno.serve(async (req) => {
       source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 },
     });
   }
+  for (const page of pages) {
+    content.push({
+      type: 'image',
+      source: { type: 'base64', media_type: page.media, data: page.data },
+    });
+  }
   if (text) {
     content.push({ type: 'text', text: `Syllabus:\n\n${text}` });
   }
-  content.push({ type: 'text', text: buildPrompt(courseName, units) });
+  content.push({ type: 'text', text: buildPrompt(courseName, units, pages.length) });
 
   const params = {
     model: MODEL,
@@ -396,7 +481,10 @@ Deno.serve(async (req) => {
   // Counts only. Never the syllabus, never a label, never the schedule.
   // rawWeeks vs weeks is the load-bearing pair: equal means we kept what the
   // model found, 4 vs 0 means the model did its job and our validation didn't.
-  console.log(`[parse-syllabus] course=${courseId} blocks=[${blocks}] rawWeeks=${rawWeeks} weeks=${schedule.weeks.length} confidence=${schedule.confidence} used=${used}/${DAILY_LIMIT}`);
+  // pages= is the one that matters for photos: a shot that reads as well as the
+  // same syllabus pasted will show the same weeks count, and one that doesn't is
+  // visible here without anyone reading a line of the syllabus.
+  console.log(`[parse-syllabus] course=${courseId} pages=${pages.length} blocks=[${blocks}] rawWeeks=${rawWeeks} weeks=${schedule.weeks.length} confidence=${schedule.confidence} used=${used}/${DAILY_LIMIT}`);
 
   return json({
     ok: true,
