@@ -108,6 +108,30 @@ How to read it:
 - Set "confidence" to "high" when you found a real weekly schedule you could follow. Set it to "low" when the document has no weekly structure to extract — a policy-only syllabus, a reading list, or something that isn't a syllabus at all. In that case return an empty weeks array. An invented schedule is worse to the student than an honest "couldn't find one", because they will trust it.`;
 }
 
+// ── Reading the answer ────────────────────────────────────────────────────────
+
+// The response format is schema-enforced, so a bare JSON.parse should always
+// work. Should. If the enforcement ever doesn't apply — a parameter that stops
+// being honoured, a model that wraps its answer in a fence or a sentence — the
+// difference between a working feature and a dead one is a few lines of
+// tolerance, so they're here. Order matters: the straight parse is the fast
+// path and the only one that runs when everything is behaving.
+function extractJson(raw: string): unknown {
+  const s = (raw || '').trim();
+  if (!s) return null;
+  try { return JSON.parse(s); } catch { /* not bare JSON — keep looking */ }
+
+  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) {
+    try { return JSON.parse(fenced[1].trim()); } catch { /* not that either */ }
+  }
+  const open = s.indexOf('{'), close = s.lastIndexOf('}');
+  if (open !== -1 && close > open) {
+    try { return JSON.parse(s.slice(open, close + 1)); } catch { /* give up */ }
+  }
+  return null;
+}
+
 // ── Validation ────────────────────────────────────────────────────────────────
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -338,18 +362,29 @@ Deno.serve(async (req) => {
     return fail('That syllabus was too long to finish reading. Paste just the weekly schedule.', 422, origin);
   }
 
-  const block = (message.content || []).find((b: { type: string }) => b.type === 'text');
-  let parsed: unknown = null;
-  try {
-    parsed = block ? JSON.parse((block as { text: string }).text) : null;
-  } catch {
-    parsed = null;   // schema-enforced, so this is close to unreachable
+  const blocks = (message.content || []).map((b: { type: string }) => b.type).join(',');
+  const block  = (message.content || []).find((b: { type: string }) => b.type === 'text');
+  const answer = block ? String((block as { text: string }).text || '') : '';
+  const parsed = extractJson(answer);
+
+  // Diagnostics carry shape, never content — the model's answer quotes the
+  // syllabus verbatim, so its text can't go in a log line. Which blocks came
+  // back, how long the text was, and whether it looked like JSON is enough to
+  // tell "the model said nothing" from "it answered in prose" from "it answered
+  // correctly and our own matching threw the answer away".
+  if (!parsed) {
+    console.error(`[parse-syllabus] unreadable model output: blocks=[${blocks}] len=${answer.length} brace=${answer.trimStart().startsWith('{')} fenced=${answer.includes('\`\`\`')} stop=${message.stop_reason}`);
   }
+
+  const rawWeeks = (parsed && typeof parsed === 'object' && Array.isArray((parsed as { weeks?: unknown }).weeks))
+    ? ((parsed as { weeks: unknown[] }).weeks).length : -1;
 
   const schedule = validateSchedule(parsed, new Set(units.map(u => u.id)));
 
   // Counts only. Never the syllabus, never a label, never the schedule.
-  console.log(`[parse-syllabus] course=${courseId} weeks=${schedule.weeks.length} confidence=${schedule.confidence} used=${used}/${DAILY_LIMIT}`);
+  // rawWeeks vs weeks is the load-bearing pair: equal means we kept what the
+  // model found, 4 vs 0 means the model did its job and our validation didn't.
+  console.log(`[parse-syllabus] course=${courseId} blocks=[${blocks}] rawWeeks=${rawWeeks} weeks=${schedule.weeks.length} confidence=${schedule.confidence} used=${used}/${DAILY_LIMIT}`);
 
   return json({
     ok: true,
