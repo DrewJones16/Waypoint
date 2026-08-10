@@ -6806,6 +6806,22 @@ async function runSyllabusParse() {
   render();
 }
 
+// The result screen's drill. Goes through startWeekDrill like the Today card
+// does, so it counts for the streak and records the same way — this is the
+// week's session, reached from a different door.
+function syllabusStartWeek(id) {
+  const u = unitFromId(id);
+  if (!u) return;
+  S.syl = null;
+  startWeekDrill(u.topicId, u.subId);
+}
+
+function syllabusAddAnother() {
+  const left = unmappedCourses();
+  if (!left.length) return finishSyllabus();
+  openSyllabus(left[0].id);
+}
+
 function sylToggleAll() {
   if (!S.syl) return;
   S.syl.showAll = !S.syl.showAll;
@@ -6848,21 +6864,92 @@ function acceptSyllabus() {
   if (window.plausible) plausible('syllabus_accepted', { props: { course: d.courseId } });
 
   // A start date Waypoint doesn't have yet is worth one tap to offer, and worth
-  // nothing to insist on — Semester Sync already works without it.
+  // nothing to insist on — Semester Sync already works without it. It's asked
+  // before the result screen because the result reads better with it: knowing
+  // the week turns "first up" into "this week".
   if (d.result.termStart && !S.semStart) { d.phase = 'term'; return render(); }
-  finishSyllabus();
+  showSyllabusResult();
 }
 
 function useSyllabusTermStart() {
   const d = S.syl;
   if (d && d.result && d.result.termStart) { S.semStart = d.result.termStart; save(); }
-  finishSyllabus();
+  showSyllabusResult();
+}
+
+function showSyllabusResult() {
+  if (!S.syl) return finishSyllabus();
+  S.syl.phase = 'done';
+  render();
 }
 
 function finishSyllabus() {
   S.syl = null;
   go('brief');
-  showToast('Syllabus saved. Today follows your real schedule now.');
+}
+
+// ── What the syllabus bought them ─────────────────────────────────────────────
+// Accepting used to drop the student back on Today with a toast, which is no
+// reward at all for the one piece of real work this feature asks of them. These
+// answer "what did that just do" in the only three terms that matter: what
+// changed, what to do in the next minute, and where the term ends up.
+
+// Distinct units across the whole schedule. Units are what the app calls "MCAT
+// topics" everywhere a student can see — the exam setup screen already says so.
+function syllabusTopicCount(courseId) {
+  const syl = S.syllabus[courseId];
+  if (!syl) return 0;
+  const seen = new Set();
+  syl.weeks.forEach(w => w.unitIds.forEach(id => seen.add(id)));
+  return seen.size;
+}
+
+// Where the ring lands once this class is finished, using the app's own
+// coverage function rather than a second version of the same arithmetic: flip
+// the status the way the end of term will, measure, put it back.
+function coverageAfterCourse(courseId) {
+  const prev = S.courseStatus[courseId];
+  S.courseStatus[courseId] = 'completed';
+  try { return coverage(S.courses, true); }
+  finally {
+    if (prev === undefined) delete S.courseStatus[courseId];
+    else S.courseStatus[courseId] = prev;
+  }
+}
+
+// The month the last mapped week falls in — only nameable when we know when the
+// term began. Without that, the payoff line says "by the end of term" instead of
+// inventing a date.
+function syllabusEndMonth(courseId) {
+  const syl = S.syllabus[courseId];
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(S.semStart || '');
+  if (!syl || !syl.weeks.length || !m) return null;
+  const last = syl.weeks[syl.weeks.length - 1].week;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + (last - 1) * 7));
+  return isNaN(d) ? null : MONTH_NAMES[d.getUTCMonth()];
+}
+
+// The week to put in front of them. Their actual current week when the calendar
+// knows it, otherwise the first week that carries content — either way a real
+// row from their syllabus with a drill attached.
+function syllabusNextUp(courseId) {
+  const syl = S.syllabus[courseId];
+  if (!syl) return null;
+  const base = semesterWeek();
+  if (base !== null) {
+    const ew = effectiveWeek(courseId, base);
+    const row = syl.weeks.find(w => w.week === ew);
+    if (row && row.unitIds.length) return { row, now: true };
+  }
+  const row = syl.weeks.find(w => w.unitIds.length);
+  return row ? { row, now: false } : null;
+}
+
+// In-progress classes still waiting for a syllabus.
+function unmappedCourses() {
+  return COURSES.filter(c => S.courses.has(c.id)
+                          && S.courseStatus[c.id] === 'in-progress'
+                          && !S.syllabus[c.id]);
 }
 
 // ── Screens ───────────────────────────────────────────────────────────────────
@@ -6978,6 +7065,43 @@ function screenSyllabus() {
         <span class="pulse-dot" style="width:8px;height:8px;margin:0;"></span>
         <span style="font-size:13px;color:#8A93A8;">${name}</span>
       </div>
+    </div>`;
+  }
+
+  if (d.phase === 'done') {
+    const syl = S.syllabus[d.courseId];
+    if (!syl) { finishSyllabus(); return ''; }
+    const topics = syllabusTopicCount(d.courseId);
+    const next   = syllabusNextUp(d.courseId);
+    const month  = syllabusEndMonth(d.courseId);
+    const end    = coverageAfterCourse(d.courseId);
+    const left   = unmappedCourses();
+
+    return `
+    <div class="screen">
+      <div style="height:24px;"></div>
+      <p class="label">Mapped</p>
+      <h2 style="margin-bottom:6px;">${name} is mapped — ${syl.weeks.length} week${syl.weeks.length !== 1 ? 's' : ''}, ${topics} MCAT topic${topics !== 1 ? 's' : ''}.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Today follows this schedule from here on, week by week.</p>
+
+      ${next ? `
+        <div style="${SYL_CARD}padding:14px 15px;margin-bottom:12px;">
+          <p style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 5px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
+          <p style="font-size:15px;color:#F0F2F8;line-height:1.5;margin:0 0 3px;font-weight:600;">${esc(next.row.label) || 'Week ' + next.row.week}</p>
+          <p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0 0 12px;">${next.row.unitIds.map(id => { const u = unitFromId(id); return u ? u.label : id; }).join(' · ')}</p>
+          <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:15px;min-height:44px;" onclick="syllabusStartWeek('${next.row.unitIds[0]}')">Start ${next.now ? 'this week' : 'week ' + next.row.week}'s 5 →</button>
+        </div>` : ''}
+
+      <div style="${SYL_CARD}padding:14px 15px;margin-bottom:18px;">
+        <p style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 5px;">What the term adds up to</p>
+        <p style="font-size:13px;color:#8A93A8;line-height:1.6;margin:0;">${month ? `By ${month}` : 'By the end of term'} this course takes you to <strong style="color:#4DE3AB;">${end}% of MCAT content</strong>.</p>
+      </div>
+
+      ${left.length
+        ? `<button class="btn btn-primary" onclick="syllabusAddAnother()">Add another syllabus →</button>
+           <button class="btn btn-ghost" onclick="finishSyllabus()">Done</button>`
+        : `<p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:12px;">That's every class you're taking this term mapped.</p>
+           <button class="btn btn-primary" onclick="finishSyllabus()">Done</button>`}
     </div>`;
   }
 
