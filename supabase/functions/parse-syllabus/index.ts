@@ -160,7 +160,13 @@ function corsHeaders(origin: string | null) {
   const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Headers': 'authorization, content-type',
+    // Every header the client actually sends has to be named here or the
+    // preflight fails and the real request is never made. `apikey` is the easy
+    // one to forget: Supabase wants it on every call, so the browser asks about
+    // it, and a list that omits it blocks the request before the function is
+    // ever reached. `x-client-info` is what supabase-js adds if this is ever
+    // called through the library instead of raw fetch.
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
