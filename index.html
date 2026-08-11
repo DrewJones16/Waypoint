@@ -6715,7 +6715,7 @@ async function parseSyllabus(courseId, payload) {
 
 function openSyllabus(courseId) {
   S.syl = { courseId, phase: authSession() ? 'paste' : 'signin',
-            text: '', file: null, error: '', result: null, picker: null };
+            text: '', file: null, pages: [], error: '', result: null, picker: null };
   if (window.plausible) plausible('syllabus_open', { props: { course: courseId } });
   go('syllabus');
 }
@@ -6750,6 +6750,7 @@ function sylPickFile(input) {
     const b64 = String(reader.result || '').replace(/^data:[^,]*,/, '');
     if (!b64) { S.syl.error = 'That file came through empty. Try it again.'; return render(); }
     S.syl.file  = { name: file.name, size: file.size, base64: b64 };
+    S.syl.pages = [];              // a PDF and photos are different requests
     S.syl.error = '';
     render();
   };
@@ -6768,6 +6769,117 @@ function sylClearFile() {
   render();
 }
 
+// ── The camera path ───────────────────────────────────────────────────────────
+// Paste and PDF both assume the syllabus is a file on the device the student is
+// holding. Often it isn't: it's a printout in a binder, a handout from advising,
+// a page projected in a club meeting. A photo is how most people would actually
+// reach for this, and it's the version that works when someone says "try this
+// right now" in a room full of premeds.
+//
+// Multi-page from the start, because a schedule routinely runs onto a second or
+// third page and a student who can only send one will send the wrong one.
+
+const SYL_MAX_PAGES   = 6;
+// The API downsamples to ~1568px on the long edge before the model ever sees an
+// image, so anything larger is bytes and tokens spent on pixels nobody reads.
+// A letter page at this size lands around 140 DPI, which holds a printed
+// schedule table comfortably.
+const SYL_IMG_EDGE    = 1600;
+const SYL_IMG_QUALITY = 0.8;
+
+// Camera capture only makes sense where there's a camera to point. On a desktop
+// the `capture` attribute is ignored and the button would just be a second, more
+// confusing file picker — so the desktop screen keeps exactly the two options it
+// has today, in the order it has them.
+function sylCanCapture() {
+  return typeof navigator !== 'undefined' &&
+         (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+}
+
+// A modern phone photo is 3-8MB, and six of them would blow past the request
+// limit while buying nothing. Resizing happens here rather than server-side
+// because the upload is the slow part on a phone in a lecture hall.
+//
+// Browsers apply EXIF orientation when drawing an <img>, so a shot taken
+// sideways lands upright without this code knowing anything about EXIF.
+function sylShrink(file, cb) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    try {
+      const long  = Math.max(img.naturalWidth, img.naturalHeight);
+      const scale = long > SYL_IMG_EDGE ? SYL_IMG_EDGE / long : 1;
+      const c = document.createElement('canvas');
+      c.width  = Math.max(1, Math.round(img.naturalWidth  * scale));
+      c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const b64 = c.toDataURL('image/jpeg', SYL_IMG_QUALITY).replace(/^data:[^,]*,/, '');
+      cb(b64 && b64.length > 100 ? b64 : null);
+    } catch (e) {
+      console.warn('[Waypoint] photo resize failed:', e);
+      cb(null);
+    }
+  };
+  // An iPhone hands over JPEG even when the library holds HEIC, but a format the
+  // browser can't decode has to say so rather than silently dropping a page.
+  img.onerror = () => { URL.revokeObjectURL(url); cb(null); };
+  img.src = url;
+}
+
+function sylPickPhoto(input) {
+  const file = input && input.files && input.files[0];
+  input.value = '';                     // so re-shooting after a remove still fires
+  if (!file || !S.syl) return;
+  const d = S.syl;
+  d.pages = d.pages || [];
+
+  if (d.pages.length >= SYL_MAX_PAGES) {
+    d.error = `That's ${SYL_MAX_PAGES} pages, which is plenty for a schedule. Remove one if you want a different shot.`;
+    return render();
+  }
+  if (!/^image\//.test(file.type || '')) {
+    d.error = 'That wasn\'t a photo. Use the PDF button for a file, or paste the schedule.';
+    return render();
+  }
+
+  // Shrinking a big photo takes a moment on an older phone, and a screen that
+  // does nothing after the camera closes reads as a failure.
+  d.error = '';
+  d.busy  = true;
+  render();
+
+  sylShrink(file, (b64) => {
+    if (!S.syl) return;
+    S.syl.busy = false;
+    if (!b64) {
+      S.syl.error = 'Couldn\'t read that photo. Take it again, or paste the schedule instead.';
+      return render();
+    }
+    S.syl.file = null;                  // a photo and a PDF are different requests
+    (S.syl.pages = S.syl.pages || []).push({ base64: b64 });
+    render();
+  });
+}
+
+function sylRemovePage(i) {
+  if (!S.syl || !S.syl.pages) return;
+  S.syl.pages.splice(i, 1);
+  S.syl.error = '';
+  render();
+}
+
+// The way back out of the camera. Without it, capturing a page hides the PDF and
+// paste boxes and the only route to them is tapping Remove once per page — and
+// "paste the text instead" is the advice a photo that won't read has to be able
+// to give.
+function sylClearPages() {
+  if (!S.syl) return;
+  S.syl.pages = [];
+  S.syl.error = '';
+  render();
+}
+
 // The paste box must not re-render while it's being typed into — a render
 // rebuilds the textarea and the caret jumps to the end. Only the button's
 // enabled state changes, so only the button is touched.
@@ -6779,7 +6891,12 @@ function sylPasteInput(el) {
 }
 
 function sylReady(d) {
-  return !!(d && (d.file || (d.text || '').trim().length >= 40));
+  if (!d || d.busy) return false;
+  return !!((d.pages && d.pages.length) || d.file || (d.text || '').trim().length >= 40);
+}
+
+function sylMethod(d) {
+  return (d.pages && d.pages.length) ? 'camera' : d.file ? 'file' : 'paste';
 }
 
 async function runSyllabusParse() {
@@ -6787,12 +6904,19 @@ async function runSyllabusParse() {
   if (!sylReady(d)) return;
   d.phase = 'parsing';
   d.error = '';
+  // Which door they came in by, remembered now because the payload is about to
+  // stop being distinguishable.
+  d.method = sylMethod(d);
   render();
 
-  // A file and a paste are the same request with a different payload — the
-  // parse, the confirm screen and everything after it never learn which it was.
+  // Photos, a file and a paste are the same request with a different payload —
+  // the parse, the confirm screen and everything after it never learn which it
+  // was. Several pages go up as one ordered array: one request, one parse, one
+  // of the student's five for the day, however many pages it took.
   const res = await parseSyllabus(d.courseId,
-    d.file ? { pdfBase64: d.file.base64 } : { text: d.text.trim() });
+    d.method === 'camera' ? { images: d.pages.map(p => p.base64) } :
+    d.method === 'file'   ? { pdfBase64: d.file.base64 }
+                          : { text: d.text.trim() });
   if (!S.syl || S.syl.courseId !== d.courseId) return;   // they left mid-parse
 
   if (!res.ok) {
@@ -6822,7 +6946,7 @@ function syllabusStartWeek(id) {
 // left, because the ticked list is also the answer to "how far through am I".
 function syllabusAddAnother() {
   if (!unmappedCourses().length) return finishSyllabus();
-  S.syl = { phase: 'choose', courseId: null, text: '', file: null,
+  S.syl = { phase: 'choose', courseId: null, text: '', file: null, pages: [],
             error: '', result: null, picker: null };
   go('syllabus');
 }
@@ -6864,9 +6988,13 @@ function acceptSyllabus() {
 
   S.syllabus[d.courseId] = clean;
   save();
-  // Course id only. What a student's syllabus says is theirs, and it is not
-  // something Waypoint needs to know in aggregate to see whether this works.
-  if (window.plausible) plausible('syllabus_accepted', { props: { course: d.courseId } });
+  // Course id and which door they came in by. What a student's syllabus says is
+  // theirs, and it is not something Waypoint needs to know in aggregate to see
+  // whether this works — but whether anyone reaches for the camera decides
+  // whether the camera was worth building, and nothing short of a real number
+  // answers that. No page counts, no file names, no content.
+  if (window.plausible) plausible('syllabus_accepted',
+    { props: { course: d.courseId, method: d.method || 'paste' } });
 
   // A start date Waypoint doesn't have yet is worth one tap to offer, and worth
   // nothing to insist on — Semester Sync already works without it. It's asked
@@ -7211,18 +7339,58 @@ function screenSyllabus() {
     </div>`;
   }
 
-  // paste / upload — two ways in, one request out
-  const ready = sylReady(d);
+  // photo / paste / upload — three ways in, one request out
+  const ready  = sylReady(d);
+  const pages  = d.pages || [];
+  const camera = sylCanCapture();
+  const s = n => n === 1 ? '' : 's';
+
+  // Rendered once, outside the branches, because both the first shot and every
+  // "add another page" after it click the same input.
+  const cameraInput = camera ? `
+        <input type="file" id="syl-cam" accept="image/*" capture="environment"
+               style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
+               onchange="sylPickPhoto(this)">` : '';
+
+  const shootBtn = (label) => `
+        <button onclick="document.getElementById('syl-cam').click()" style="width:100%;box-sizing:border-box;background:rgba(45,184,138,0.10);border:1px solid rgba(45,184,138,0.35);border-radius:10px;padding:15px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:13px;font-weight:600;color:#4DE3AB;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          ${label}
+        </button>`;
+
   return `
     <div class="screen">
       ${back}
       <p class="label">Your syllabus</p>
       <h2 style="margin-bottom:6px;">Turn your ${name} syllabus into an MCAT plan.</h2>
       <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:8px;">Waypoint reads which topics your class covers each week — not your due dates — and lines them up with the MCAT.</p>
-      <p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:14px;">Upload the PDF or paste the schedule. You'll see the result and can change anything before it's saved.</p>
+      <p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:14px;">${camera
+        ? 'Photograph it, upload the PDF, or paste the schedule. You\'ll see the result and can change anything before it\'s saved.'
+        : 'Upload the PDF or paste the schedule. You\'ll see the result and can change anything before it\'s saved.'}</p>
       ${d.error ? `<p style="font-size:13px;color:#F4B48A;line-height:1.55;margin-bottom:12px;">${d.error}</p>` : ''}
+      ${d.busy ? `<p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Shrinking that page…</p>` : ''}
+      ${cameraInput}
 
-      ${d.file ? `
+      ${pages.length ? `
+        <p style="font-size:11px;font-weight:700;color:#767E96;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 9px;">${pages.length} page${s(pages.length)} captured</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          ${pages.map((p, i) => `
+            <div style="width:72px;">
+              <div style="position:relative;">
+                <img src="data:image/jpeg;base64,${p.base64}" alt="Page ${i + 1}"
+                     style="width:72px;height:94px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.12);display:block;background:#131520;">
+                <span style="position:absolute;top:4px;left:4px;background:rgba(10,11,16,0.82);border-radius:5px;padding:1px 6px;font-size:10px;font-weight:700;color:#F0F2F8;">${i + 1}</span>
+              </div>
+              <button onclick="sylRemovePage(${i})" aria-label="Remove page ${i + 1}" style="width:72px;background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:11px;font-weight:600;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;">Remove</button>
+            </div>`).join('')}
+        </div>
+        ${pages.length < SYL_MAX_PAGES
+          ? shootBtn('Add another page →')
+          : `<p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:12px;">That's the ${SYL_MAX_PAGES}-page limit, which is plenty for a schedule. Remove one if you want a different shot.</p>`}
+        <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:6px;">Shoot the weekly schedule pages in order. A table that runs onto a second page is fine — Waypoint reads them as one document.</p>
+        <button onclick="sylClearPages()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:11px;font-weight:600;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;">Upload a PDF or paste it instead</button>
+        <div style="height:6px;"></div>
+      ` : d.file ? `
         <div style="${SYL_CARD}padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
           <span style="display:flex;align-items:center;gap:9px;min-width:0;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -7234,6 +7402,7 @@ function screenSyllabus() {
           <button onclick="sylClearFile()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:11px;font-weight:600;color:#767E96;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;">Remove</button>
         </div>
       ` : `
+        ${camera ? shootBtn('Take a photo of it') : ''}
         <button onclick="document.getElementById('syl-file').click()" style="width:100%;box-sizing:border-box;background:none;border:1px dashed rgba(255,255,255,0.18);border-radius:10px;padding:15px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:13px;font-weight:600;color:#8A93A8;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Upload the PDF
@@ -7248,8 +7417,8 @@ function screenSyllabus() {
           style="width:100%;box-sizing:border-box;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:15px;line-height:1.5;resize:vertical;margin-bottom:10px;-webkit-appearance:none;">${esc(d.text || '')}</textarea>
       `}
 
-      <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:14px;">Waypoint reads your syllabus and keeps the schedule in your account. The syllabus itself isn't stored on our servers.</p>
-      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">Read my syllabus →</button>
+      <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:14px;">Waypoint reads your syllabus and keeps the schedule in your account. ${pages.length ? 'The photos aren\'t stored on our servers.' : 'The syllabus itself isn\'t stored on our servers.'}</p>
+      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">${pages.length ? `Read these ${pages.length} page${s(pages.length)} →` : 'Read my syllabus →'}</button>
     </div>`;
 }
 
