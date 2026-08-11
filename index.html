@@ -7078,6 +7078,27 @@ function syllabusNextUp(courseId) {
   return row ? { row, now: false } : null;
 }
 
+// ── When a photo only got part of it ──────────────────────────────────────────
+// Photos fail in ways files don't, and the dangerous failure isn't the one that
+// returns nothing — it's the one that returns a schedule. A cropped table, a
+// second page nobody shot, a thumb over the last four weeks: all of those parse
+// cleanly into half a semester, and half a semester saved as the whole thing is
+// a student practising the wrong topic in November with no way to know.
+//
+// Three tells, none of which need the model's help:
+//   - a gap in the numbering, where week 7 follows week 5
+//   - a schedule that starts partway in, at week 4
+//   - a full-term course that came back shorter than a term plausibly is
+const SYL_TERM_WEEKS = 8;
+
+function sylLooksPartial(weeks) {
+  if (!weeks || !weeks.length) return false;
+  const first = weeks[0].week, last = weeks[weeks.length - 1].week;
+  if (last - first + 1 > weeks.length) return true;
+  if (first > 1) return true;
+  return weeks.length < SYL_TERM_WEEKS;
+}
+
 // In-progress classes still waiting for a syllabus.
 function unmappedCourses() {
   return COURSES.filter(c => S.courses.has(c.id)
@@ -7284,13 +7305,27 @@ function screenSyllabus() {
     // real outcome, and inventing one would be worse than saying so — the
     // student would trust it.
     if (!weeks.length || d.result.confidence === 'low') {
+      // A photo that didn't read is a different problem from a document with no
+      // schedule in it, and it has a different fix: the page was at an angle, or
+      // half out of frame, or it was the grading policy rather than the
+      // schedule. Saying "paste just that part" to someone holding a phone over
+      // a binder is advice they can't take. Their pages are kept either way —
+      // landing them on an empty capture screen would throw away the shots that
+      // were fine.
+      const shots = d.method === 'camera';
+      const many  = shots && (d.pages || []).length > 1;
       return `
     <div class="screen">
       ${back}
       <p class="label">Your syllabus</p>
-      <h2 style="margin-bottom:6px;">Couldn't find a weekly schedule in that.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Waypoint will keep using the typical pacing for ${name}, which works fine. If your syllabus does have a week-by-week table, paste just that part and try again.</p>
-      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">Try another paste →</button>
+      <h2 style="margin-bottom:6px;">${shots
+        ? `Couldn't read a schedule in ${many ? 'those photos' : 'that photo'}.`
+        : 'Couldn\'t find a weekly schedule in that.'}</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">${shots
+        ? `Try again with the schedule page flat and in frame, or paste the text instead. Waypoint will keep using the typical pacing for ${name} until then, which works fine.`
+        : `Waypoint will keep using the typical pacing for ${name}, which works fine. If your syllabus does have a week-by-week table, paste just that part and try again.`}</p>
+      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">${shots ? `Back to your ${many ? 'photos' : 'photo'} →` : 'Try another paste →'}</button>
+      ${shots ? `<button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;sylClearPages();">Paste the schedule instead</button>` : ''}
       <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Leave it</button>
     </div>`;
     }
@@ -7323,6 +7358,13 @@ function screenSyllabus() {
         : 'Every week came through clearly. Open them if you want a look, or save and get going.'}</p>
       ${d.error ? `<p style="font-size:13px;color:#F4B48A;margin-bottom:12px;">${d.error}</p>` : ''}
 
+      ${sylLooksPartial(weeks) ? `
+        <div style="${SYL_CARD}border-color:rgba(244,180,138,0.3);padding:13px 14px;margin-bottom:12px;">
+          <p style="font-size:13px;color:#F4B48A;line-height:1.55;margin:0;">Looks like this might be part of the schedule — ${d.method === 'camera'
+            ? 'add the rest with “Add another page,”'
+            : 'add the rest and read it again,'} or fill the gaps below.</p>
+        </div>` : ''}
+
       ${unsure.map(r => sylWeekRowHTML(r.w, r.i, units, true)).join('')}
 
       ${settled.length ? `
@@ -7335,7 +7377,11 @@ function screenSyllabus() {
 
       <p style="font-size:13px;color:#767E96;line-height:1.6;margin:14px 0 12px;">Professors drift from their own syllabus. When yours does, <strong style="color:#8A93A8;">Not what you're covering?</strong> on Today puts Waypoint back in step in one tap — so this doesn't have to be perfect.</p>
       <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right — save it →</button>
-      <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;S.syl.showAll=false;render();">Start over</button>
+      <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;S.syl.showAll=false;render();">${d.method === 'camera'
+        // "Start over" reads as throwing the shots away, which is the opposite
+        // of what this does — and it's the route the partial notice above sends
+        // them down to add the page they missed.
+        ? 'Back to your photos' : 'Start over'}</button>
     </div>`;
   }
 
