@@ -132,6 +132,13 @@ const SCHEDULE_SCHEMA = {
   additionalProperties: false,
 };
 
+// The same contract as SCHEDULE_SCHEMA, written out for the last-ditch attempt
+// that has no schema to enforce it. The prompt names every field but never says
+// "return JSON", because until now it never had to.
+const SHAPE = `Return a single JSON object and nothing else — no preamble, no code fence — in exactly this shape:
+
+{"confidence":"high"|"low","termStart":"YYYY-MM-DD"|null,"weeks":[{"week":1,"label":"the syllabus's own words","unitIds":["unit:id"],"confidence":"high"|"low"}]}`;
+
 function buildPrompt(courseName: string, units: Array<{ id: string; label: string }>, pages: number) {
   const list = units.map(u => `  ${u.id} — ${u.label}`).join('\n');
 
@@ -188,6 +195,18 @@ function extractJson(raw: string): unknown {
     try { return JSON.parse(s.slice(open, close + 1)); } catch { /* give up */ }
   }
   return null;
+}
+
+// Why an attempt failed, in a form safe to log. API errors describe the shape of
+// a request — an unrecognised parameter, an unsupported schema construct, an
+// account balance — not what was in it, which is the same category of thing the
+// success path already logs. Truncated anyway, because a log line is a diagnosis
+// and not a transcript.
+function errorLabel(e: unknown): string {
+  const err = e as { status?: number; error?: { error?: { type?: string } }; message?: string };
+  const status = err?.status ? `${err.status} ` : '';
+  const type = err?.error?.error?.type ? `${err.error.error.type}: ` : '';
+  return (status + type + String(err?.message || e)).slice(0, 200);
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -421,30 +440,51 @@ Deno.serve(async (req) => {
     messages: [{ role: 'user', content }],
   };
 
+  // Three attempts, each dropping the most optional thing from the one before.
+  //
+  // This used to be one attempt with a narrow retry: if the beta call failed
+  // with a message containing the word "fallback", try again without it. That
+  // held exactly as long as the API's wording did. Any other reason the first
+  // call could fail — a retired beta, a schema dialect that stopped accepting
+  // some construct, a parameter renamed — took the whole feature down, with the
+  // plain call that would have worked never attempted.
+  //
+  // So the rule is now the honest one: if an attempt fails, for any reason, drop
+  // the most optional thing and go again. Every tier below returns the same
+  // schedule; they differ only in how much of the API's convenience they lean on.
+  //   1. server-side fallbacks + schema-enforced output
+  //   2. schema-enforced output alone
+  //   3. nothing but the prompt — the shape spelled out in words, and
+  //      extractJson() on the way back, which exists for precisely this.
+  const attempts: Array<{ why: string; run: () => Promise<any> }> = [
+    { why: 'beta+schema', run: () => (client as any).beta.messages.create({
+        ...params, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' }) },
+    { why: 'schema', run: () => client.messages.create(params as never) },
+    { why: 'bare', run: () => client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        messages: [{ role: 'user', content: [...content, { type: 'text', text: SHAPE }] }],
+      } as never) },
+  ];
+
   let message;
-  try {
-    // Safety classifiers can decline a request outright. `fallbacks: "default"`
-    // has the API re-run a declined request on its recommended substitute
-    // server-side, so a false positive on someone's biology syllabus costs a
-    // second or two instead of the whole feature. If the beta isn't enabled on
-    // this account the call 400s on the parameter, and we go again without it
-    // rather than failing the parse over a nicety.
-    try {
-      message = await (client as any).beta.messages.create({
-        ...params,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-      });
-    } catch (e) {
-      const msg = String((e as Error)?.message || '');
-      if (!/fallback/i.test(msg)) throw e;
-      console.warn('[parse-syllabus] server-side fallbacks unavailable; retrying without');
-      message = await client.messages.create(params as never);
-    }
-  } catch (e) {
-    console.error('[parse-syllabus] model call failed:', (e as Error).message);
+  const failures: string[] = [];
+  for (const attempt of attempts) {
+    try { message = await attempt.run(); break; }
+    catch (e) { failures.push(`${attempt.why}=${errorLabel(e)}`); }
+  }
+
+  if (!message) {
+    // The API's own words, which describe the shape of the request rather than
+    // anything in it — the same category of thing already logged below. Without
+    // this the only signal a dead feature gives is "502", and every diagnosis
+    // starts from scratch.
+    console.error(`[parse-syllabus] model call failed: ${failures.join(' | ')}`);
     await refund();
     return fail('Couldn\'t read that just now. Waypoint will keep using the typical pacing.', 502, origin);
+  }
+  if (failures.length) {
+    console.warn(`[parse-syllabus] recovered after ${failures.join(' | ')}`);
   }
 
   // A refusal is a real answer, not an error — say so plainly and don't charge
