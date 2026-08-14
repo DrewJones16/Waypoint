@@ -8055,8 +8055,12 @@ function toggleCourseExpand(courseId) {
 }
 
 // A single authoritative "how your % is calculated" view.
-// Rendered inline on Route rather than as its own screen — 'how does this add
-// up' is a detail of the route, not a separate destination.
+//
+// This used to render inline on the Route behind a toggle, on the reasoning that
+// 'how does this add up' is a detail of the route rather than a destination.
+// True — but it sat there beside two other explainers, and all three are read
+// once and scrolled past forever. The Route answers one question now, and this
+// is not it. It lives on screenCoverage() with the other two, one tap away.
 function breakdownHTML() {
   const cov = coverage(S.courses, true);
   const sections = MCAT_SECTIONS.map(sec => {
@@ -8101,6 +8105,39 @@ function breakdownHTML() {
         <p style="font-size:11px;color:#767E96;line-height:1.55;margin-top:10px;">✓ done · ½ taking now (counts half until you finish) · · not yet · ~ ongoing.</p>
         <p style="font-size:11px;color:#767E96;line-height:1.6;margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">Sources: section weights follow the <a href="https://students-residents.aamc.org/whats-mcat-exam/publication-chapters/whats-mcat-exam" target="_blank" rel="noopener" style="color:#767E96;text-decoration:underline;">AAMC MCAT content outline</a>; typical-year coverage follows the <a href="https://medschoolinsiders.com/pre-med/premed-requirements/" target="_blank" rel="noopener" style="color:#767E96;text-decoration:underline;">standard premed course sequence</a> — a typical course load, not a survey of students.</p>
       </div>
+    </div>`;
+}
+
+// The one door. Three explainers that each answered "how does this system work"
+// used to sit on the Route between the ring and the map, charging every scroll
+// for an answer a student needs once. They are unchanged here — same breakdown,
+// same CARS note, same prereq guidance — just no longer in the way.
+function screenCoverage() {
+  return `
+    <div class="screen" style="padding-bottom:40px;">
+      <div class="brief-topbar">
+        <button onclick="go('reveal')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-family:inherit;font-size:15px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back
+        </button>
+      </div>
+
+      <p class="label">Your route</p>
+      <h2 style="margin-bottom:6px;">How coverage works.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:4px;">Courses map to 79% of the exam. The other 21% is CARS — a reading skill, not a topic to unlock.</p>
+
+      ${breakdownHTML()}
+
+      <div class="section-divider"></div>
+      <p class="label" style="margin-bottom:10px;">Which classes do I still need?</p>
+      <div style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:24px;">
+        <p style="margin:0 0 8px;"><strong style="color:#4DE3AB;">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
+        <p style="margin:0 0 8px;"><strong style="color:#F5B36A;">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
+        <p style="margin:0;"><strong style="color:#A78BFA;">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
+        <p style="font-size:11px;color:#767E96;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
+      </div>
+
+      <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
     </div>`;
 }
 
@@ -8261,23 +8298,9 @@ function screenReveal() {
             </div>
           </div>
           <div style="flex:1;min-width:0;">
-            <button onclick="S._showBreakdown=!S._showBreakdown;render();" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;text-align:left;-webkit-tap-highlight-color:transparent;">${S._showBreakdown ? 'Hide the breakdown' : 'See how this adds up →'}</button>
-            <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:6px;">Courses map to 79% of the exam. The other 21% is CARS — a reading skill, not a topic to unlock.</p>
+            <button onclick="go('coverage')" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;text-align:left;-webkit-tap-highlight-color:transparent;">How coverage works →</button>
           </div>
         </div>` : ''}
-
-      ${S._showBreakdown ? breakdownHTML() : ''}
-
-      ${cov > 0 ? `
-        <details style="margin:10px 0 18px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:11px 14px;">
-          <summary style="cursor:pointer;font-size:13px;color:#8A93A8;font-weight:600;list-style:none;-webkit-tap-highlight-color:transparent;">Which classes do I still need?</summary>
-          <div style="font-size:13px;color:#767E96;line-height:1.6;margin-top:11px;">
-            <p style="margin:0 0 8px;"><strong style="color:#4DE3AB;">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
-            <p style="margin:0 0 8px;"><strong style="color:#F5B36A;">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
-            <p style="margin:0;"><strong style="color:#A78BFA;">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
-            <p style="font-size:11px;color:#767E96;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
-          </div>
-        </details>` : ''}
 
       ${freshnessLineHTML()}
       <div id="sectioned-map"></div>
@@ -9345,7 +9368,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -9421,13 +9444,14 @@ function render() {
     case 'pace':    html += screenPace();    break;
     case 'examplan': html += screenExamPlan(); break;
     case 'syllabus': html += screenSyllabus(); break;
+    case 'coverage': html += screenCoverage(); break;
     case 'quicklog':          html += screenQuickLog();         break;
     // Retired: topic and subtopic are one screen now. A stale S.screen (an
     // interrupted session, a tab left open across the deploy) lands on it.
     case 'quicklog-subtopic': S.screen = 'quicklog'; html += screenQuickLog(); break;
     case 'quicklogdone':      html += screenQuickLogDone();     break;
-    // A retired screen name (an old bookmark, or 'breakdown' now that it lives
-    // inline on Route) must never render an empty shell.
+    // A retired screen name — an old bookmark, or 'breakdown' from before the
+    // explainers moved to 'coverage' — must never render an empty shell.
     default: S.screen = 'brief'; html += screenBrief(); break;
   }
 
