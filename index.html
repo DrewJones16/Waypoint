@@ -4895,15 +4895,6 @@ function buildSession() {
   return [...needsWork.slice(0, 2), ...fresh].slice(0, Math.min(5, pool.length));
 }
 
-function wrongCount() {
-  // How many questions in the covered pool still need work
-  const covered = new Set(TOPICS.filter(t => t.course === null || (t.course && S.courses.has(t.course))).map(t => t.id));
-  return QUESTIONS.filter(q => {
-    if (!covered.has(q.topic)) return false;
-    const st = S.qStats[q.id];
-    return st && st.wrong > 0 && st.wrong > st.right;
-  }).length;
-}
 
 function todayTopics() {
   return new Set(S.answers.map(a => {
@@ -4970,11 +4961,6 @@ function weeksAgo(days) {
   return w <= 0 ? 'recently' : w === 1 ? '1 week ago' : `${w} weeks ago`;
 }
 
-function dismissNudge(topicId) {
-  S.nudgeDismissed[topicId] = isoDate();
-  save();
-  render();
-}
 
 // ── MAP RENDERER ──────────────────────────────────────────────────────────────
 
@@ -5192,60 +5178,8 @@ function sectionedMapHTML() {
 
 // ── JOURNEY PATH (waypoint map) ────────────────────────────────────────────────
 
-// Curriculum order — roughly the order a premed encounters these topics
-const PATH_ORDER = [
-  'cars','cell-bio','genetics','mol-bio','atomic','bonding','stoich','acid-base',
-  'physio','neuro','thermo','orgo','orgo2','physics','physics2','psych','soc','research','biochem'
-];
 
-function pathNodes() {
-  const SPACING = 58;
-  return PATH_ORDER.map((tid, i) => {
-    const t    = TOPICS.find(x => x.id === tid);
-    const done = t.course === null || S.courses.has(t.course);
-    const x = 26 + i * SPACING;
-    const y = 64 + Math.sin(i * 0.95) * 26;
-    return { tid, t, done, x, y };
-  });
-}
 
-function journeyPathSvg() {
-  const nodes = pathNodes();
-  const w    = 26 + (nodes.length - 1) * 58 + 26;
-  const h    = 132;
-  const here = nodes.find(n => !n.done);
-
-  const segments = nodes.slice(0, -1).map((n, i) => {
-    const next = nodes[i + 1];
-    const traveled = next.done;
-    return `<line x1="${n.x}" y1="${n.y}" x2="${next.x}" y2="${next.y}"
-      stroke="${traveled ? '#1D9E75' : 'rgba(255,255,255,0.12)'}" stroke-width="2"
-      ${traveled ? '' : 'stroke-dasharray="3 5"'} stroke-linecap="round"/>`;
-  }).join('');
-
-  const dots = nodes.map(n => {
-    const isHere = here && here.tid === n.tid;
-    const fill    = n.done ? '#1D9E75' : '#181B26';
-    const stroke  = n.done ? '#1D9E75' : 'rgba(255,255,255,0.2)';
-    const labelY  = n.y > 64 ? n.y + 22 : n.y - 15;
-    const ring    = isHere
-      ? `<circle cx="${n.x}" cy="${n.y}" r="7" fill="none" stroke="#1D9E75" stroke-width="1.5" opacity="0.5">
-           <animate attributeName="r" values="7;14;7" dur="2.2s" repeatCount="indefinite"/>
-           <animate attributeName="opacity" values="0.5;0;0.5" dur="2.2s" repeatCount="indefinite"/>
-         </circle>` : '';
-    const check   = n.done
-      ? `<path d="M${n.x-3} ${n.y} l2.2 2.6 l4.6 -5.6" stroke="#08090C" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : '';
-    return `${ring}
-      <circle cx="${n.x}" cy="${n.y}" r="7" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-      ${check}
-      <text x="${n.x}" y="${labelY}" class="journey-label${n.done ? ' done' : ''}">${n.t.disp}</text>`;
-  }).join('');
-
-  return `<div class="journey-wrap"><svg class="journey-svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
-    ${segments}
-    ${dots}
-  </svg></div>`;
-}
 
 
 
@@ -5325,27 +5259,6 @@ function sectionTag(mcat) {
   return map[mcat] || 'tag-bb';
 }
 
-function getMasteredTopic() {
-  const covered = new Set(TOPICS.filter(t => t.course && S.courses.has(t.course)).map(t => t.id));
-  const byTopic = {};
-  QUESTIONS.forEach(q => {
-    const st = S.qStats[q.id];
-    if (!st || !covered.has(q.topic)) return;
-    if (!byTopic[q.topic]) byTopic[q.topic] = { right: 0, wrong: 0 };
-    byTopic[q.topic].right += st.right;
-    byTopic[q.topic].wrong += st.wrong;
-  });
-  const mastered = Object.entries(byTopic)
-    .filter(([id, st]) => st.right >= 3 && st.right >= st.wrong * 3)
-    .sort((a, b) => b[1].right - a[1].right);
-  if (!mastered.length) return '';
-  const [topicId, st] = mastered[0];
-  const topic = TOPICS.find(t => t.id === topicId);
-  if (!topic) return '';
-  return `<div style="background:#131520;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:13px 16px;margin-bottom:16px;">
-    <p style="font-size:15px;color:#767E96;line-height:1.5;">You're owning <strong style="color:#4DE3AB;">${topic.name}</strong> — right ${st.right} time${st.right !== 1 ? 's' : ''}, no unresolved misses.</p>
-  </div>`;
-}
 
 // ── TERMS: WHEN A COURSE WAS TAKEN ────────────────────────────────────────────
 // A premed's history runs in semesters, not years — "Fall 2025" is how they'd say
@@ -5416,13 +5329,6 @@ function courseTerm(id) {
   return TERM_RE.test(t || '') ? t : null;
 }
 
-// Done courses still missing a term. The Route offers these a chip; nothing else
-// in the app changes because of them.
-function untaggedCourses() {
-  return COURSES.filter(c => S.courses.has(c.id)
-                          && S.courseStatus[c.id] !== 'in-progress'
-                          && !courseTerm(c.id));
-}
 
 // ── THE "WHEN DID YOU TAKE IT?" PICKER ────────────────────────────────────────
 // One row of chips, most recent first, one tap, and a way out. Six terms — two
@@ -5967,15 +5873,6 @@ function screenPace() {
     </div>`;
 }
 
-// True once we should ask for the semester start: they have a class in progress
-// that we have a pacing table for, and they haven't answered or dismissed yet.
-function shouldAskSemesterStart() {
-  if (S.semStart || S.semPrompt === 'dismissed') return false;
-  // A syllabus is a schedule without an anchor — it says what week 6 covers,
-  // not which week it is now. So a syllabus course needs the start date at
-  // least as much as a pacing-table one does.
-  return [...S.courses].some(c => S.courseStatus[c] === 'in-progress' && (PACING[c] || S.syllabus[c]));
-}
 
 function saveSemesterStart(value) {
   if (!value) return;
@@ -5988,11 +5885,6 @@ function saveSemesterStart(value) {
   render();
 }
 
-function dismissSemesterPrompt() {
-  S.semPrompt = 'dismissed';
-  save();
-  render();
-}
 
 // Offered from Settings so a new term can be re-synced without a reset.
 function clearSemesterStart() {
@@ -6279,18 +6171,6 @@ function midtermPlan(mt = S.midterm, now = new Date()) {
   return { ...base, past: false, schedule, today: schedule[0] };
 }
 
-// The Twist for a unit — the whole reason drilling for a midterm is worth doing
-// at MCAT depth. Returns the two halves of the contrast, or null.
-function unitTwist(unit) {
-  if (!unit) return null;
-  const qs = QUESTIONS.filter(q => q.topic === unit.topicId &&
-                                   (q.subtopic || SUBTOPIC_TAGS[q.id]) === unit.subId &&
-                                   twistTextFor(q));
-  if (!qs.length) return null;
-  const q = qs[0];
-  const parts = splitTwist(twistTextFor(q));
-  return parts.exam ? { ...parts, qId: q.id } : null;
-}
 
 // One label for one entry point. What it says depends on what's already set, but
 // it always opens the same screen — and every variant names the thing it acts on,
@@ -8473,7 +8353,6 @@ function screenComplete() {
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
   const cov     = coverage(S.courses, true);
-  const tt      = todayTopics();
   const pct     = total > 0 ? Math.round(correct / total * 100) : 0;
 
   let scoreHeadline, scoreNote;
@@ -8491,28 +8370,17 @@ function screenComplete() {
     scoreNote     = 'That\'s the point. Hard questions now mean easy points on test day.';
   }
 
-  // Count questions that were previously wrong and got right this session
   const wrong = total - correct;
-  const spacedRepNote = wrong > 0
-    ? `<p style="font-size:13px;color:#8A93A8;margin:-8px 0 16px;line-height:1.5;">Questions you missed will come back. That's how it works.</p>`
-    : '';
 
+  // Questions that had beaten this student before and didn't this time. qStats
+  // was already updated during the session, so this session's right answer is
+  // subtracted back out before asking what the record looked like going in.
   const fixedCount = S.answers.filter(a => {
     if (!a.correct) return false;
     const prev = S.qStats[a.qId];
-    // Was wrong before this session started — check if it had more wrongs than rights
-    // (we already updated qStats during the session, so subtract this session's right)
     if (!prev) return false;
-    const prevRight = prev.right - 1; // remove this session's right answer
-    const prevWrong = prev.wrong;
-    return prevWrong > 0 && prevWrong > prevRight;
+    return prev.wrong > 0 && prev.wrong > prev.right - 1;
   }).length;
-
-  const fixedNote = fixedCount > 0
-    ? `<div style="background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
-        <p style="font-size:13px;color:#4DE3AB;line-height:1.5;">✓ You fixed <strong>${fixedCount} question${fixedCount !== 1 ? 's' : ''}</strong> that had you stumped before. That's what practice is.</p>
-       </div>`
-    : '';
 
   // One closing line, not three stacked cards. Most specific wins: what you
   // actually fixed beats a generic topic read, which beats a spaced-repetition
@@ -9513,17 +9381,6 @@ function render() {
   }
 }
 
-function animatePct(target) {
-  const numEl = document.getElementById('cov-num');
-  const barEl = document.getElementById('cov-bar');
-  if (!numEl || !barEl) return;
-  let v = 0;
-  setTimeout(() => {
-    barEl.style.width = target + '%';
-    const tick = () => { if (v < target) { numEl.textContent = (++v) + '%'; setTimeout(tick, 40); } };
-    tick();
-  }, 250);
-}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 
