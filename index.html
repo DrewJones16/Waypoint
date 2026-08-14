@@ -557,7 +557,9 @@
   /* Complete screen */
   .stats-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    /* Fits however many boxes are actually there. Hard-coding three left an
+       empty column the day one of them was removed. */
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 10px;
     margin: 0 0 20px;
   }
@@ -8282,7 +8284,6 @@ function acctPromptDismiss() {
 function screenComplete() {
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
-  const cov     = coverage(S.courses, true);
   const pct     = total > 0 ? Math.round(correct / total * 100) : 0;
 
   let scoreHeadline, scoreNote;
@@ -8349,14 +8350,13 @@ function screenComplete() {
       </div>
       <div class="map-grid" id="map-mini"></div>
 
+      <!-- Two boxes, both about the session that just ended. Coverage used to
+           sit between them, which said nothing about the last five minutes and
+           repeated a number the Route already owns one tap away. -->
       <div class="stats-row">
         <div class="stat-box">
           <div class="stat-num">${correct}/${total}</div>
           <div class="stat-lbl">today</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-num teal">${cov}%</div>
-          <div class="stat-lbl">covered</div>
         </div>
         <div class="stat-box">
           <div class="stat-num">${S.streak}</div>
