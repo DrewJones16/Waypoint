@@ -7477,7 +7477,7 @@ function claimHTML() {
   const top = items[0];
   const more = items.length > 1 ? ` <span style="color:#8A93A8;">(+${items.length - 1} more in progress)</span>` : '';
   return `
-      <button onclick="go('courses')" style="width:100%;text-align:left;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.22);border-radius:12px;padding:13px 16px;margin-bottom:20px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
+      <button onclick="go('courses')" style="width:100%;text-align:left;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.22);border-radius:12px;padding:13px 16px;margin-bottom:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
         <div style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">In progress</div>
         <p style="font-size:13px;color:#B0B5C8;line-height:1.5;margin:0;">You're taking <strong style="color:#F0F2F8;">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:#F5B36A;">+${top.delta}%</strong> coverage →</p>
       </button>`;
@@ -8303,15 +8303,12 @@ function screenReveal() {
         </div>` : ''}
 
       ${freshnessLineHTML()}
-      <div id="sectioned-map"></div>
-
-      ${claimHTML()}
+      <div id="sectioned-map" style="margin-bottom:22px;"></div>
 
       ${nextCourse && cov > 0 ? `
-        <div style="border:1px dashed rgba(29,158,117,0.4);border-radius:10px;padding:13px 16px;margin-bottom:20px;background:rgba(29,158,117,0.06);">
-          <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;">Next to unlock</div>
-          <p style="font-size:13px;color:#B0B5C8;line-height:1.5;">Add <strong style="color:#F0F2F8;">${nextCourse.name}</strong> and move your route by <strong style="color:#1D9E75;">+${nextCourse.gain}%</strong>.</p>
-        </div>` : ''}
+        <p style="font-size:13px;color:#8A93A8;line-height:1.6;margin:0 0 22px;">Next to unlock: add <strong style="color:#F0F2F8;">${nextCourse.name}</strong> and move your route by <strong style="color:#1D9E75;">+${nextCourse.gain}%</strong>.</p>` : ''}
+
+      ${claimHTML()}
 
       <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} onclick="startSession()">Practice from what you know →</button>
       ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
