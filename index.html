@@ -557,7 +557,9 @@
   /* Complete screen */
   .stats-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    /* Fits however many boxes are actually there. Hard-coding three left an
+       empty column the day one of them was removed. */
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 10px;
     margin: 0 0 20px;
   }
@@ -4895,15 +4897,6 @@ function buildSession() {
   return [...needsWork.slice(0, 2), ...fresh].slice(0, Math.min(5, pool.length));
 }
 
-function wrongCount() {
-  // How many questions in the covered pool still need work
-  const covered = new Set(TOPICS.filter(t => t.course === null || (t.course && S.courses.has(t.course))).map(t => t.id));
-  return QUESTIONS.filter(q => {
-    if (!covered.has(q.topic)) return false;
-    const st = S.qStats[q.id];
-    return st && st.wrong > 0 && st.wrong > st.right;
-  }).length;
-}
 
 function todayTopics() {
   return new Set(S.answers.map(a => {
@@ -4970,11 +4963,6 @@ function weeksAgo(days) {
   return w <= 0 ? 'recently' : w === 1 ? '1 week ago' : `${w} weeks ago`;
 }
 
-function dismissNudge(topicId) {
-  S.nudgeDismissed[topicId] = isoDate();
-  save();
-  render();
-}
 
 // ── MAP RENDERER ──────────────────────────────────────────────────────────────
 
@@ -5190,84 +5178,10 @@ function sectionedMapHTML() {
        + (locked   ? `<div class="section-divider"></div>` + head('Still to unlock') + locked : '');
 }
 
-// ── SPARKLINE ─────────────────────────────────────────────────────────────────
-
-function sparklineHTML(history) {
-  if (!history.length) return '';
-  return `
-    <div style="display:flex;align-items:stretch;gap:6px;margin:2px 0 2px;">
-      <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:#767E96;letter-spacing:0.04em;flex-shrink:0;align-self:center;padding-bottom:2px;">accuracy %</div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;gap:4px;align-items:flex-end;height:28px;">
-          ${history.map(s => {
-            const ratio = s.total > 0 ? s.correct / s.total : 0;
-            const h     = Math.round(ratio * 22) + 6; // 6–28px
-            const col   = ratio === 1 ? '#1D9E75' : ratio >= 0.6 ? '#5BC4A0' : '#9FE1CB';
-            return `<div title="${s.correct}/${s.total}" style="width:10px;height:${h}px;background:${col};border-radius:2px;flex-shrink:0;"></div>`;
-          }).join('')}
-        </div>
-        <div style="font-size:11px;color:#767E96;margin-top:4px;">sessions →</div>
-      </div>
-    </div>
-    <div style="font-size:11px;color:#767E96;margin-bottom:16px;">last ${history.length} session${history.length !== 1 ? 's' : ''}</div>`;
-}
-
 // ── JOURNEY PATH (waypoint map) ────────────────────────────────────────────────
 
-// Curriculum order — roughly the order a premed encounters these topics
-const PATH_ORDER = [
-  'cars','cell-bio','genetics','mol-bio','atomic','bonding','stoich','acid-base',
-  'physio','neuro','thermo','orgo','orgo2','physics','physics2','psych','soc','research','biochem'
-];
 
-function pathNodes() {
-  const SPACING = 58;
-  return PATH_ORDER.map((tid, i) => {
-    const t    = TOPICS.find(x => x.id === tid);
-    const done = t.course === null || S.courses.has(t.course);
-    const x = 26 + i * SPACING;
-    const y = 64 + Math.sin(i * 0.95) * 26;
-    return { tid, t, done, x, y };
-  });
-}
 
-function journeyPathSvg() {
-  const nodes = pathNodes();
-  const w    = 26 + (nodes.length - 1) * 58 + 26;
-  const h    = 132;
-  const here = nodes.find(n => !n.done);
-
-  const segments = nodes.slice(0, -1).map((n, i) => {
-    const next = nodes[i + 1];
-    const traveled = next.done;
-    return `<line x1="${n.x}" y1="${n.y}" x2="${next.x}" y2="${next.y}"
-      stroke="${traveled ? '#1D9E75' : 'rgba(255,255,255,0.12)'}" stroke-width="2"
-      ${traveled ? '' : 'stroke-dasharray="3 5"'} stroke-linecap="round"/>`;
-  }).join('');
-
-  const dots = nodes.map(n => {
-    const isHere = here && here.tid === n.tid;
-    const fill    = n.done ? '#1D9E75' : '#181B26';
-    const stroke  = n.done ? '#1D9E75' : 'rgba(255,255,255,0.2)';
-    const labelY  = n.y > 64 ? n.y + 22 : n.y - 15;
-    const ring    = isHere
-      ? `<circle cx="${n.x}" cy="${n.y}" r="7" fill="none" stroke="#1D9E75" stroke-width="1.5" opacity="0.5">
-           <animate attributeName="r" values="7;14;7" dur="2.2s" repeatCount="indefinite"/>
-           <animate attributeName="opacity" values="0.5;0;0.5" dur="2.2s" repeatCount="indefinite"/>
-         </circle>` : '';
-    const check   = n.done
-      ? `<path d="M${n.x-3} ${n.y} l2.2 2.6 l4.6 -5.6" stroke="#08090C" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : '';
-    return `${ring}
-      <circle cx="${n.x}" cy="${n.y}" r="7" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-      ${check}
-      <text x="${n.x}" y="${labelY}" class="journey-label${n.done ? ' done' : ''}">${n.t.disp}</text>`;
-  }).join('');
-
-  return `<div class="journey-wrap"><svg class="journey-svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
-    ${segments}
-    ${dots}
-  </svg></div>`;
-}
 
 
 
@@ -5347,27 +5261,6 @@ function sectionTag(mcat) {
   return map[mcat] || 'tag-bb';
 }
 
-function getMasteredTopic() {
-  const covered = new Set(TOPICS.filter(t => t.course && S.courses.has(t.course)).map(t => t.id));
-  const byTopic = {};
-  QUESTIONS.forEach(q => {
-    const st = S.qStats[q.id];
-    if (!st || !covered.has(q.topic)) return;
-    if (!byTopic[q.topic]) byTopic[q.topic] = { right: 0, wrong: 0 };
-    byTopic[q.topic].right += st.right;
-    byTopic[q.topic].wrong += st.wrong;
-  });
-  const mastered = Object.entries(byTopic)
-    .filter(([id, st]) => st.right >= 3 && st.right >= st.wrong * 3)
-    .sort((a, b) => b[1].right - a[1].right);
-  if (!mastered.length) return '';
-  const [topicId, st] = mastered[0];
-  const topic = TOPICS.find(t => t.id === topicId);
-  if (!topic) return '';
-  return `<div style="background:#131520;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:13px 16px;margin-bottom:16px;">
-    <p style="font-size:15px;color:#767E96;line-height:1.5;">You're owning <strong style="color:#4DE3AB;">${topic.name}</strong> — right ${st.right} time${st.right !== 1 ? 's' : ''}, no unresolved misses.</p>
-  </div>`;
-}
 
 // ── TERMS: WHEN A COURSE WAS TAKEN ────────────────────────────────────────────
 // A premed's history runs in semesters, not years — "Fall 2025" is how they'd say
@@ -5438,13 +5331,6 @@ function courseTerm(id) {
   return TERM_RE.test(t || '') ? t : null;
 }
 
-// Done courses still missing a term. The Route offers these a chip; nothing else
-// in the app changes because of them.
-function untaggedCourses() {
-  return COURSES.filter(c => S.courses.has(c.id)
-                          && S.courseStatus[c.id] !== 'in-progress'
-                          && !courseTerm(c.id));
-}
 
 // ── THE "WHEN DID YOU TAKE IT?" PICKER ────────────────────────────────────────
 // One row of chips, most recent first, one tap, and a way out. Six terms — two
@@ -5787,39 +5673,6 @@ function seasonPhrase(iso) {
                                          : `${SEASONS[d.getUTCMonth()]} ${yr}`;
 }
 
-// ── SCREEN RENDERERS ──────────────────────────────────────────────────────────
-
-function sectionBarsHTML() {
-  const SECS = [
-    { label:'Bio & Biochem',  color:'#1D9E75', color2:'#2DD69B', tids:['cell-bio','genetics','mol-bio','biochem','physio','neuro']            },
-    { label:'Chem & Physics', color:'#60A5FA', color2:'#8AC4FF', tids:['atomic','bonding','stoich','acid-base','thermo','orgo','orgo2','physics','physics2']      },
-    { label:'Psych & Soc',    color:'#A78BFA', color2:'#C4B5FD', tids:['psych','soc','research']                                              },
-  ];
-  const bars = SECS.map(sec => {
-    const totalW = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t ? t.w : 0); }, 0);
-    const covW   = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t && t.course && S.courses.has(t.course) ? t.w * courseCredit(t.course) : 0); }, 0);
-    const pct    = totalW > 0 ? Math.round(covW / totalW * 100) : 0;
-    if (pct === 0) return ''; // hide sections with no progress
-    return `<div style="margin-bottom:11px;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <span style="font-size:13px;font-weight:600;color:#767E96;">${sec.label}</span>
-        <span style="font-size:13px;font-weight:700;color:${sec.color};">${pct}%</span>
-      </div>
-      <div style="height:7px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
-        <div style="width:${pct}%;height:100%;background:linear-gradient(90deg, ${sec.color}, ${sec.color2});border-radius:4px;transition:width 0.9s var(--ease);"></div>
-      </div>
-    </div>`;
-  });
-  bars.push(`<div style="margin-bottom:4px;">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-      <span style="font-size:13px;font-weight:600;color:#767E96;">CARS (reading)</span>
-      <span style="font-size:11px;color:#8A93A8;font-style:italic;">ongoing</span>
-    </div>
-    <div style="height:5px;border-radius:3px;background:repeating-linear-gradient(-45deg, rgba(245,158,11,0.34) 0, rgba(245,158,11,0.34) 4px, rgba(245,158,11,0.09) 4px, rgba(245,158,11,0.09) 8px);"></div>
-  </div>`);
-  return `<div style="margin:8px 0 16px;">${bars.join('')}</div>`;
-}
-
 // ── SEMESTER SYNC ─────────────────────────────────────────────────────────────
 // Turns "when did your semester start?" into "here's what your class is covering
 // this week, at MCAT depth." The pacing table is a typical sequence, so every
@@ -6022,15 +5875,6 @@ function screenPace() {
     </div>`;
 }
 
-// True once we should ask for the semester start: they have a class in progress
-// that we have a pacing table for, and they haven't answered or dismissed yet.
-function shouldAskSemesterStart() {
-  if (S.semStart || S.semPrompt === 'dismissed') return false;
-  // A syllabus is a schedule without an anchor — it says what week 6 covers,
-  // not which week it is now. So a syllabus course needs the start date at
-  // least as much as a pacing-table one does.
-  return [...S.courses].some(c => S.courseStatus[c] === 'in-progress' && (PACING[c] || S.syllabus[c]));
-}
 
 function saveSemesterStart(value) {
   if (!value) return;
@@ -6043,11 +5887,6 @@ function saveSemesterStart(value) {
   render();
 }
 
-function dismissSemesterPrompt() {
-  S.semPrompt = 'dismissed';
-  save();
-  render();
-}
 
 // Offered from Settings so a new term can be re-synced without a reset.
 function clearSemesterStart() {
@@ -6334,18 +6173,6 @@ function midtermPlan(mt = S.midterm, now = new Date()) {
   return { ...base, past: false, schedule, today: schedule[0] };
 }
 
-// The Twist for a unit — the whole reason drilling for a midterm is worth doing
-// at MCAT depth. Returns the two halves of the contrast, or null.
-function unitTwist(unit) {
-  if (!unit) return null;
-  const qs = QUESTIONS.filter(q => q.topic === unit.topicId &&
-                                   (q.subtopic || SUBTOPIC_TAGS[q.id]) === unit.subId &&
-                                   twistTextFor(q));
-  if (!qs.length) return null;
-  const q = qs[0];
-  const parts = splitTwist(twistTextFor(q));
-  return parts.exam ? { ...parts, qId: q.id } : null;
-}
 
 // One label for one entry point. What it says depends on what's already set, but
 // it always opens the same screen — and every variant names the thing it acts on,
@@ -7532,88 +7359,18 @@ function claimHTML() {
   const top = items[0];
   const more = items.length > 1 ? ` <span style="color:#8A93A8;">(+${items.length - 1} more in progress)</span>` : '';
   return `
-      <button onclick="go('courses')" style="width:100%;text-align:left;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.22);border-radius:12px;padding:13px 16px;margin-bottom:20px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
+      <button onclick="go('courses')" style="width:100%;text-align:left;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.22);border-radius:12px;padding:13px 16px;margin-bottom:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
         <div style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">In progress</div>
         <p style="font-size:13px;color:#B0B5C8;line-height:1.5;margin:0;">You're taking <strong style="color:#F0F2F8;">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:#F5B36A;">+${top.delta}%</strong> coverage →</p>
       </button>`;
 }
 
-function dailyTwistHTML() {
-  const d = getDailyTwist();
-  if (!d) return '';
-  const { q, topic, text, teaser } = d;
-  // One impression per session when the card actually renders — pairs with
-  // twist_of_day_drill to give a view->drill conversion rate in Plausible.
-  // S._twistViewFired is transient (not persisted), so it resets each app open.
-  if (!S._twistViewFired && window.plausible) {
-    S._twistViewFired = true;
-    plausible('twist_of_day_view', { props: { topic: topic ? topic.id : 'na' } });
-  }
-  const parts = splitTwist(text);
-  const tag = topic ? `<span class="q-tag ${sectionTag(topic.mcat)}">${sectionIcon(topic.mcat)}${topic.disp}</span>` : '';
-  const body = parts.exam ? `
-        <div style="margin-bottom:11px;">
-          <div style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">In class</div>
-          <p style="font-size:13px;color:#B0B5C8;line-height:1.5;margin:0;">${parts.cls}</p>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">On the MCAT</div>
-          <p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${parts.exam}</p>
-        </div>`
-    : `<p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${text}</p>`;
-  const drill = (topic && !teaser)
-    ? `<div style="display:flex;align-items:center;gap:18px;margin-top:2px;margin-bottom:-12px;flex-wrap:wrap;">
-         <button style="background:none;border:none;font-size:13px;color:#A78BFA;font-weight:600;cursor:pointer;text-align:left;padding:0;min-height:44px;display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent;" onclick="twistDrill('${topic.id}', '${q.id}')">Drill ${topic.name} while it's fresh →</button>
-         <button style="background:none;border:none;font-size:13px;color:#767E96;font-weight:600;cursor:pointer;padding:0;min-height:44px;display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent;" onclick="shareTwistCard(this)">Share</button>
-       </div>`
-    : '';
-  return card('#A78BFA', 'Today\'s MCAT Twist', '', body + drill, '', { gap: 24, aside: tag });
-}
 
-// Drill straight from the daily Twist — tracked separately so we can measure
-// whether surfacing the Twist on Home actually drives practice.
-function twistDrill(topicId, qId) {
-  if (window.plausible) plausible('twist_of_day_drill', { props: { topic: topicId } });
-  startQuickLog(topicId, null, qId || null);
-}
 
 // Curated, beginner-relatable twists for the landing page — a cold visitor has no
 // courses selected, so we show an intro-bio example anyone recognizes (never a
 // scary advanced one). Rotates daily so repeat visitors see something fresh.
-const SHOWCASE_TWISTS = ['b02', 'b06', 'b38', 'b44'];
-function getShowcaseTwist() {
-  const pool = SHOWCASE_TWISTS.map(id => QUESTIONS.find(q => q.id === id)).filter(q => q && twistTextFor(q));
-  if (!pool.length) return null;
-  const seed = isoDate().replace(/-/g, '');
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const q = pool[h % pool.length];
-  return { q, topic: TOPICS.find(t => t.id === q.topic), text: twistTextFor(q) };
-}
 
-// Landing-page showcase of the Twist — the differentiator, shown before signup so a
-// stranger sees the magic that no competitor offers.
-function landingTwistHTML() {
-  const d = getShowcaseTwist();
-  if (!d) return '';
-  const parts = splitTwist(d.text);
-  if (!parts.exam) return '';
-  return `
-      <div style="margin-bottom:20px;">
-        <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">The part no one warns you about</div>
-        <div style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.26);border-radius:12px;padding:16px 18px;">
-          <div style="margin-bottom:11px;">
-            <div style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">In class</div>
-            <p style="font-size:13px;color:#B0B5C8;line-height:1.5;margin:0;">${parts.cls}</p>
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">On the MCAT</div>
-            <p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${parts.exam}</p>
-          </div>
-        </div>
-        <p style="font-size:13px;color:#8A93A8;line-height:1.6;margin-top:10px;">Waypoint shows you this gap for every topic you cover — so on test day, the twist is never a surprise.</p>
-      </div>`;
-}
 
 // ── TODAY ─────────────────────────────────────────────────────────────────────
 // Home answers exactly one question: what should I do right now? Four systems
@@ -8110,8 +7867,12 @@ function toggleCourseExpand(courseId) {
 }
 
 // A single authoritative "how your % is calculated" view.
-// Rendered inline on Route rather than as its own screen — 'how does this add
-// up' is a detail of the route, not a separate destination.
+//
+// This used to render inline on the Route behind a toggle, on the reasoning that
+// 'how does this add up' is a detail of the route rather than a destination.
+// True — but it sat there beside two other explainers, and all three are read
+// once and scrolled past forever. The Route answers one question now, and this
+// is not it. It lives on screenCoverage() with the other two, one tap away.
 function breakdownHTML() {
   const cov = coverage(S.courses, true);
   const sections = MCAT_SECTIONS.map(sec => {
@@ -8156,6 +7917,39 @@ function breakdownHTML() {
         <p style="font-size:11px;color:#767E96;line-height:1.55;margin-top:10px;">✓ done · ½ taking now (counts half until you finish) · · not yet · ~ ongoing.</p>
         <p style="font-size:11px;color:#767E96;line-height:1.6;margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">Sources: section weights follow the <a href="https://students-residents.aamc.org/whats-mcat-exam/publication-chapters/whats-mcat-exam" target="_blank" rel="noopener" style="color:#767E96;text-decoration:underline;">AAMC MCAT content outline</a>; typical-year coverage follows the <a href="https://medschoolinsiders.com/pre-med/premed-requirements/" target="_blank" rel="noopener" style="color:#767E96;text-decoration:underline;">standard premed course sequence</a> — a typical course load, not a survey of students.</p>
       </div>
+    </div>`;
+}
+
+// The one door. Three explainers that each answered "how does this system work"
+// used to sit on the Route between the ring and the map, charging every scroll
+// for an answer a student needs once. They are unchanged here — same breakdown,
+// same CARS note, same prereq guidance — just no longer in the way.
+function screenCoverage() {
+  return `
+    <div class="screen" style="padding-bottom:40px;">
+      <div class="brief-topbar">
+        <button onclick="go('reveal')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-family:inherit;font-size:15px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back
+        </button>
+      </div>
+
+      <p class="label">Your route</p>
+      <h2 style="margin-bottom:6px;">How coverage works.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:4px;">Courses map to 79% of the exam. The other 21% is CARS — a reading skill, not a topic to unlock.</p>
+
+      ${breakdownHTML()}
+
+      <div class="section-divider"></div>
+      <p class="label" style="margin-bottom:10px;">Which classes do I still need?</p>
+      <div style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:24px;">
+        <p style="margin:0 0 8px;"><strong style="color:#4DE3AB;">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
+        <p style="margin:0 0 8px;"><strong style="color:#F5B36A;">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
+        <p style="margin:0;"><strong style="color:#A78BFA;">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
+        <p style="font-size:11px;color:#767E96;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
+      </div>
+
+      <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
     </div>`;
 }
 
@@ -8316,42 +8110,17 @@ function screenReveal() {
             </div>
           </div>
           <div style="flex:1;min-width:0;">
-            <p style="font-size:13px;color:#8A93A8;line-height:1.5;">${S.totalAnswered > 0 ? `${S.totalAnswered} question${S.totalAnswered !== 1 ? 's' : ''} answered.` : 'Your first session is ready.'}</p>
-            <button onclick="S._showBreakdown=!S._showBreakdown;render();" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;text-align:left;-webkit-tap-highlight-color:transparent;">${S._showBreakdown ? 'Hide the breakdown' : 'See how this adds up →'}</button>
-            <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:6px;">Courses map to 79% of the exam. The other 21% is CARS — a reading skill, not a topic to unlock.</p>
+            <button onclick="go('coverage')" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;text-align:left;-webkit-tap-highlight-color:transparent;">How coverage works →</button>
           </div>
         </div>` : ''}
-
-      ${S._showBreakdown ? breakdownHTML() : ''}
-
-      ${cov > 0 ? `
-        <details style="margin:10px 0 18px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:11px 14px;">
-          <summary style="cursor:pointer;font-size:13px;color:#8A93A8;font-weight:600;list-style:none;-webkit-tap-highlight-color:transparent;">Which classes do I still need?</summary>
-          <div style="font-size:13px;color:#767E96;line-height:1.6;margin-top:11px;">
-            <p style="margin:0 0 8px;"><strong style="color:#4DE3AB;">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
-            <p style="margin:0 0 8px;"><strong style="color:#F5B36A;">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
-            <p style="margin:0;"><strong style="color:#A78BFA;">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
-            <p style="font-size:11px;color:#767E96;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
-          </div>
-        </details>` : ''}
 
       ${freshnessLineHTML()}
-      <div id="sectioned-map"></div>
-
-      ${cov > 0 ? `
-        <div class="section-divider"></div>
-        <p class="label" style="margin-bottom:6px;">Your edge so far</p>
-        ${sectionBarsHTML()}
-        ${S.sessionHistory.length > 1 ? sparklineHTML(S.sessionHistory) : ''}
-      ` : ''}
-
-      ${claimHTML()}
+      <div id="sectioned-map" style="margin-bottom:22px;"></div>
 
       ${nextCourse && cov > 0 ? `
-        <div style="border:1px dashed rgba(29,158,117,0.4);border-radius:10px;padding:13px 16px;margin-bottom:20px;background:rgba(29,158,117,0.06);">
-          <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;">Next to unlock</div>
-          <p style="font-size:13px;color:#B0B5C8;line-height:1.5;">Add <strong style="color:#F0F2F8;">${nextCourse.name}</strong> and move your route by <strong style="color:#1D9E75;">+${nextCourse.gain}%</strong>.</p>
-        </div>` : ''}
+        <p style="font-size:13px;color:#8A93A8;line-height:1.6;margin:0 0 22px;">Next to unlock: add <strong style="color:#F0F2F8;">${nextCourse.name}</strong> and move your route by <strong style="color:#1D9E75;">+${nextCourse.gain}%</strong>.</p>` : ''}
+
+      ${claimHTML()}
 
       <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} onclick="startSession()">Practice from what you know →</button>
       ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
@@ -8515,8 +8284,6 @@ function acctPromptDismiss() {
 function screenComplete() {
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
-  const cov     = coverage(S.courses, true);
-  const tt      = todayTopics();
   const pct     = total > 0 ? Math.round(correct / total * 100) : 0;
 
   let scoreHeadline, scoreNote;
@@ -8534,28 +8301,17 @@ function screenComplete() {
     scoreNote     = 'That\'s the point. Hard questions now mean easy points on test day.';
   }
 
-  // Count questions that were previously wrong and got right this session
   const wrong = total - correct;
-  const spacedRepNote = wrong > 0
-    ? `<p style="font-size:13px;color:#8A93A8;margin:-8px 0 16px;line-height:1.5;">Questions you missed will come back. That's how it works.</p>`
-    : '';
 
+  // Questions that had beaten this student before and didn't this time. qStats
+  // was already updated during the session, so this session's right answer is
+  // subtracted back out before asking what the record looked like going in.
   const fixedCount = S.answers.filter(a => {
     if (!a.correct) return false;
     const prev = S.qStats[a.qId];
-    // Was wrong before this session started — check if it had more wrongs than rights
-    // (we already updated qStats during the session, so subtract this session's right)
     if (!prev) return false;
-    const prevRight = prev.right - 1; // remove this session's right answer
-    const prevWrong = prev.wrong;
-    return prevWrong > 0 && prevWrong > prevRight;
+    return prev.wrong > 0 && prev.wrong > prev.right - 1;
   }).length;
-
-  const fixedNote = fixedCount > 0
-    ? `<div style="background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
-        <p style="font-size:13px;color:#4DE3AB;line-height:1.5;">✓ You fixed <strong>${fixedCount} question${fixedCount !== 1 ? 's' : ''}</strong> that had you stumped before. That's what practice is.</p>
-       </div>`
-    : '';
 
   // One closing line, not three stacked cards. Most specific wins: what you
   // actually fixed beats a generic topic read, which beats a spaced-repetition
@@ -8594,14 +8350,13 @@ function screenComplete() {
       </div>
       <div class="map-grid" id="map-mini"></div>
 
+      <!-- Two boxes, both about the session that just ended. Coverage used to
+           sit between them, which said nothing about the last five minutes and
+           repeated a number the Route already owns one tap away. -->
       <div class="stats-row">
         <div class="stat-box">
           <div class="stat-num">${correct}/${total}</div>
           <div class="stat-lbl">today</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-num teal">${cov}%</div>
-          <div class="stat-lbl">covered</div>
         </div>
         <div class="stat-box">
           <div class="stat-num">${S.streak}</div>
@@ -9408,7 +9163,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -9484,13 +9239,14 @@ function render() {
     case 'pace':    html += screenPace();    break;
     case 'examplan': html += screenExamPlan(); break;
     case 'syllabus': html += screenSyllabus(); break;
+    case 'coverage': html += screenCoverage(); break;
     case 'quicklog':          html += screenQuickLog();         break;
     // Retired: topic and subtopic are one screen now. A stale S.screen (an
     // interrupted session, a tab left open across the deploy) lands on it.
     case 'quicklog-subtopic': S.screen = 'quicklog'; html += screenQuickLog(); break;
     case 'quicklogdone':      html += screenQuickLogDone();     break;
-    // A retired screen name (an old bookmark, or 'breakdown' now that it lives
-    // inline on Route) must never render an empty shell.
+    // A retired screen name — an old bookmark, or 'breakdown' from before the
+    // explainers moved to 'coverage' — must never render an empty shell.
     default: S.screen = 'brief'; html += screenBrief(); break;
   }
 
@@ -9555,17 +9311,6 @@ function render() {
   }
 }
 
-function animatePct(target) {
-  const numEl = document.getElementById('cov-num');
-  const barEl = document.getElementById('cov-bar');
-  if (!numEl || !barEl) return;
-  let v = 0;
-  setTimeout(() => {
-    barEl.style.width = target + '%';
-    const tick = () => { if (v < target) { numEl.textContent = (++v) + '%'; setTimeout(tick, 40); } };
-    tick();
-  }, 250);
-}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 
