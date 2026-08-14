@@ -6580,7 +6580,7 @@ function screenMidterm() {
         return `
       <div class="section-divider"></div>
       <p class="label" style="margin-bottom:6px;">Your syllabus</p>
-      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Waypoint paces your classes from a typical schedule. Hand over the real one and it follows your actual weeks instead.</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Waypoint paces your classes from a typical schedule. Give it the real one and it maps your actual weeks onto MCAT topics instead.</p>
       ${live.map(c => `
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;background:#131520;border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:11px 13px;margin-bottom:8px;">
           <span style="font-size:13px;color:#F0F2F8;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;">${c.name}</span>
@@ -6654,6 +6654,11 @@ function sanitizeSyllabus(raw, courseId) {
       unitIds: Array.isArray(w.unitIds)
         ? [...new Set(w.unitIds.filter(id => typeof id === 'string' && known.has(id)))]
         : [],
+      // Absent means this was saved before per-week confidence existed. Those
+      // schedules were already read and accepted by the student, so the honest
+      // default here is 'high' — the opposite of the server's, where an absent
+      // value means a fresh answer nobody has checked yet.
+      confidence: w.confidence === 'low' ? 'low' : 'high',
     };
   }).filter(Boolean).sort((a, b) => a.week - b.week);
   if (!weeks.length) return null;
@@ -6710,7 +6715,7 @@ async function parseSyllabus(courseId, payload) {
 
 function openSyllabus(courseId) {
   S.syl = { courseId, phase: authSession() ? 'paste' : 'signin',
-            text: '', file: null, error: '', result: null, picker: null };
+            text: '', file: null, pages: [], error: '', result: null, picker: null };
   if (window.plausible) plausible('syllabus_open', { props: { course: courseId } });
   go('syllabus');
 }
@@ -6745,6 +6750,7 @@ function sylPickFile(input) {
     const b64 = String(reader.result || '').replace(/^data:[^,]*,/, '');
     if (!b64) { S.syl.error = 'That file came through empty. Try it again.'; return render(); }
     S.syl.file  = { name: file.name, size: file.size, base64: b64 };
+    S.syl.pages = [];              // a PDF and photos are different requests
     S.syl.error = '';
     render();
   };
@@ -6763,6 +6769,117 @@ function sylClearFile() {
   render();
 }
 
+// ── The camera path ───────────────────────────────────────────────────────────
+// Paste and PDF both assume the syllabus is a file on the device the student is
+// holding. Often it isn't: it's a printout in a binder, a handout from advising,
+// a page projected in a club meeting. A photo is how most people would actually
+// reach for this, and it's the version that works when someone says "try this
+// right now" in a room full of premeds.
+//
+// Multi-page from the start, because a schedule routinely runs onto a second or
+// third page and a student who can only send one will send the wrong one.
+
+const SYL_MAX_PAGES   = 6;
+// The API downsamples to ~1568px on the long edge before the model ever sees an
+// image, so anything larger is bytes and tokens spent on pixels nobody reads.
+// A letter page at this size lands around 140 DPI, which holds a printed
+// schedule table comfortably.
+const SYL_IMG_EDGE    = 1600;
+const SYL_IMG_QUALITY = 0.8;
+
+// Camera capture only makes sense where there's a camera to point. On a desktop
+// the `capture` attribute is ignored and the button would just be a second, more
+// confusing file picker — so the desktop screen keeps exactly the two options it
+// has today, in the order it has them.
+function sylCanCapture() {
+  return typeof navigator !== 'undefined' &&
+         (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+}
+
+// A modern phone photo is 3-8MB, and six of them would blow past the request
+// limit while buying nothing. Resizing happens here rather than server-side
+// because the upload is the slow part on a phone in a lecture hall.
+//
+// Browsers apply EXIF orientation when drawing an <img>, so a shot taken
+// sideways lands upright without this code knowing anything about EXIF.
+function sylShrink(file, cb) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    try {
+      const long  = Math.max(img.naturalWidth, img.naturalHeight);
+      const scale = long > SYL_IMG_EDGE ? SYL_IMG_EDGE / long : 1;
+      const c = document.createElement('canvas');
+      c.width  = Math.max(1, Math.round(img.naturalWidth  * scale));
+      c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const b64 = c.toDataURL('image/jpeg', SYL_IMG_QUALITY).replace(/^data:[^,]*,/, '');
+      cb(b64 && b64.length > 100 ? b64 : null);
+    } catch (e) {
+      console.warn('[Waypoint] photo resize failed:', e);
+      cb(null);
+    }
+  };
+  // An iPhone hands over JPEG even when the library holds HEIC, but a format the
+  // browser can't decode has to say so rather than silently dropping a page.
+  img.onerror = () => { URL.revokeObjectURL(url); cb(null); };
+  img.src = url;
+}
+
+function sylPickPhoto(input) {
+  const file = input && input.files && input.files[0];
+  input.value = '';                     // so re-shooting after a remove still fires
+  if (!file || !S.syl) return;
+  const d = S.syl;
+  d.pages = d.pages || [];
+
+  if (d.pages.length >= SYL_MAX_PAGES) {
+    d.error = `That's ${SYL_MAX_PAGES} pages, which is plenty for a schedule. Remove one if you want a different shot.`;
+    return render();
+  }
+  if (!/^image\//.test(file.type || '')) {
+    d.error = 'That wasn\'t a photo. Use the PDF button for a file, or paste the schedule.';
+    return render();
+  }
+
+  // Shrinking a big photo takes a moment on an older phone, and a screen that
+  // does nothing after the camera closes reads as a failure.
+  d.error = '';
+  d.busy  = true;
+  render();
+
+  sylShrink(file, (b64) => {
+    if (!S.syl) return;
+    S.syl.busy = false;
+    if (!b64) {
+      S.syl.error = 'Couldn\'t read that photo. Take it again, or paste the schedule instead.';
+      return render();
+    }
+    S.syl.file = null;                  // a photo and a PDF are different requests
+    (S.syl.pages = S.syl.pages || []).push({ base64: b64 });
+    render();
+  });
+}
+
+function sylRemovePage(i) {
+  if (!S.syl || !S.syl.pages) return;
+  S.syl.pages.splice(i, 1);
+  S.syl.error = '';
+  render();
+}
+
+// The way back out of the camera. Without it, capturing a page hides the PDF and
+// paste boxes and the only route to them is tapping Remove once per page — and
+// "paste the text instead" is the advice a photo that won't read has to be able
+// to give.
+function sylClearPages() {
+  if (!S.syl) return;
+  S.syl.pages = [];
+  S.syl.error = '';
+  render();
+}
+
 // The paste box must not re-render while it's being typed into — a render
 // rebuilds the textarea and the caret jumps to the end. Only the button's
 // enabled state changes, so only the button is touched.
@@ -6774,7 +6891,12 @@ function sylPasteInput(el) {
 }
 
 function sylReady(d) {
-  return !!(d && (d.file || (d.text || '').trim().length >= 40));
+  if (!d || d.busy) return false;
+  return !!((d.pages && d.pages.length) || d.file || (d.text || '').trim().length >= 40);
+}
+
+function sylMethod(d) {
+  return (d.pages && d.pages.length) ? 'camera' : d.file ? 'file' : 'paste';
 }
 
 async function runSyllabusParse() {
@@ -6782,12 +6904,19 @@ async function runSyllabusParse() {
   if (!sylReady(d)) return;
   d.phase = 'parsing';
   d.error = '';
+  // Which door they came in by, remembered now because the payload is about to
+  // stop being distinguishable.
+  d.method = sylMethod(d);
   render();
 
-  // A file and a paste are the same request with a different payload — the
-  // parse, the confirm screen and everything after it never learn which it was.
+  // Photos, a file and a paste are the same request with a different payload —
+  // the parse, the confirm screen and everything after it never learn which it
+  // was. Several pages go up as one ordered array: one request, one parse, one
+  // of the student's five for the day, however many pages it took.
   const res = await parseSyllabus(d.courseId,
-    d.file ? { pdfBase64: d.file.base64 } : { text: d.text.trim() });
+    d.method === 'camera' ? { images: d.pages.map(p => p.base64) } :
+    d.method === 'file'   ? { pdfBase64: d.file.base64 }
+                          : { text: d.text.trim() });
   if (!S.syl || S.syl.courseId !== d.courseId) return;   // they left mid-parse
 
   if (!res.ok) {
@@ -6798,6 +6927,33 @@ async function runSyllabusParse() {
   }
   S.syl.result = res;
   S.syl.phase  = 'confirm';
+  render();
+}
+
+// The result screen's drill. Goes through startWeekDrill like the Today card
+// does, so it counts for the streak and records the same way — this is the
+// week's session, reached from a different door.
+function syllabusStartWeek(id) {
+  const u = unitFromId(id);
+  if (!u) return;
+  S.syl = null;
+  startWeekDrill(u.topicId, u.subId);
+}
+
+// Students do this once, with four syllabi open in front of them. The chooser
+// is the hub that keeps them in the flow: finish one, pick the next, never go
+// back out to the Route and in again. It's shown even when only one class is
+// left, because the ticked list is also the answer to "how far through am I".
+function syllabusAddAnother() {
+  if (!unmappedCourses().length) return finishSyllabus();
+  S.syl = { phase: 'choose', courseId: null, text: '', file: null, pages: [],
+            error: '', result: null, picker: null };
+  go('syllabus');
+}
+
+function sylToggleAll() {
+  if (!S.syl) return;
+  S.syl.showAll = !S.syl.showAll;
   render();
 }
 
@@ -6832,26 +6988,122 @@ function acceptSyllabus() {
 
   S.syllabus[d.courseId] = clean;
   save();
-  // Course id only. What a student's syllabus says is theirs, and it is not
-  // something Waypoint needs to know in aggregate to see whether this works.
-  if (window.plausible) plausible('syllabus_accepted', { props: { course: d.courseId } });
+  // Course id and which door they came in by. What a student's syllabus says is
+  // theirs, and it is not something Waypoint needs to know in aggregate to see
+  // whether this works — but whether anyone reaches for the camera decides
+  // whether the camera was worth building, and nothing short of a real number
+  // answers that. No page counts, no file names, no content.
+  if (window.plausible) plausible('syllabus_accepted',
+    { props: { course: d.courseId, method: d.method || 'paste' } });
 
   // A start date Waypoint doesn't have yet is worth one tap to offer, and worth
-  // nothing to insist on — Semester Sync already works without it.
+  // nothing to insist on — Semester Sync already works without it. It's asked
+  // before the result screen because the result reads better with it: knowing
+  // the week turns "first up" into "this week".
   if (d.result.termStart && !S.semStart) { d.phase = 'term'; return render(); }
-  finishSyllabus();
+  showSyllabusResult();
 }
 
 function useSyllabusTermStart() {
   const d = S.syl;
   if (d && d.result && d.result.termStart) { S.semStart = d.result.termStart; save(); }
-  finishSyllabus();
+  showSyllabusResult();
+}
+
+function showSyllabusResult() {
+  if (!S.syl) return finishSyllabus();
+  S.syl.phase = 'done';
+  render();
 }
 
 function finishSyllabus() {
   S.syl = null;
   go('brief');
-  showToast('Syllabus saved. Today follows your real schedule now.');
+}
+
+// ── What the syllabus bought them ─────────────────────────────────────────────
+// Accepting used to drop the student back on Today with a toast, which is no
+// reward at all for the one piece of real work this feature asks of them. These
+// answer "what did that just do" in the only three terms that matter: what
+// changed, what to do in the next minute, and where the term ends up.
+
+// Distinct units across the whole schedule. Units are what the app calls "MCAT
+// topics" everywhere a student can see — the exam setup screen already says so.
+function syllabusTopicCount(courseId) {
+  const syl = S.syllabus[courseId];
+  if (!syl) return 0;
+  const seen = new Set();
+  syl.weeks.forEach(w => w.unitIds.forEach(id => seen.add(id)));
+  return seen.size;
+}
+
+// Where the ring lands once this class is finished, using the app's own
+// coverage function rather than a second version of the same arithmetic: flip
+// the status the way the end of term will, measure, put it back.
+function coverageAfterCourse(courseId) {
+  const prev = S.courseStatus[courseId];
+  S.courseStatus[courseId] = 'completed';
+  try { return coverage(S.courses, true); }
+  finally {
+    if (prev === undefined) delete S.courseStatus[courseId];
+    else S.courseStatus[courseId] = prev;
+  }
+}
+
+// The month the last mapped week falls in — only nameable when we know when the
+// term began. Without that, the payoff line says "by the end of term" instead of
+// inventing a date.
+function syllabusEndMonth(courseId) {
+  const syl = S.syllabus[courseId];
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(S.semStart || '');
+  if (!syl || !syl.weeks.length || !m) return null;
+  const last = syl.weeks[syl.weeks.length - 1].week;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + (last - 1) * 7));
+  return isNaN(d) ? null : MONTH_NAMES[d.getUTCMonth()];
+}
+
+// The week to put in front of them. Their actual current week when the calendar
+// knows it, otherwise the first week that carries content — either way a real
+// row from their syllabus with a drill attached.
+function syllabusNextUp(courseId) {
+  const syl = S.syllabus[courseId];
+  if (!syl) return null;
+  const base = semesterWeek();
+  if (base !== null) {
+    const ew = effectiveWeek(courseId, base);
+    const row = syl.weeks.find(w => w.week === ew);
+    if (row && row.unitIds.length) return { row, now: true };
+  }
+  const row = syl.weeks.find(w => w.unitIds.length);
+  return row ? { row, now: false } : null;
+}
+
+// ── When a photo only got part of it ──────────────────────────────────────────
+// Photos fail in ways files don't, and the dangerous failure isn't the one that
+// returns nothing — it's the one that returns a schedule. A cropped table, a
+// second page nobody shot, a thumb over the last four weeks: all of those parse
+// cleanly into half a semester, and half a semester saved as the whole thing is
+// a student practising the wrong topic in November with no way to know.
+//
+// Three tells, none of which need the model's help:
+//   - a gap in the numbering, where week 7 follows week 5
+//   - a schedule that starts partway in, at week 4
+//   - a full-term course that came back shorter than a term plausibly is
+const SYL_TERM_WEEKS = 8;
+
+function sylLooksPartial(weeks) {
+  if (!weeks || !weeks.length) return false;
+  const first = weeks[0].week, last = weeks[weeks.length - 1].week;
+  if (last - first + 1 > weeks.length) return true;
+  if (first > 1) return true;
+  return weeks.length < SYL_TERM_WEEKS;
+}
+
+// In-progress classes still waiting for a syllabus.
+function unmappedCourses() {
+  return COURSES.filter(c => S.courses.has(c.id)
+                          && S.courseStatus[c.id] === 'in-progress'
+                          && !S.syllabus[c.id]);
 }
 
 // ── Screens ───────────────────────────────────────────────────────────────────
@@ -6862,11 +7114,15 @@ function syllabusEntryHTML(courseId) {
   const has = !!S.syllabus[courseId];
   const btn = (label, onclick, color) =>
     `<button onclick="${onclick}" style="background:none;border:none;padding:0;min-height:44px;display:flex;align-items:center;font-family:inherit;font-size:11px;font-weight:600;color:${color};cursor:pointer;-webkit-tap-highlight-color:transparent;">${label}</button>`;
-  if (!has) return btn('Have the syllabus? →', `openSyllabus('${courseId}')`, '#2DB88A');
+  // "Have the syllabus?" invited the comparison every competitor sets up: upload
+  // it, get your due dates back. Waypoint doesn't do that and shouldn't imply it
+  // — so the link names the thing it actually produces. A promise the product
+  // can't keep makes a perfect parse feel like a miss.
+  if (!has) return btn('Turn your syllabus into an MCAT plan →', `openSyllabus('${courseId}')`, '#2DB88A');
   // Removing is quiet and sits after replacing, because replacing is what a
   // student who got one week wrong actually wants.
   return `<span style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;">
-      ${btn('✓ Syllabus added — replace it →', `openSyllabus('${courseId}')`, '#4DE3AB')}
+      ${btn('✓ Mapped — replace it →', `openSyllabus('${courseId}')`, '#4DE3AB')}
       ${btn('Remove', `removeSyllabus('${courseId}')`, '#767E96')}
     </span>`;
 }
@@ -6883,7 +7139,18 @@ function removeSyllabus(courseId) {
   showToast('Syllabus removed. Back to the typical pacing.');
 }
 
-function sylWeekRowHTML(w, i, units) {
+// Why this row is being asked about. Derived rather than sent: the two cases
+// the model can be unsure in are distinguishable from the mapping itself, and
+// the contract stays one field wide. The label is already the loudest thing in
+// the row, so the reason doesn't repeat it back.
+function sylReasonHTML(w) {
+  const text = w.unitIds.length
+    ? 'Not certain about this one — worth checking against your syllabus.'
+    : 'Couldn\'t tell which topic this week means — pick one, or leave it empty if it\'s an exam or a break.';
+  return `<p style="font-size:11px;color:#F4B48A;line-height:1.5;margin:0 0 8px;">${text}</p>`;
+}
+
+function sylWeekRowHTML(w, i, units, reason) {
   const open = S.syl.picker === i;
   const chips = w.unitIds.map(id => {
     const u = unitFromId(id);
@@ -6896,7 +7163,8 @@ function sylWeekRowHTML(w, i, units) {
           <span style="font-size:11px;font-weight:700;color:#767E96;text-transform:uppercase;letter-spacing:0.07em;">Week ${w.week}</span>
           ${w.unitIds.length ? `<button onclick="sylDropWeek(${i})" style="background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;">Clear</button>` : ''}
         </div>
-        <p style="font-size:13px;color:#F0F2F8;line-height:1.5;margin:0 0 8px;">${w.label ? esc(w.label) : '<span style="color:#767E96;font-style:italic;">(no topic listed)</span>'}</p>
+        <p style="font-size:13px;color:#F0F2F8;line-height:1.5;margin:0 0 ${reason ? '6px' : '8px'};">${w.label ? esc(w.label) : '<span style="color:#767E96;font-style:italic;">(no topic listed)</span>'}</p>
+        ${reason ? sylReasonHTML(w) : ''}
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
           ${chips}
           ${w.unitIds.length ? '' : `<span style="font-size:11px;color:#767E96;font-style:italic;">No MCAT content this week</span>`}
@@ -6945,12 +7213,77 @@ function screenSyllabus() {
     <div class="screen">
       <div style="height:24px;"></div>
       <p class="label">Reading your syllabus</p>
-      <h2 style="margin-bottom:6px;">Working through the weeks…</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">This takes a few seconds. You'll get to check every week before anything is saved.</p>
+      <h2 style="margin-bottom:6px;">Reading your syllabus — about 20 seconds.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Matching each week's topics to MCAT content. You'll see all of it before anything is saved.</p>
       <div style="${SYL_CARD}padding:16px;display:flex;align-items:center;gap:11px;">
         <span class="pulse-dot" style="width:8px;height:8px;margin:0;"></span>
         <span style="font-size:13px;color:#8A93A8;">${name}</span>
       </div>
+    </div>`;
+  }
+
+  if (d.phase === 'choose') {
+    const live = COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
+    const left = live.filter(c => !S.syllabus[c.id]);
+    if (!left.length) { finishSyllabus(); return ''; }
+
+    return `
+    <div class="screen">
+      ${back}
+      <p class="label">Your semester</p>
+      <h2 style="margin-bottom:6px;">Which class next?</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">${live.length - left.length} of ${live.length} mapped. Stop whenever — the ones you skip keep their typical pacing and Waypoint won't ask again.</p>
+      ${live.map(c => S.syllabus[c.id]
+        // Already done. Shown, not offered: it's here so the set reads at a
+        // glance, and re-parsing by mistake would spend one of five.
+        ? `<div style="${SYL_CARD}padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;gap:9px;opacity:0.6;">
+             <span style="color:#4DE3AB;font-size:13px;">✓</span>
+             <span style="font-size:13px;color:#8A93A8;font-weight:600;">${c.name}</span>
+             <span style="font-size:11px;color:#767E96;margin-left:auto;">${S.syllabus[c.id].weeks.length} weeks</span>
+           </div>`
+        : `<button class="topic-pick-btn" onclick="openSyllabus('${c.id}')">
+             <span class="tp-name" style="color:#F0F2F8;">${c.name}</span>
+             <span class="tp-arrow" style="color:#2DB88A;">→</span>
+           </button>`).join('')}
+      <div style="height:10px;"></div>
+      <button class="btn btn-ghost" onclick="finishSyllabus()">Done for now</button>
+    </div>`;
+  }
+
+  if (d.phase === 'done') {
+    const syl = S.syllabus[d.courseId];
+    if (!syl) { finishSyllabus(); return ''; }
+    const topics = syllabusTopicCount(d.courseId);
+    const next   = syllabusNextUp(d.courseId);
+    const month  = syllabusEndMonth(d.courseId);
+    const end    = coverageAfterCourse(d.courseId);
+    const left   = unmappedCourses();
+
+    return `
+    <div class="screen">
+      <div style="height:24px;"></div>
+      <p class="label">Mapped</p>
+      <h2 style="margin-bottom:6px;">${name} is mapped — ${syl.weeks.length} week${syl.weeks.length !== 1 ? 's' : ''}, ${topics} MCAT topic${topics !== 1 ? 's' : ''}.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Today follows this schedule from here on, week by week.</p>
+
+      ${next ? `
+        <div style="${SYL_CARD}padding:14px 15px;margin-bottom:12px;">
+          <p style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 5px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
+          <p style="font-size:15px;color:#F0F2F8;line-height:1.5;margin:0 0 3px;font-weight:600;">${esc(next.row.label) || 'Week ' + next.row.week}</p>
+          <p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0 0 12px;">${next.row.unitIds.map(id => { const u = unitFromId(id); return u ? u.label : id; }).join(' · ')}</p>
+          <button class="btn btn-primary" style="margin:0;padding:12px 18px;font-size:15px;min-height:44px;" onclick="syllabusStartWeek('${next.row.unitIds[0]}')">Start ${next.now ? 'this week' : 'week ' + next.row.week}'s 5 →</button>
+        </div>` : ''}
+
+      <div style="${SYL_CARD}padding:14px 15px;margin-bottom:18px;">
+        <p style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 5px;">What the term adds up to</p>
+        <p style="font-size:13px;color:#8A93A8;line-height:1.6;margin:0;">${month ? `By ${month}` : 'By the end of term'} this course takes you to <strong style="color:#4DE3AB;">${end}% of MCAT content</strong>.</p>
+      </div>
+
+      ${left.length
+        ? `<button class="btn btn-primary" onclick="syllabusAddAnother()">Add another syllabus →</button>
+           <button class="btn btn-ghost" onclick="finishSyllabus()">Done</button>`
+        : `<p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:12px;">That's every class you're taking this term mapped.</p>
+           <button class="btn btn-primary" onclick="finishSyllabus()">Done</button>`}
     </div>`;
   }
 
@@ -6972,45 +7305,138 @@ function screenSyllabus() {
     // real outcome, and inventing one would be worse than saying so — the
     // student would trust it.
     if (!weeks.length || d.result.confidence === 'low') {
+      // A photo that didn't read is a different problem from a document with no
+      // schedule in it, and it has a different fix: the page was at an angle, or
+      // half out of frame, or it was the grading policy rather than the
+      // schedule. Saying "paste just that part" to someone holding a phone over
+      // a binder is advice they can't take. Their pages are kept either way —
+      // landing them on an empty capture screen would throw away the shots that
+      // were fine.
+      const shots = d.method === 'camera';
+      const many  = shots && (d.pages || []).length > 1;
       return `
     <div class="screen">
       ${back}
       <p class="label">Your syllabus</p>
-      <h2 style="margin-bottom:6px;">Couldn't find a weekly schedule in that.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Waypoint will keep using the typical pacing for ${name}, which works fine. If your syllabus does have a week-by-week table, paste just that part and try again.</p>
-      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">Try another paste →</button>
+      <h2 style="margin-bottom:6px;">${shots
+        ? `Couldn't read a schedule in ${many ? 'those photos' : 'that photo'}.`
+        : 'Couldn\'t find a weekly schedule in that.'}</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">${shots
+        ? `Try again with the schedule page flat and in frame, or paste the text instead. Waypoint will keep using the typical pacing for ${name} until then, which works fine.`
+        : `Waypoint will keep using the typical pacing for ${name}, which works fine. If your syllabus does have a week-by-week table, paste just that part and try again.`}</p>
+      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">${shots ? `Back to your ${many ? 'photos' : 'photo'} →` : 'Try another paste →'}</button>
+      ${shots ? `<button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;sylClearPages();">Paste the schedule instead</button>` : ''}
       <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Leave it</button>
     </div>`;
     }
 
-    const units   = syllabusUnits(d.courseId);
-    const mapped  = weeks.filter(w => w.unitIds.length).length;
+    const units = syllabusUnits(d.courseId);
+
+    // Fifteen equal rows read as homework, and homework at the moment of first
+    // value is where people leave. So the screen asks about the weeks the model
+    // wasn't sure of and folds the rest away — still every one of them editable,
+    // one tap behind a summary. The original index rides along because that's
+    // what the edit handlers address; grouping must not renumber anything.
+    // Only an explicit "high" earns a fold. Anything else — "low", or a response
+    // from a deployment that predates the field — is shown. Getting this
+    // backwards would hide unchecked mappings behind a summary row nobody opens,
+    // which is the one outcome this screen exists to prevent. It is also not
+    // hypothetical: a client that shipped ahead of the function would collapse
+    // every week of every parse.
+    const rows = weeks.map((w, i) => ({ w, i }));
+    const settled = rows.filter(r => r.w.confidence === 'high');
+    const unsure  = rows.filter(r => r.w.confidence !== 'high');
+    const n = a => `${a.length} week${a.length !== 1 ? 's' : ''}`;
+
     return `
     <div class="screen">
       ${back}
-      <p class="label">Check this over</p>
+      <p class="label">${unsure.length ? 'A couple of questions' : 'Check this over'}</p>
       <h2 style="margin-bottom:6px;">${weeks.length} week${weeks.length !== 1 ? 's' : ''} from your ${name} syllabus.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:6px;">The bold line is your syllabus's own words. The chips are what Waypoint will practise that week — tap any of them to change it.</p>
-      <p style="font-size:13px;color:#767E96;line-height:1.55;margin-bottom:16px;">${mapped} of ${weeks.length} week${weeks.length !== 1 ? 's' : ''} mapped to MCAT content. Weeks with none are usually exams or breaks — that's fine to leave empty.</p>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:16px;">${unsure.length
+        ? `${n(settled)} came through clearly. ${n(unsure)} ${unsure.length === 1 ? 'is' : 'are'} ambiguous enough that I'd rather ask than guess — everything else is folded away below.`
+        : 'Every week came through clearly. Open them if you want a look, or save and get going.'}</p>
       ${d.error ? `<p style="font-size:13px;color:#F4B48A;margin-bottom:12px;">${d.error}</p>` : ''}
-      ${weeks.map((w, i) => sylWeekRowHTML(w, i, units)).join('')}
-      <div style="height:6px;"></div>
+
+      ${sylLooksPartial(weeks) ? `
+        <div style="${SYL_CARD}border-color:rgba(244,180,138,0.3);padding:13px 14px;margin-bottom:12px;">
+          <p style="font-size:13px;color:#F4B48A;line-height:1.55;margin:0;">Looks like this might be part of the schedule — ${d.method === 'camera'
+            ? 'add the rest with “Add another page,”'
+            : 'add the rest and read it again,'} or fill the gaps below.</p>
+        </div>` : ''}
+
+      ${unsure.map(r => sylWeekRowHTML(r.w, r.i, units, true)).join('')}
+
+      ${settled.length ? `
+        <button onclick="sylToggleAll()" aria-expanded="${!!d.showAll}" style="width:100%;box-sizing:border-box;${SYL_CARD}padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:inherit;cursor:pointer;text-align:left;min-height:44px;-webkit-tap-highlight-color:transparent;">
+          <span style="font-size:13px;color:#F0F2F8;font-weight:600;"><span style="color:#4DE3AB;">✓</span> ${n(settled)} mapped</span>
+          <span style="font-size:11px;color:#8A93A8;font-weight:600;flex-shrink:0;">${d.showAll ? 'hide them' : 'review them'}</span>
+        </button>
+        ${d.showAll ? settled.map(r => sylWeekRowHTML(r.w, r.i, units, false)).join('') : ''}
+      ` : ''}
+
+      <p style="font-size:13px;color:#767E96;line-height:1.6;margin:14px 0 12px;">Professors drift from their own syllabus. When yours does, <strong style="color:#8A93A8;">Not what you're covering?</strong> on Today puts Waypoint back in step in one tap — so this doesn't have to be perfect.</p>
       <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right — save it →</button>
-      <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;render();">Start over</button>
+      <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;S.syl.showAll=false;render();">${d.method === 'camera'
+        // "Start over" reads as throwing the shots away, which is the opposite
+        // of what this does — and it's the route the partial notice above sends
+        // them down to add the page they missed.
+        ? 'Back to your photos' : 'Start over'}</button>
     </div>`;
   }
 
-  // paste / upload — two ways in, one request out
-  const ready = sylReady(d);
+  // photo / paste / upload — three ways in, one request out
+  const ready  = sylReady(d);
+  const pages  = d.pages || [];
+  const camera = sylCanCapture();
+  const s = n => n === 1 ? '' : 's';
+
+  // Rendered once, outside the branches, because both the first shot and every
+  // "add another page" after it click the same input.
+  const cameraInput = camera ? `
+        <input type="file" id="syl-cam" accept="image/*" capture="environment"
+               style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
+               onchange="sylPickPhoto(this)">` : '';
+
+  const shootBtn = (label) => `
+        <button onclick="document.getElementById('syl-cam').click()" style="width:100%;box-sizing:border-box;background:rgba(45,184,138,0.10);border:1px solid rgba(45,184,138,0.35);border-radius:10px;padding:15px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:13px;font-weight:600;color:#4DE3AB;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          ${label}
+        </button>`;
+
   return `
     <div class="screen">
       ${back}
       <p class="label">Your syllabus</p>
-      <h2 style="margin-bottom:6px;">Hand over your ${name} schedule.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:14px;">Upload the PDF, or paste the week-by-week part. Waypoint reads it, maps each week onto MCAT topics, and shows you the result to check before anything is saved.</p>
+      <h2 style="margin-bottom:6px;">Turn your ${name} syllabus into an MCAT plan.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:8px;">Waypoint reads which topics your class covers each week — not your due dates — and lines them up with the MCAT.</p>
+      <p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:14px;">${camera
+        ? 'Photograph it, upload the PDF, or paste the schedule. You\'ll see the result and can change anything before it\'s saved.'
+        : 'Upload the PDF or paste the schedule. You\'ll see the result and can change anything before it\'s saved.'}</p>
       ${d.error ? `<p style="font-size:13px;color:#F4B48A;line-height:1.55;margin-bottom:12px;">${d.error}</p>` : ''}
+      ${d.busy ? `<p style="font-size:13px;color:#8A93A8;line-height:1.55;margin-bottom:12px;">Shrinking that page…</p>` : ''}
+      ${cameraInput}
 
-      ${d.file ? `
+      ${pages.length ? `
+        <p style="font-size:11px;font-weight:700;color:#767E96;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 9px;">${pages.length} page${s(pages.length)} captured</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          ${pages.map((p, i) => `
+            <div style="width:72px;">
+              <div style="position:relative;">
+                <img src="data:image/jpeg;base64,${p.base64}" alt="Page ${i + 1}"
+                     style="width:72px;height:94px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.12);display:block;background:#131520;">
+                <span style="position:absolute;top:4px;left:4px;background:rgba(10,11,16,0.82);border-radius:5px;padding:1px 6px;font-size:10px;font-weight:700;color:#F0F2F8;">${i + 1}</span>
+              </div>
+              <button onclick="sylRemovePage(${i})" aria-label="Remove page ${i + 1}" style="width:72px;background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:11px;font-weight:600;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;">Remove</button>
+            </div>`).join('')}
+        </div>
+        ${pages.length < SYL_MAX_PAGES
+          ? shootBtn('Add another page →')
+          : `<p style="font-size:13px;color:#767E96;line-height:1.6;margin-bottom:12px;">That's the ${SYL_MAX_PAGES}-page limit, which is plenty for a schedule. Remove one if you want a different shot.</p>`}
+        <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:6px;">Shoot the weekly schedule pages in order. A table that runs onto a second page is fine — Waypoint reads them as one document.</p>
+        <button onclick="sylClearPages()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:11px;font-weight:600;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;">Upload a PDF or paste it instead</button>
+        <div style="height:6px;"></div>
+      ` : d.file ? `
         <div style="${SYL_CARD}padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
           <span style="display:flex;align-items:center;gap:9px;min-width:0;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -7022,6 +7448,7 @@ function screenSyllabus() {
           <button onclick="sylClearFile()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:11px;font-weight:600;color:#767E96;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;">Remove</button>
         </div>
       ` : `
+        ${camera ? shootBtn('Take a photo of it') : ''}
         <button onclick="document.getElementById('syl-file').click()" style="width:100%;box-sizing:border-box;background:none;border:1px dashed rgba(255,255,255,0.18);border-radius:10px;padding:15px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size:13px;font-weight:600;color:#8A93A8;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Upload the PDF
@@ -7036,8 +7463,8 @@ function screenSyllabus() {
           style="width:100%;box-sizing:border-box;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:15px;line-height:1.5;resize:vertical;margin-bottom:10px;-webkit-appearance:none;">${esc(d.text || '')}</textarea>
       `}
 
-      <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:14px;">Waypoint reads your syllabus and keeps the schedule in your account. The syllabus itself isn't stored on our servers.</p>
-      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">Read my syllabus →</button>
+      <p style="font-size:11px;color:#767E96;line-height:1.55;margin-bottom:14px;">Waypoint reads your syllabus and keeps the schedule in your account. ${pages.length ? 'The photos aren\'t stored on our servers.' : 'The syllabus itself isn\'t stored on our servers.'}</p>
+      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">${pages.length ? `Read these ${pages.length} page${s(pages.length)} →` : 'Read my syllabus →'}</button>
     </div>`;
 }
 

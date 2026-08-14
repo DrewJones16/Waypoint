@@ -1,8 +1,9 @@
 // parse-syllabus — Waypoint's first server-side brain.
 //
-// Takes a student's actual syllabus (pasted text or an uploaded PDF) and returns
-// a week-by-week schedule mapped onto the Waypoint units for that course. The
-// model maps; the student confirms on the client before any of it becomes state.
+// Takes a student's actual syllabus — pasted text, an uploaded PDF, or photos of
+// the printed pages — and returns a week-by-week schedule mapped onto the
+// Waypoint units for that course. The model maps; the student confirms on the
+// client before any of it becomes state.
 //
 // Three things this function is careful about:
 //
@@ -50,6 +51,45 @@ const MAX_TEXT     = 200_000;   // a whole syllabus pasted in, with room to spar
 const MAX_UNITS    = 200;
 const MAX_LABEL    = 300;       // one week's topic line, not a paragraph
 
+// Photographed pages. A syllabus is often paper rather than a file — a printout
+// in a binder, a handout from advising, a page projected in a club meeting — and
+// a schedule routinely runs across two or three of them. Those pages are one
+// document: one request, one parse, one quota unit, however many it took.
+const MAX_IMAGES     = 6;
+const MAX_IMAGE_B64  = 3_000_000;    // ~2.2MB a page; the client downscales far under this
+const MAX_IMAGES_B64 = 9_000_000;    // and all of them together
+
+// Refused from the Content-Length header, before the body is ever buffered. A
+// student who skips the client's downscaling and sends six raw 8MB photos
+// deserves a sentence, not a timeout — and reading 48MB into memory to find that
+// out is how the timeout would happen.
+const MAX_REQUEST_BYTES = 14_000_000;
+
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+// What each format's first bytes look like once base64 has eaten them. Sniffing
+// beats the declared type: a mislabelled page would otherwise 400 at the API,
+// after the quota was spent, with nothing useful to tell the student.
+const IMAGE_MAGIC: Array<[string, string]> = [
+  ['/9j/',        'image/jpeg'],
+  ['iVBORw0KGgo', 'image/png'],
+  ['R0lGOD',      'image/gif'],
+  ['UklGR',       'image/webp'],
+];
+
+type Page = { media: string; data: string };
+
+function readImage(raw: unknown): Page | null {
+  if (typeof raw !== 'string') return null;
+  const declared = raw.match(/^data:([^;,]+)[^,]*,/);
+  const data = raw.replace(/^data:[^,]*,/, '').replace(/\s+/g, '');
+  if (!data || data.length > MAX_IMAGE_B64) return null;
+  const sniffed = IMAGE_MAGIC.find(([prefix]) => data.startsWith(prefix));
+  const media = sniffed ? sniffed[1]
+              : (declared && IMAGE_TYPES.has(declared[1]) ? declared[1] : '');
+  return media ? { media, data } : null;
+}
+
 const ALLOWED_ORIGINS = [
   'https://waypointmcat.com',
   'https://www.waypointmcat.com',
@@ -76,11 +116,14 @@ const SCHEDULE_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          week:    { type: 'integer' },
-          label:   { type: 'string' },
-          unitIds: { type: 'array', items: { type: 'string' } },
+          week:       { type: 'integer' },
+          label:      { type: 'string' },
+          unitIds:    { type: 'array', items: { type: 'string' } },
+          // Per-week, distinct from the document-level confidence above: this
+          // one says whether the student needs to look at this row.
+          confidence: { type: 'string', enum: ['high', 'low'] },
         },
-        required: ['week', 'label', 'unitIds'],
+        required: ['week', 'label', 'unitIds', 'confidence'],
         additionalProperties: false,
       },
     },
@@ -89,9 +132,27 @@ const SCHEDULE_SCHEMA = {
   additionalProperties: false,
 };
 
-function buildPrompt(courseName: string, units: Array<{ id: string; label: string }>) {
+// The same contract as SCHEDULE_SCHEMA, written out for the last-ditch attempt
+// that has no schema to enforce it. The prompt names every field but never says
+// "return JSON", because until now it never had to.
+const SHAPE = `Return a single JSON object and nothing else — no preamble, no code fence — in exactly this shape:
+
+{"confidence":"high"|"low","termStart":"YYYY-MM-DD"|null,"weeks":[{"week":1,"label":"the syllabus's own words","unitIds":["unit:id"],"confidence":"high"|"low"}]}`;
+
+function buildPrompt(courseName: string, units: Array<{ id: string; label: string }>, pages: number) {
   const list = units.map(u => `  ${u.id} — ${u.label}`).join('\n');
-  return `You are reading a college course syllabus for ${courseName} and extracting its weekly schedule.
+
+  // Photos fail in ways files don't, and the failures look like success from the
+  // outside: a cropped table still parses into a schedule, just the wrong one.
+  // These two lines are the whole difference between "here is half your
+  // semester, presented as all of it" and an honest answer.
+  const photos = pages ? `
+
+What you are looking at: ${pages} photograph${pages !== 1 ? 's' : ''} of a printed syllabus, in page order. Read them as one document — a schedule table often continues from one page onto the next, and a week split across two photos is still one week.
+
+Photographs go wrong in ways a file doesn't. If glare, an angle, a shadow or a cropped edge means you genuinely cannot read the schedule, return "confidence": "low" and an empty weeks array. Do not reconstruct what an unreadable region probably said. If you can read part of the schedule but the photo plainly cuts it off, return the weeks you can actually read and nothing more — a short honest schedule is recoverable, because the student can photograph the missing page; an invented one is not, because they will never know to.` : '';
+
+  return `You are reading a college course syllabus for ${courseName} and extracting its weekly schedule.${photos}
 
 Map each week of the syllabus to zero or more of these unit ids. These are the only ids that exist; there are no others to choose from:
 
@@ -104,6 +165,10 @@ How to read it:
 - Choose unit ids by what the week actually covers. A week can map to several units, or to one, or to none.
 - Weeks with no course content — exams, review sessions, breaks, holidays, project work, guest lectures — get an empty unitIds array. That is the correct answer for those weeks, not a reason to guess.
 - If a week covers material that has no matching unit in the list above, leave its unitIds empty. Do not stretch an unrelated id to cover it, and do not invent an id.
+- Set each week's "confidence" to say whether a person needs to check that row. This is the single most useful thing you can tell them, because it decides what they read and what they can skip.
+  - "high" when the week's text plainly names its topic and your mapping follows from it, and also when the text plainly says there is no course content — "Midterm exam", "Fall break", "No class". An empty unitIds you are sure about is a high-confidence answer, not a doubt.
+  - "low" when you had to guess: the text is vague or administrative ("Unit 3", "TBD", "Catch-up", "Continued", "Chapter 7" with no subject), it could reasonably map to more than one of the units above, or it looks like real course content that none of the available units covers.
+  - When you are genuinely torn, choose "low". Being asked about a week that was already right costs a student two seconds; a wrong mapping they were never shown costs them a semester of practising the wrong topic.
 - Set "termStart" to the date of the first day of instruction in YYYY-MM-DD form if the syllabus states it or it can be read directly off the schedule. Use null if it doesn't.
 - Set "confidence" to "high" when you found a real weekly schedule you could follow. Set it to "low" when the document has no weekly structure to extract — a policy-only syllabus, a reading list, or something that isn't a syllabus at all. In that case return an empty weeks array. An invented schedule is worse to the student than an honest "couldn't find one", because they will trust it.`;
 }
@@ -130,6 +195,18 @@ function extractJson(raw: string): unknown {
     try { return JSON.parse(s.slice(open, close + 1)); } catch { /* give up */ }
   }
   return null;
+}
+
+// Why an attempt failed, in a form safe to log. API errors describe the shape of
+// a request — an unrecognised parameter, an unsupported schema construct, an
+// account balance — not what was in it, which is the same category of thing the
+// success path already logs. Truncated anyway, because a log line is a diagnosis
+// and not a transcript.
+function errorLabel(e: unknown): string {
+  const err = e as { status?: number; error?: { error?: { type?: string } }; message?: string };
+  const status = err?.status ? `${err.status} ` : '';
+  const type = err?.error?.error?.type ? `${err.error.error.type}: ` : '';
+  return (status + type + String(err?.message || e)).slice(0, 200);
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -166,7 +243,12 @@ function validateSchedule(raw: unknown, knownUnitIds: Set<string>) {
         ? [...new Set(row.unitIds.filter((id): id is string => typeof id === 'string' && knownUnitIds.has(id)))]
         : [];
 
-      return { week, label, unitIds };
+      // Anything that isn't an explicit "high" is low. Over-asking costs the
+      // student a glance; under-asking hides a bad mapping behind a summary row
+      // they never opened, and they practise the wrong topic all term.
+      const confidence = row.confidence === 'high' ? 'high' : 'low';
+
+      return { week, label, unitIds, confidence };
     })
     .filter((w): w is { week: number; label: string; unitIds: string[] } => w !== null)
     .sort((a, b) => a.week - b.week);
@@ -241,6 +323,14 @@ Deno.serve(async (req) => {
   if (userErr || !userId) return fail('Your session expired. Sign in again.', 401, origin);
 
   // ── What did they send? ─────────────────────────────────────────────────────
+  // Size is checked from the header first, so an oversized request costs a
+  // sentence rather than a stalled read that ends in a gateway timeout the
+  // student can't act on.
+  const declaredBytes = Number(req.headers.get('content-length') || 0);
+  if (Number.isFinite(declaredBytes) && declaredBytes > MAX_REQUEST_BYTES) {
+    return fail('That\'s a lot of pages — try fewer, or crop to the schedule.', 413, origin);
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -269,12 +359,30 @@ Deno.serve(async (req) => {
     ? body.pdfBase64.replace(/^data:[^,]*,/, '').replace(/\s+/g, '')
     : '';
 
-  if (!text && !pdfBase64) return fail('Nothing was attached to read.', 400, origin);
+  const rawImages = Array.isArray(body.images) ? body.images : [];
+  if (rawImages.length > MAX_IMAGES) {
+    return fail(`That's more than ${MAX_IMAGES} pages — send the schedule pages on their own.`, 413, origin);
+  }
+  const images = rawImages.map(readImage);
+  // One unreadable page fails the request rather than being dropped: a schedule
+  // silently missing its second page is exactly the outcome the whole photo path
+  // has to avoid, and the student can retake a shot in five seconds.
+  if (images.some(p => p === null)) {
+    return fail('One of those pages didn\'t come through. Retake it, or paste the schedule instead.', 400, origin);
+  }
+  const pages = images as Page[];
+
+  if (!text && !pdfBase64 && !pages.length) return fail('Nothing was attached to read.', 400, origin);
   if (text.length > MAX_TEXT) {
     return fail('That\'s longer than a syllabus — paste just the schedule section.', 413, origin);
   }
   if (pdfBase64.length > MAX_PDF_B64) {
     return fail('That file is too big. Try a PDF under 5MB, or paste the schedule instead.', 413, origin);
+  }
+  // The header check above catches the honest oversized request; this catches the
+  // one that arrived chunked, with no length to check.
+  if (pages.reduce((n, p) => n + p.data.length, 0) > MAX_IMAGES_B64) {
+    return fail('That\'s a lot of pages — try fewer, or crop to the schedule.', 413, origin);
   }
 
   // ── Spend a parse ───────────────────────────────────────────────────────────
@@ -300,8 +408,10 @@ Deno.serve(async (req) => {
   // ── Read it ─────────────────────────────────────────────────────────────────
   const client = new Anthropic({ apiKey });
 
-  // The document block goes before the text block: the model reads the syllabus,
-  // then the instructions about what to do with it.
+  // The syllabus goes before the instructions: the model reads the document,
+  // then what to do with it. Photographed pages keep the order the student shot
+  // them in — a schedule table that runs onto a second page only reads correctly
+  // if page 2 follows page 1.
   const content: unknown[] = [];
   if (pdfBase64) {
     content.push({
@@ -309,10 +419,16 @@ Deno.serve(async (req) => {
       source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 },
     });
   }
+  for (const page of pages) {
+    content.push({
+      type: 'image',
+      source: { type: 'base64', media_type: page.media, data: page.data },
+    });
+  }
   if (text) {
     content.push({ type: 'text', text: `Syllabus:\n\n${text}` });
   }
-  content.push({ type: 'text', text: buildPrompt(courseName, units) });
+  content.push({ type: 'text', text: buildPrompt(courseName, units, pages.length) });
 
   const params = {
     model: MODEL,
@@ -324,30 +440,51 @@ Deno.serve(async (req) => {
     messages: [{ role: 'user', content }],
   };
 
+  // Three attempts, each dropping the most optional thing from the one before.
+  //
+  // This used to be one attempt with a narrow retry: if the beta call failed
+  // with a message containing the word "fallback", try again without it. That
+  // held exactly as long as the API's wording did. Any other reason the first
+  // call could fail — a retired beta, a schema dialect that stopped accepting
+  // some construct, a parameter renamed — took the whole feature down, with the
+  // plain call that would have worked never attempted.
+  //
+  // So the rule is now the honest one: if an attempt fails, for any reason, drop
+  // the most optional thing and go again. Every tier below returns the same
+  // schedule; they differ only in how much of the API's convenience they lean on.
+  //   1. server-side fallbacks + schema-enforced output
+  //   2. schema-enforced output alone
+  //   3. nothing but the prompt — the shape spelled out in words, and
+  //      extractJson() on the way back, which exists for precisely this.
+  const attempts: Array<{ why: string; run: () => Promise<any> }> = [
+    { why: 'beta+schema', run: () => (client as any).beta.messages.create({
+        ...params, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' }) },
+    { why: 'schema', run: () => client.messages.create(params as never) },
+    { why: 'bare', run: () => client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        messages: [{ role: 'user', content: [...content, { type: 'text', text: SHAPE }] }],
+      } as never) },
+  ];
+
   let message;
-  try {
-    // Safety classifiers can decline a request outright. `fallbacks: "default"`
-    // has the API re-run a declined request on its recommended substitute
-    // server-side, so a false positive on someone's biology syllabus costs a
-    // second or two instead of the whole feature. If the beta isn't enabled on
-    // this account the call 400s on the parameter, and we go again without it
-    // rather than failing the parse over a nicety.
-    try {
-      message = await (client as any).beta.messages.create({
-        ...params,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-      });
-    } catch (e) {
-      const msg = String((e as Error)?.message || '');
-      if (!/fallback/i.test(msg)) throw e;
-      console.warn('[parse-syllabus] server-side fallbacks unavailable; retrying without');
-      message = await client.messages.create(params as never);
-    }
-  } catch (e) {
-    console.error('[parse-syllabus] model call failed:', (e as Error).message);
+  const failures: string[] = [];
+  for (const attempt of attempts) {
+    try { message = await attempt.run(); break; }
+    catch (e) { failures.push(`${attempt.why}=${errorLabel(e)}`); }
+  }
+
+  if (!message) {
+    // The API's own words, which describe the shape of the request rather than
+    // anything in it — the same category of thing already logged below. Without
+    // this the only signal a dead feature gives is "502", and every diagnosis
+    // starts from scratch.
+    console.error(`[parse-syllabus] model call failed: ${failures.join(' | ')}`);
     await refund();
     return fail('Couldn\'t read that just now. Waypoint will keep using the typical pacing.', 502, origin);
+  }
+  if (failures.length) {
+    console.warn(`[parse-syllabus] recovered after ${failures.join(' | ')}`);
   }
 
   // A refusal is a real answer, not an error — say so plainly and don't charge
@@ -384,7 +521,10 @@ Deno.serve(async (req) => {
   // Counts only. Never the syllabus, never a label, never the schedule.
   // rawWeeks vs weeks is the load-bearing pair: equal means we kept what the
   // model found, 4 vs 0 means the model did its job and our validation didn't.
-  console.log(`[parse-syllabus] course=${courseId} blocks=[${blocks}] rawWeeks=${rawWeeks} weeks=${schedule.weeks.length} confidence=${schedule.confidence} used=${used}/${DAILY_LIMIT}`);
+  // pages= is the one that matters for photos: a shot that reads as well as the
+  // same syllabus pasted will show the same weeks count, and one that doesn't is
+  // visible here without anyone reading a line of the syllabus.
+  console.log(`[parse-syllabus] course=${courseId} pages=${pages.length} blocks=[${blocks}] rawWeeks=${rawWeeks} weeks=${schedule.weeks.length} confidence=${schedule.confidence} used=${used}/${DAILY_LIMIT}`);
 
   return json({
     ok: true,
