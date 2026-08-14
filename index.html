@@ -7363,82 +7363,12 @@ function claimHTML() {
       </button>`;
 }
 
-function dailyTwistHTML() {
-  const d = getDailyTwist();
-  if (!d) return '';
-  const { q, topic, text, teaser } = d;
-  // One impression per session when the card actually renders — pairs with
-  // twist_of_day_drill to give a view->drill conversion rate in Plausible.
-  // S._twistViewFired is transient (not persisted), so it resets each app open.
-  if (!S._twistViewFired && window.plausible) {
-    S._twistViewFired = true;
-    plausible('twist_of_day_view', { props: { topic: topic ? topic.id : 'na' } });
-  }
-  const parts = splitTwist(text);
-  const tag = topic ? `<span class="q-tag ${sectionTag(topic.mcat)}">${sectionIcon(topic.mcat)}${topic.disp}</span>` : '';
-  const body = parts.exam ? `
-        <div style="margin-bottom:11px;">
-          <div style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">In class</div>
-          <p style="font-size:13px;color:#B0B5C8;line-height:1.5;margin:0;">${parts.cls}</p>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">On the MCAT</div>
-          <p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${parts.exam}</p>
-        </div>`
-    : `<p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${text}</p>`;
-  const drill = (topic && !teaser)
-    ? `<div style="display:flex;align-items:center;gap:18px;margin-top:2px;margin-bottom:-12px;flex-wrap:wrap;">
-         <button style="background:none;border:none;font-size:13px;color:#A78BFA;font-weight:600;cursor:pointer;text-align:left;padding:0;min-height:44px;display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent;" onclick="twistDrill('${topic.id}', '${q.id}')">Drill ${topic.name} while it's fresh →</button>
-         <button style="background:none;border:none;font-size:13px;color:#767E96;font-weight:600;cursor:pointer;padding:0;min-height:44px;display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent;" onclick="shareTwistCard(this)">Share</button>
-       </div>`
-    : '';
-  return card('#A78BFA', 'Today\'s MCAT Twist', '', body + drill, '', { gap: 24, aside: tag });
-}
 
-// Drill straight from the daily Twist — tracked separately so we can measure
-// whether surfacing the Twist on Home actually drives practice.
-function twistDrill(topicId, qId) {
-  if (window.plausible) plausible('twist_of_day_drill', { props: { topic: topicId } });
-  startQuickLog(topicId, null, qId || null);
-}
 
 // Curated, beginner-relatable twists for the landing page — a cold visitor has no
 // courses selected, so we show an intro-bio example anyone recognizes (never a
 // scary advanced one). Rotates daily so repeat visitors see something fresh.
-const SHOWCASE_TWISTS = ['b02', 'b06', 'b38', 'b44'];
-function getShowcaseTwist() {
-  const pool = SHOWCASE_TWISTS.map(id => QUESTIONS.find(q => q.id === id)).filter(q => q && twistTextFor(q));
-  if (!pool.length) return null;
-  const seed = isoDate().replace(/-/g, '');
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const q = pool[h % pool.length];
-  return { q, topic: TOPICS.find(t => t.id === q.topic), text: twistTextFor(q) };
-}
 
-// Landing-page showcase of the Twist — the differentiator, shown before signup so a
-// stranger sees the magic that no competitor offers.
-function landingTwistHTML() {
-  const d = getShowcaseTwist();
-  if (!d) return '';
-  const parts = splitTwist(d.text);
-  if (!parts.exam) return '';
-  return `
-      <div style="margin-bottom:20px;">
-        <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">The part no one warns you about</div>
-        <div style="background:rgba(139,92,246,0.07);border:1px solid rgba(139,92,246,0.26);border-radius:12px;padding:16px 18px;">
-          <div style="margin-bottom:11px;">
-            <div style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">In class</div>
-            <p style="font-size:13px;color:#B0B5C8;line-height:1.5;margin:0;">${parts.cls}</p>
-          </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">On the MCAT</div>
-            <p style="font-size:13px;color:#C4B5FD;line-height:1.55;margin:0;">${parts.exam}</p>
-          </div>
-        </div>
-        <p style="font-size:13px;color:#8A93A8;line-height:1.6;margin-top:10px;">Waypoint shows you this gap for every topic you cover — so on test day, the twist is never a surprise.</p>
-      </div>`;
-}
 
 // ── TODAY ─────────────────────────────────────────────────────────────────────
 // Home answers exactly one question: what should I do right now? Four systems
