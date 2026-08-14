@@ -5190,28 +5190,6 @@ function sectionedMapHTML() {
        + (locked   ? `<div class="section-divider"></div>` + head('Still to unlock') + locked : '');
 }
 
-// ── SPARKLINE ─────────────────────────────────────────────────────────────────
-
-function sparklineHTML(history) {
-  if (!history.length) return '';
-  return `
-    <div style="display:flex;align-items:stretch;gap:6px;margin:2px 0 2px;">
-      <div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:#767E96;letter-spacing:0.04em;flex-shrink:0;align-self:center;padding-bottom:2px;">accuracy %</div>
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;gap:4px;align-items:flex-end;height:28px;">
-          ${history.map(s => {
-            const ratio = s.total > 0 ? s.correct / s.total : 0;
-            const h     = Math.round(ratio * 22) + 6; // 6–28px
-            const col   = ratio === 1 ? '#1D9E75' : ratio >= 0.6 ? '#5BC4A0' : '#9FE1CB';
-            return `<div title="${s.correct}/${s.total}" style="width:10px;height:${h}px;background:${col};border-radius:2px;flex-shrink:0;"></div>`;
-          }).join('')}
-        </div>
-        <div style="font-size:11px;color:#767E96;margin-top:4px;">sessions →</div>
-      </div>
-    </div>
-    <div style="font-size:11px;color:#767E96;margin-bottom:16px;">last ${history.length} session${history.length !== 1 ? 's' : ''}</div>`;
-}
-
 // ── JOURNEY PATH (waypoint map) ────────────────────────────────────────────────
 
 // Curriculum order — roughly the order a premed encounters these topics
@@ -5785,39 +5763,6 @@ function seasonPhrase(iso) {
   const yr = d.getUTCFullYear();
   return yr === new Date().getFullYear() ? `the ${SEASONS[d.getUTCMonth()]}`
                                          : `${SEASONS[d.getUTCMonth()]} ${yr}`;
-}
-
-// ── SCREEN RENDERERS ──────────────────────────────────────────────────────────
-
-function sectionBarsHTML() {
-  const SECS = [
-    { label:'Bio & Biochem',  color:'#1D9E75', color2:'#2DD69B', tids:['cell-bio','genetics','mol-bio','biochem','physio','neuro']            },
-    { label:'Chem & Physics', color:'#60A5FA', color2:'#8AC4FF', tids:['atomic','bonding','stoich','acid-base','thermo','orgo','orgo2','physics','physics2']      },
-    { label:'Psych & Soc',    color:'#A78BFA', color2:'#C4B5FD', tids:['psych','soc','research']                                              },
-  ];
-  const bars = SECS.map(sec => {
-    const totalW = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t ? t.w : 0); }, 0);
-    const covW   = sec.tids.reduce((s, id) => { const t = TOPICS.find(x => x.id === id); return s + (t && t.course && S.courses.has(t.course) ? t.w * courseCredit(t.course) : 0); }, 0);
-    const pct    = totalW > 0 ? Math.round(covW / totalW * 100) : 0;
-    if (pct === 0) return ''; // hide sections with no progress
-    return `<div style="margin-bottom:11px;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <span style="font-size:13px;font-weight:600;color:#767E96;">${sec.label}</span>
-        <span style="font-size:13px;font-weight:700;color:${sec.color};">${pct}%</span>
-      </div>
-      <div style="height:7px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
-        <div style="width:${pct}%;height:100%;background:linear-gradient(90deg, ${sec.color}, ${sec.color2});border-radius:4px;transition:width 0.9s var(--ease);"></div>
-      </div>
-    </div>`;
-  });
-  bars.push(`<div style="margin-bottom:4px;">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-      <span style="font-size:13px;font-weight:600;color:#767E96;">CARS (reading)</span>
-      <span style="font-size:11px;color:#8A93A8;font-style:italic;">ongoing</span>
-    </div>
-    <div style="height:5px;border-radius:3px;background:repeating-linear-gradient(-45deg, rgba(245,158,11,0.34) 0, rgba(245,158,11,0.34) 4px, rgba(245,158,11,0.09) 4px, rgba(245,158,11,0.09) 8px);"></div>
-  </div>`);
-  return `<div style="margin:8px 0 16px;">${bars.join('')}</div>`;
 }
 
 // ── SEMESTER SYNC ─────────────────────────────────────────────────────────────
@@ -8316,7 +8261,6 @@ function screenReveal() {
             </div>
           </div>
           <div style="flex:1;min-width:0;">
-            <p style="font-size:13px;color:#8A93A8;line-height:1.5;">${S.totalAnswered > 0 ? `${S.totalAnswered} question${S.totalAnswered !== 1 ? 's' : ''} answered.` : 'Your first session is ready.'}</p>
             <button onclick="S._showBreakdown=!S._showBreakdown;render();" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;text-align:left;-webkit-tap-highlight-color:transparent;">${S._showBreakdown ? 'Hide the breakdown' : 'See how this adds up →'}</button>
             <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:6px;">Courses map to 79% of the exam. The other 21% is CARS — a reading skill, not a topic to unlock.</p>
           </div>
@@ -8337,13 +8281,6 @@ function screenReveal() {
 
       ${freshnessLineHTML()}
       <div id="sectioned-map"></div>
-
-      ${cov > 0 ? `
-        <div class="section-divider"></div>
-        <p class="label" style="margin-bottom:6px;">Your edge so far</p>
-        ${sectionBarsHTML()}
-        ${S.sessionHistory.length > 1 ? sparklineHTML(S.sessionHistory) : ''}
-      ` : ''}
 
       ${claimHTML()}
 
