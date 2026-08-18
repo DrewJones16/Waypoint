@@ -998,7 +998,7 @@
 <div id="app"><div id="seo-prerender" style="max-width:640px;margin:0 auto;padding:40px 22px 60px;font-family:'Inter',-apple-system,sans-serif;color:#B0B5C8;line-height:1.7;">
     <p style="font-size:15px;font-weight:700;color:#1D9E75;letter-spacing:-0.01em;margin-bottom:18px;">Waypoint</p>
     <h1 style="font-size:30px;font-weight:800;line-height:1.15;letter-spacing:-0.02em;color:#F0F2F8;margin-bottom:14px;">Start preparing for the MCAT with the classes you're already taking</h1>
-    <p style="font-size:16px;color:#8A93A8;margin-bottom:28px;">Waypoint is a free tool for premed students who want to get ahead on the MCAT early — in freshman and sophomore year — by turning the coursework they're already doing into real exam preparation. No account, nothing to buy.</p>
+    <p style="font-size:16px;color:#8A93A8;margin-bottom:28px;">Waypoint is a free tool for premed students who want to get ahead on the MCAT early — in freshman and sophomore year — by turning the coursework they're already doing into real exam preparation. Free, with nothing to buy.</p>
 
     <h2 style="font-size:20px;font-weight:700;color:#F0F2F8;margin:0 0 10px;">When should you start studying for the MCAT?</h2>
     <p style="margin-bottom:22px;">Most advice says to wait until junior year, and that's fair for dedicated prep — you shouldn't grind full-length practice exams as a freshman. But the science the MCAT tests is sitting in your classes <em>right now</em>. General Chemistry, Biology, Organic Chemistry, Physics, Biochemistry, Psychology and Sociology are all MCAT content. If you learn that material a little more deeply the first time you see it, your junior-year prep becomes review instead of a panic. The best time to start isn't "junior year" — it's the moment you're covering the material in class.</p>
@@ -1017,7 +1017,7 @@
     <h2 style="font-size:20px;font-weight:700;color:#F0F2F8;margin:0 0 10px;">What Waypoint does</h2>
     <p style="margin-bottom:24px;">Track your MCAT coverage as you finish courses, drill MCAT-style questions on the topics you're currently learning, and see the "MCAT twist" on every concept — how the exam reframes what you learned in class. It's built for the two years before dedicated prep, so that by the time you open a question bank junior year, a big chunk of it already feels familiar.</p>
 
-    <p style="font-size:14px;color:#767E96;margin-bottom:8px;">Open Waypoint to see your own MCAT coverage — free, no account, about two minutes. (The interactive tracker needs JavaScript enabled.)</p>
+    <p style="font-size:14px;color:#767E96;margin-bottom:8px;">Open Waypoint to see your own MCAT coverage — free, in about two minutes. (The interactive tracker needs JavaScript enabled.)</p>
     <p style="font-size:12px;color:#767E96;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
   </div></div>
 
@@ -7009,7 +7009,7 @@ function screenSyllabus() {
       ${back}
       <p class="label">Your syllabus</p>
       <h2 style="margin-bottom:6px;">This one needs an account.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Your class schedule is worth keeping, so it syncs with your account rather than living in one browser. Everything else in Waypoint works without one.</p>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:18px;">Your class schedule is worth keeping, so it syncs with your account rather than living in one browser. This is the only part of Waypoint that needs one.</p>
       <button class="btn btn-primary" onclick="S.syl=null;go('settings')">Sign in →</button>
       <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Not now</button>
     </div>`;
@@ -7757,7 +7757,7 @@ function accountSectionHTML() {
            style="width:100%;background:#131520;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px;color:#F0F2F8;font-family:inherit;font-size:15px;margin-bottom:10px;">
     <button class="btn btn-primary" ${syncState.status === 'working' ? 'disabled' : ''}
             onclick="sendMagicLink(document.getElementById('auth-email').value)">Email me a sign-in link</button>
-    <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:8px;">Optional — Waypoint works fully without an account, exactly as it does now.</p>`;
+    <p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:8px;">Optional — it's what carries your route to a new phone, a new laptop, and next semester.</p>`;
 }
 
 function setYearFromSettings(year) {
