@@ -347,6 +347,44 @@
   .topic-pick-btn .tp-name { flex: 1; min-width: 0; }
   .topic-pick-btn .tp-arrow { color: #8A93A8; font-size: 15px; flex-shrink: 0; }
 
+  /* Full course picker: the row is one tap, and the only other thing on it is a
+     quiet way to see what the course covers. Nothing competes with selecting. */
+  .cpick-row { display: flex; align-items: center; gap: 4px; }
+  .cpick-row .topic-pick-btn { flex: 1; min-width: 0; margin-bottom: 0; }
+  .cpick-info {
+    flex-shrink: 0; width: 38px; min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; padding: 0;
+    color: #4A5268; cursor: pointer; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cpick-info:hover, .cpick-info.open { color: #8A93A8; }
+  .cpick-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    padding: 2px 6px; border-radius: 6px; flex-shrink: 0; white-space: nowrap;
+  }
+
+  /* Corrections grid: courses down the side, terms across the top, one tap per
+     row. Never a chip that opens a picker that opens a list. */
+  .tgrid { display: grid; gap: 5px; align-items: center; }
+  .tgrid .tg-head {
+    font-size: 10px; font-weight: 700; color: #767E96;
+    text-transform: uppercase; letter-spacing: 0.04em; text-align: center;
+    padding-bottom: 2px;
+  }
+  .tgrid .tg-label {
+    font-size: 12px; color: #B0B5C8; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tg-cell {
+    min-height: 38px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1); background: transparent;
+    color: #5B6480; font-family: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; transition: all 0.15s;
+  }
+  .tg-cell:active { opacity: 0.7; }
+  .tg-cell.on { border-color: rgba(29,158,117,0.5); background: rgba(29,158,117,0.16); color: #4DE3AB; }
+
   /* Retention nudge card */
   .nudge-card {
     background: rgba(99,102,241,0.08);
@@ -5513,39 +5551,6 @@ function termPickerHTML(id) {
       </div>`;
 }
 
-// What sits under a course row on the courses screen: the term when it's known,
-// the invitation when it isn't, the picker while it's open — and for a course
-// you're taking now, the term Waypoint already worked out, stated once so the
-// student can see it's right.
-function courseWhenHTML(id) {
-  if (!S.courses.has(id)) return '';
-  const wrap = inner => `<div style="padding:0 2px 9px 26px;">${inner}</div>`;
-  if (S.courseStatus[id] === 'in-progress') {
-    // A class you're in the middle of is the only kind with a live schedule, so
-    // it's the only kind offered the syllabus. Sits beside the term rather than
-    // above it: same row of facts about the same class.
-    return wrap(`<span style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;">
-        <span style="font-size:11px;color:#767E96;">${termLabel(currentTerm())} · taking it now</span>
-        ${syllabusEntryHTML(id)}
-      </span>`);
-  }
-  if (S._whenOpen === id) return wrap(termPickerHTML(id));
-  const t = termLabel(S.courseWhen[id]);
-  return wrap(`<button class="term-chip${t ? ' on' : ' quiet'}" style="min-height:34px;font-size:11px;padding:0 10px;" onclick="toggleWhen('${id}')">${t || 'Took this in… →'}</button>`);
-}
-
-// The courses screen patches in place rather than re-rendering — a full render
-// replays the fade-up and throws the scroll position while the student is part
-// way down a list of twelve classes. Twelve innerHTML writes is cheaper than
-// tracking which two rows changed.
-function paintCourseWhen() {
-  if (S.screen !== 'courses') { render(); return; }
-  COURSES.forEach(c => {
-    const box = document.getElementById('cwhen-' + c.id);
-    if (box) box.innerHTML = courseWhenHTML(c.id);
-  });
-}
-
 function setCourseTerm(id, term) {
   if (term && TERM_RE.test(term)) S.courseWhen[id] = term;
   else delete S.courseWhen[id];
@@ -5553,18 +5558,18 @@ function setCourseTerm(id, term) {
   S._whenOpen = null;
   S._whenMore = false;
   save();
-  paintCourseWhen();
+  render();
 }
 
 function toggleWhen(id) {
   S._whenOpen = (S._whenOpen === id) ? null : id;
   S._whenMore = false;
-  paintCourseWhen();
+  render();
 }
 
 function showMoreTerms() {
   S._whenMore = true;
-  paintCourseWhen();
+  render();
 }
 
 // ── FRESHNESS: WHAT YOU STILL HOLD ────────────────────────────────────────────
@@ -8104,7 +8109,7 @@ function toggleCourseExpand(courseId) {
   if (!S._expandedCourses) S._expandedCourses = new Set();
   if (S._expandedCourses.has(courseId)) S._expandedCourses.delete(courseId);
   else S._expandedCourses.add(courseId);
-  // Re-render preserving scroll (same as setCourseState)
+  // Re-render preserving scroll — the panel opens under the row that asked for it.
   const scroll = document.querySelector('.courses-scroll');
   const scrollTop = scroll ? scroll.scrollTop : 0;
   render();
@@ -8323,11 +8328,6 @@ function screenSources() {
 }
 
 function secSlug(sec) { return sec.replace(/[^a-z0-9]/gi, '').toLowerCase(); }
-function courseButtonsHTML(id) {
-  const status = S.courseStatus[id] || null;
-  return `<button type="button" class="csb${status === 'in-progress' ? ' csb-ip' : ''}" onclick="setCourseState('${id}','in-progress')">${status === 'in-progress' ? '<span class="pulse-dot"></span>' : ''}Taking</button><button type="button" class="csb${status === 'completed' ? ' csb-done' : ''}" onclick="setCourseState('${id}','completed')">${status === 'completed' ? '\u2713 ' : ''}Done</button>`;
-}
-
 function screenCoursesSimple(sections) {
   return `
     <div class="screen">
@@ -8381,12 +8381,16 @@ function screenCourses() {
   // state — only the order of the question changes.
   if (S._pickerMode == null) {
     S._pickerMode = (S.courses.size > 0 || DONE_FIRST_YEARS.includes(S.year)) ? 'full' : 'simple';
+    // Decided with the mode and held for the visit. Reading it live would flip
+    // the assumption — and the copy that states it — the moment the first course
+    // was tapped, which is the one time it must not move.
+    S._doneFirst = DONE_FIRST_YEARS.includes(S.year) && S.courses.size === 0;
   }
   if (S._pickerMode === 'simple') return screenCoursesSimple(sections);
 
   // Done-first only on the way in: once they have courses, this is the ordinary
   // edit screen again and the neutral wording is right.
-  const doneFirst = DONE_FIRST_YEARS.includes(S.year) && S.courses.size === 0;
+  const doneFirst = !!S._doneFirst;
 
   return `
     <div class="screen">
@@ -8396,35 +8400,189 @@ function screenCourses() {
       </button>
       <p class="label">Your courses</p>
       <h2>${doneFirst ? 'What have you taken?' : 'What are you taking?'}</h2>
-      <p style="font-size:15px;color:#8A93A8;margin:6px 0 12px;">${doneFirst ? 'Mark everything you\'ve finished as <strong style="color:#C8F0E0;">Done</strong>. Taking classes this term? Mark those <strong style="color:#4DE3AB;">Taking</strong> too' : 'Mark each course as <strong style="color:#4DE3AB;">Taking</strong> (in progress) or <strong style="color:#C8F0E0;">Done</strong> (completed)'}.</p>
+      <!-- One question per pass. This screen asks which courses; the next asks
+           which of them are finished and when. Stating the assumption up front is
+           what makes a single tap per row honest rather than a guess. -->
+      <p style="font-size:15px;color:#8A93A8;margin:6px 0 12px;line-height:1.5;">${doneFirst
+        ? 'Tap everything you\'ve finished. They count as <strong style="color:#C8F0E0;">done</strong> — you can mark this term\'s classes next.'
+        : 'Tap everything on your schedule. They count as <strong style="color:#4DE3AB;">this term\'s</strong> — you can mark finished ones next.'}</p>
       <div class="courses-scroll" style="padding-bottom:80px;">
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
-          const allChecked = secCourses.every(c => S.courses.has(c.id));
           return `
           <div class="section-head">
             <p class="section-label">${sec}</p>
-            <button type="button" class="sa-btn" id="sa-${secSlug(sec)}" onclick="toggleCat('${sec}')">${allChecked ? 'Deselect all' : 'Select all'}</button>
           </div>
           ${secCourses.map(c => {
-            const status = S.courseStatus[c.id] || null;
+            const on   = S.courses.has(c.id);
+            const open = !!(S._expandedCourses && S._expandedCourses.has(c.id));
+            const m    = REQ_META[COURSE_REQ[c.id]];
             return `
-            <div class="course-row" style="align-items:center;">
-              <button type="button" class="course-name-btn" onclick="toggleCourseExpand('${c.id}')" title="See the MCAT topics this course covers">
-                <svg class="chev${(S._expandedCourses && S._expandedCourses.has(c.id)) ? ' open' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
-                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name}</span>
-                ${(() => { const m = REQ_META[COURSE_REQ[c.id]]; return m ? `<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;color:${m.color};background:${m.bg};padding:2px 6px;border-radius:6px;flex-shrink:0;white-space:nowrap;">${m.short}</span>` : ''; })()}
+            <div class="cpick-row" style="margin-bottom:7px;">
+              <button type="button" id="fpick-${c.id}" class="topic-pick-btn" style="${on ? 'border-color:rgba(29,158,117,0.55);background:rgba(29,158,117,0.09);' : ''}"
+                      aria-pressed="${on}" onclick="toggleCourseFull('${c.id}')">
+                <!-- Wraps rather than truncating: "General Chemistr…" is the same
+                     string for two different classes, and this row is the only
+                     place the difference gets decided. -->
+                <span class="tp-name" style="color:${on ? '#4DE3AB' : '#F0F2F8'};line-height:1.3;">${c.name}</span>
+                ${m ? `<span class="cpick-badge" style="color:${m.color};background:${m.bg};">${m.short}</span>` : ''}
+                <span class="tp-arrow" style="color:${on ? '#4DE3AB' : '#444B62'};">${on ? '✓' : '+'}</span>
               </button>
-              <div id="csb-${c.id}" style="display:flex;gap:5px;flex-shrink:0;">${courseButtonsHTML(c.id)}</div>
+              <button type="button" class="cpick-info${open ? ' open' : ''}" onclick="toggleCourseExpand('${c.id}')"
+                      aria-expanded="${open}" aria-label="What ${c.name} covers on the MCAT">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              </button>
             </div>
-            <div id="cwhen-${c.id}">${courseWhenHTML(c.id)}</div>
-            ${(S._expandedCourses && S._expandedCourses.has(c.id)) ? `<div class="course-topics-panel">${courseTopicsBreakdown(c.id)}</div>` : ''}`;
+            ${open ? `<div class="course-topics-panel">${courseTopicsBreakdown(c.id)}</div>` : ''}`;
           }).join('')}
         `;}).join('')}
       </div>
       <div style="position:sticky;bottom:0;background:linear-gradient(to top,#0D0F14 70%,transparent);padding:12px 0 28px;flex-shrink:0;margin:0 -2px;padding-left:2px;padding-right:2px;">
         <p id="course-counter" style="text-align:center;font-size:13px;color:#8A93A8;margin:0 0 8px;font-weight:600;letter-spacing:0.03em;${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
         <button class="btn btn-primary" style="flex-shrink:0;" onclick="finishCourses()">Calculate my coverage →</button>
+      </div>
+    </div>`;
+}
+
+// ── PASS TWO: THE CORRECTIONS SCREEN ─────────────────────────────────────────
+// Pass one asked which courses. This asks the two things pass one assumed: which
+// of them are finished, and when. Both are pre-answered, so the screen's real
+// job is to be skippable in one tap — it exists for the student whose situation
+// the default got wrong, and most people should never touch a control on it.
+
+const TERM_GRID_COLS = 4, TERM_GRID_PAGES = 3;
+
+// Short enough for a column header at 375px: "Fall 25", not "Fall 2025".
+const TERM_SHORT = { spring: 'Spr', summer: 'Sum', fall: 'Fall' };
+function termShort(id) {
+  const m = TERM_RE.exec(id || '');
+  return m ? TERM_SHORT[m[2]] + ' ' + m[1].slice(2) : '';
+}
+
+// Four terms at a time, newest first, with a pager rather than a per-course
+// "Earlier…". A term the student already saved is always shown wherever it falls,
+// so their own answer can never disappear from the grid that holds it.
+function termGridColumns(ids) {
+  const page = Math.min(S._termPage || 0, TERM_GRID_PAGES - 1);
+  const cols = recentTerms(TERM_GRID_COLS * (page + 1)).slice(page * TERM_GRID_COLS);
+  ids.forEach(id => {
+    const t = S.courseWhen[id];
+    if (t && TERM_RE.test(t) && cols.indexOf(t) === -1) cols.push(t);
+  });
+  return [...new Set(cols)].sort((a, b) => termRank(b) - termRank(a));
+}
+
+// One tap per row. Tapping the term that is already set clears it — "not sure"
+// stays a real answer, and it stays the default.
+function ccSetTerm(id, term) {
+  if (S.courseWhen[id] === term) delete S.courseWhen[id];
+  else S.courseWhen[id] = term;
+  if (window.plausible) plausible('course_term', { props: { answer: S.courseWhen[id] || 'not_sure' } });
+  save();
+  ccPaint();
+}
+
+function ccSetStatus(id, state) {
+  if (S.courseStatus[id] === state) return;
+  S.courseStatus[id] = state;
+  // A term belongs to a finished course. Going back to "taking" makes it this
+  // term by derivation, so a stored date would be a second, contradictory answer.
+  if (state === 'in-progress') delete S.courseWhen[id];
+  save();
+  ccPaint();
+}
+
+function ccTermPage(n) {
+  S._termPage = Math.max(0, Math.min(n, TERM_GRID_PAGES - 1));
+  ccPaint();
+}
+
+// Patched, not re-rendered: marking one course done makes a row appear in the
+// grid below, and a full render would replay the fade-up under the finger that
+// caused it.
+function ccPaint() {
+  if (S.screen !== 'confirm') { render(); return; }
+  ccList().forEach(c => {
+    const box = document.getElementById('ccsb-' + c.id);
+    if (box) box.innerHTML = ccStatusButtonsHTML(c.id);
+  });
+  const terms = document.getElementById('cc-terms');
+  if (terms) terms.innerHTML = ccTermsHTML();
+}
+
+function ccList() {
+  return COURSES.filter(c => S.courses.has(c.id));
+}
+
+function ccStatusButtonsHTML(id) {
+  const st = S.courseStatus[id];
+  return `<button type="button" class="csb${st === 'in-progress' ? ' csb-ip' : ''}" onclick="ccSetStatus('${id}','in-progress')">${st === 'in-progress' ? '<span class="pulse-dot"></span>' : ''}Taking</button>` +
+         `<button type="button" class="csb${st === 'completed' ? ' csb-done' : ''}" onclick="ccSetStatus('${id}','completed')">${st === 'completed' ? '\u2713 ' : ''}Done</button>`;
+}
+
+function ccTermsHTML() {
+  const done = ccList().filter(c => S.courseStatus[c.id] === 'completed');
+  if (!done.length) return '';
+  const cols = termGridColumns(done.map(c => c.id));
+  const page = Math.min(S._termPage || 0, TERM_GRID_PAGES - 1);
+  const grid = `grid-template-columns:minmax(0,1.6fr) repeat(${cols.length},minmax(0,1fr));`;
+  return `
+      <div class="section-divider"></div>
+      <p class="label" style="margin-bottom:5px;">When did you take them?</p>
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 12px;">Optional. It puts your finished classes on a timeline — skip it and nothing is lost.</p>
+      <div class="tgrid" style="${grid}">
+        <div></div>
+        ${cols.map(t => `<div class="tg-head">${termShort(t)}</div>`).join('')}
+        ${done.map(c => `
+          <div class="tg-label">${c.name}</div>
+          ${cols.map(t => `<button type="button" class="tg-cell${S.courseWhen[c.id] === t ? ' on' : ''}"
+            aria-pressed="${S.courseWhen[c.id] === t}" aria-label="${c.name}, ${termLabel(t)}"
+            onclick="ccSetTerm('${c.id}','${t}')">${S.courseWhen[c.id] === t ? '✓' : ''}</button>`).join('')}`).join('')}
+      </div>
+      <div style="display:flex;gap:14px;align-items:center;margin-top:8px;">
+        ${page < TERM_GRID_PAGES - 1 ? `<button class="term-chip quiet" style="min-height:36px;font-size:11px;padding:0 10px;" onclick="ccTermPage(${page + 1})">← Earlier</button>` : ''}
+        ${page > 0 ? `<button class="term-chip quiet" style="min-height:36px;font-size:11px;padding:0 10px;" onclick="ccTermPage(${page - 1})">Recent →</button>` : ''}
+      </div>`;
+}
+
+function screenConfirmCourses() {
+  const list = ccList();
+  // Nothing to confirm is nothing to show. Reachable by a stale S.screen or by
+  // deselecting everything on the way here.
+  if (!list.length) { revealCourses(); return ''; }
+  const doneFirst = !!S._doneFirst;
+
+  return `
+    <div class="screen">
+      <button onclick="go('courses')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;min-height:44px;padding:0;color:#8A93A8;font-size:13px;margin-bottom:8px;-webkit-tap-highlight-color:transparent;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+      <p class="label">Your courses</p>
+      <h2>Quick check</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.55;margin:6px 0 18px;">${doneFirst
+        ? 'We counted all ' + list.length + ' as finished. Change any you\'re taking right now — otherwise carry on.'
+        : 'We counted all ' + list.length + ' as this term\'s. Change any you\'ve already finished — otherwise carry on.'}</p>
+
+      <div class="courses-scroll" style="padding-bottom:80px;">
+        ${list.map(c => `
+          <div class="course-row" style="align-items:center;">
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;color:#F0F2F8;">${c.name}</span>
+            <div id="ccsb-${c.id}" style="display:flex;gap:5px;flex-shrink:0;">${ccStatusButtonsHTML(c.id)}</div>
+          </div>`).join('')}
+
+        <div id="cc-terms">${ccTermsHTML()}</div>
+
+        <!-- The syllabus offer used to hang off in-progress rows on the picker.
+             The picker's rows are one tap now, so it moves here, where the
+             student has just finished saying which classes they're in — one
+             line for the whole set rather than a link under every row. -->
+        ${unmappedCourses().length ? `
+          <button onclick="syllabusAddAnother()" style="background:none;border:none;padding:0;min-height:44px;display:flex;align-items:center;font-family:inherit;font-size:13px;font-weight:600;color:#2DB88A;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;margin-top:14px;">Turn a syllabus into an MCAT plan →</button>` : ''}
+      </div>
+
+      <div style="position:sticky;bottom:0;background:linear-gradient(to top,#0D0F14 70%,transparent);padding:12px 0 28px;flex-shrink:0;margin:0 -2px;padding-left:2px;padding-right:2px;">
+        <button class="btn btn-primary" onclick="revealCourses()">Looks right →</button>
       </div>
     </div>`;
 }
@@ -9018,6 +9176,7 @@ function trackScreen(screen) {
 function go(screen) {
   trackScreen(screen);
   if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
+  if (screen !== 'confirm') S._termPage = 0;      // the grid always opens on the recent terms
   // The first reveal keeps its own order for as long as the student is on it —
   // through the account ask, through a re-render — and ends when they leave.
   if (screen !== 'reveal') { S._firstReveal = false; S._revealAnimated = false; }
@@ -9035,7 +9194,17 @@ function selectYear(year) {
   go('courses');
 }
 
+// Pass one is over. The full picker asked one question and assumed the answer to
+// a second, so it hands off to the screen that lets the assumption be corrected.
+// The simple picker assumed nothing — everything on it is this term by
+// definition, and this term's date is derived — so it goes straight through.
 function finishCourses() {
+  if (S._pickerMode === 'full' && S.courses.size > 0) { go('confirm'); return; }
+  revealCourses();
+}
+
+// The end of both paths: whatever the statuses now are, this is the reveal.
+function revealCourses() {
   if (S.year && S.courses.size > 0) {
     if (window.plausible) plausible('onboarding_complete');
   }
@@ -9069,36 +9238,37 @@ function toggleCourseSimple(id) {
   if (cta) cta.disabled = n === 0;
 }
 
-function setCourseState(id, newState) {
-  if (S.courseStatus[id] === newState) {
-    // Tapping the active button again deselects
+// Full picker, pass one: one tap per course, patched in place for the same
+// reason the simple picker patches — a full render replays the fade-up and throws
+// the scroll position half way down twelve classes. The status a tap implies is
+// decided once per visit and stated on screen; pass two is where it gets fixed.
+function toggleCourseFull(id) {
+  if (S.courses.has(id)) {
     S.courses.delete(id);
     delete S.courseStatus[id];
+    // The term belonged to a course they no longer claim. Keeping it would
+    // re-attach silently if they tapped the course again later.
+    delete S.courseWhen[id];
   } else {
     S.courses.add(id);
-    S.courseStatus[id] = newState;
+    S.courseStatus[id] = S._doneFirst ? 'completed' : 'in-progress';
   }
-  // Marking a course done is the one moment when "when did you take it?" is an
-  // easy question, so it's asked right there and nowhere else. Already answered,
-  // or not done at all, and nothing opens.
-  S._whenOpen = (S.courseStatus[id] === 'completed' && !S.courseWhen[id]) ? id : null;
-  S._whenMore = false;
   save();
-  // Patch only what changed — no full re-render, so no fade-up replay or scroll jump.
-  const box = document.getElementById('csb-' + id);
-  if (!box) { render(); return; }
-  box.innerHTML = courseButtonsHTML(id);
-  paintCourseWhen();
+  const row = document.getElementById('fpick-' + id);
+  if (!row) { render(); return; }
+  const on = S.courses.has(id);
+  row.style.borderColor = on ? 'rgba(29,158,117,0.55)' : '';
+  row.style.background  = on ? 'rgba(29,158,117,0.09)'  : '';
+  row.setAttribute('aria-pressed', String(on));
+  const name = row.querySelector('.tp-name');
+  if (name) name.style.color = on ? '#4DE3AB' : '#F0F2F8';
+  const arrow = row.querySelector('.tp-arrow');
+  if (arrow) { arrow.textContent = on ? '✓' : '+'; arrow.style.color = on ? '#4DE3AB' : '#444B62'; }
   const counter = document.getElementById('course-counter');
   if (counter) {
     const n = S.courses.size;
     counter.textContent = n + ' course' + (n !== 1 ? 's' : '') + ' selected';
     counter.style.display = n > 0 ? '' : 'none';
-  }
-  const course = COURSES.find(c => c.id === id);
-  if (course) {
-    const sa = document.getElementById('sa-' + secSlug(course.section));
-    if (sa) sa.textContent = COURSES.filter(c => c.section === course.section).every(c => S.courses.has(c.id)) ? 'Deselect all' : 'Select all';
   }
 }
 
@@ -9107,7 +9277,7 @@ function toggleCat(section) {
   COURSES.filter(c => c.section === section).forEach(c => {
     if (checked) {
       S.courses.add(c.id);
-      if (!S.courseStatus[c.id]) S.courseStatus[c.id] = 'completed';
+      if (!S.courseStatus[c.id]) S.courseStatus[c.id] = S._doneFirst ? 'completed' : 'in-progress';
     } else {
       S.courses.delete(c.id);
       delete S.courseStatus[c.id];
@@ -9686,7 +9856,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, sources:50 };
+const PROG = { landing:0, brief:10, year:15, courses:30, confirm:40, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, sources:50 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -9818,6 +9988,7 @@ function render() {
     case 'brief':    html += screenBrief();    break;
     case 'year':     html += screenYear();     break;
     case 'courses':  html += screenCourses();  break;
+    case 'confirm':  html += screenConfirmCourses(); break;
     case 'reveal':   html += screenReveal();   break;
     case 'question': html += screenQuestion(); break;
     case 'complete': html += screenComplete(); break;
@@ -9885,7 +10056,6 @@ function render() {
 window.go           = go;
 window.selectYear   = selectYear;
 window.finishCourses = finishCourses;
-window.setCourseState = setCourseState;
 window.toggleCat      = toggleCat;
 window.startSession = startSession;
 window.answer       = answer;
