@@ -1127,6 +1127,9 @@ const COURSE_REQ = {
   oc1:'required', oc2:'required', ph1:'required', ph2:'required',
   biochem:'recommended', stats:'recommended', psych:'mcat', soc:'mcat',
 };
+// A route mostly behind them. Post-bacc sits with senior in the year picker.
+const DONE_FIRST_YEARS = ['junior', 'senior'];
+
 const REQ_META = {
   required:    { short:'Required',    color:'#4DE3AB', bg:'rgba(29,158,117,0.14)' },
   recommended: { short:'Recommended', color:'#F5B36A', bg:'rgba(245,179,106,0.16)' },
@@ -8282,8 +8285,20 @@ function screenCourses() {
   // Decided once per visit. Recomputing it each render flipped the screen to the
   // full catalog the moment the first course was selected, so only one class
   // could ever be picked. Cleared in go() when leaving this screen.
-  if (S._pickerMode == null) S._pickerMode = S.courses.size === 0 ? 'simple' : 'full';
+  //
+  // Which question comes first depends on where they are. A freshman's route is
+  // ahead of them, so "what are you taking right now?" is the whole answer. A
+  // junior's is mostly behind them, and asking about this term first makes them
+  // find an escape hatch before they can answer honestly. Same two pickers, same
+  // state — only the order of the question changes.
+  if (S._pickerMode == null) {
+    S._pickerMode = (S.courses.size > 0 || DONE_FIRST_YEARS.includes(S.year)) ? 'full' : 'simple';
+  }
   if (S._pickerMode === 'simple') return screenCoursesSimple(sections);
+
+  // Done-first only on the way in: once they have courses, this is the ordinary
+  // edit screen again and the neutral wording is right.
+  const doneFirst = DONE_FIRST_YEARS.includes(S.year) && S.courses.size === 0;
 
   return `
     <div class="screen">
@@ -8292,8 +8307,8 @@ function screenCourses() {
         Back
       </button>
       <p class="label">Your courses</p>
-      <h2>What are you taking?</h2>
-      <p style="font-size:15px;color:#8A93A8;margin:6px 0 12px;">Mark each course as <strong style="color:#4DE3AB;">Taking</strong> (in progress) or <strong style="color:#C8F0E0;">Done</strong> (completed).</p>
+      <h2>${doneFirst ? 'What have you taken?' : 'What are you taking?'}</h2>
+      <p style="font-size:15px;color:#8A93A8;margin:6px 0 12px;">${doneFirst ? 'Mark everything you\'ve finished as <strong style="color:#C8F0E0;">Done</strong>. Taking classes this term? Mark those <strong style="color:#4DE3AB;">Taking</strong> too' : 'Mark each course as <strong style="color:#4DE3AB;">Taking</strong> (in progress) or <strong style="color:#C8F0E0;">Done</strong> (completed)'}.</p>
       <div class="courses-scroll" style="padding-bottom:80px;">
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
