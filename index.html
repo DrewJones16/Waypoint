@@ -1141,51 +1141,66 @@ function courseReqNote(id) {
 }
 
 // ── The coverage model ────────────────────────────────────────────────────────
-// `w` is the share of total MCAT *content* a topic accounts for, in Waypoint's
-// own estimate. It is not an AAMC figure and there is no AAMC figure to copy:
-// AAMC publishes question counts per section and the discipline mix inside each
-// section, but no mapping from undergraduate courses to exam content. That
-// mapping is the judgment this product adds.
+// `w` is the share of total MCAT content a topic accounts for. These are no
+// longer an estimate: they are derived from figures AAMC publishes.
 //
-// How the values were arrived at: take the categories in AAMC's content outline,
-// ask how much of each an ordinary undergraduate course actually covers, and
-// distribute 100 points accordingly. Biochem carries 8 because it is the single
-// largest block and draws on everything else; Gen Chem I carries 10 across four
-// topics because its content is assumed knowledge throughout Chem/Phys; CARS
-// carries 21 with no course attached because no class teaches it.
+// AAMC gives question counts per section (Bio/Biochem 59, Chem/Phys 59,
+// Psych/Soc 59, CARS 53 — 230 total) and the discipline mix inside each science
+// section. Multiplying one by the other and totalling across the exam gives the
+// share of all 230 questions each discipline accounts for:
 //
-// Section totals are bb 28 / cp 29 / ps 22 / cars 21, summing to 100. They do
-// NOT match the exam's four equal quarters, and that is deliberate: the exam
-// weights *questions* equally across sections, while these weight *content*. A
-// student's coverage percentage answers "how much of the material have my
-// classes covered", not "what fraction of questions would I get right". The
-// Sources screen states this to students in the same terms.
+//   intro biology   44.25 q  19.24%  ->  19        gen chemistry  20.65 q  8.98%  ->  9
+//   CARS            53.00 q  23.04%  ->  23        intro sociology 17.70 q  7.70%  ->  8
+//   intro psychology 38.35 q 16.67%  ->  17        intro physics  14.75 q  6.41%  ->  6
+//   biochemistry    29.50 q  12.83%  ->  13        organic chem   11.80 q  5.13%  ->  5
 //
-// Changing any weight changes the product's core number. If you change one,
-// change the Sources screen's explanation with it — the per-course table there
-// is generated from this array, so it will follow, but the prose will not.
+// Rounded by largest remainder so the integers still sum to 100. AAMC states its
+// discipline percentages are approximated to the nearest 5% and vary between
+// test forms; that caveat travels with these numbers everywhere they appear.
+//
+// WHAT IS AAMC'S AND WHAT IS OURS: the discipline totals above are AAMC-derived.
+// The split of a discipline across courses and topics is Waypoint's judgment —
+// AAMC publishes no course-level breakdown. So intro biology's 19 becoming Bio I
+// 9 / Bio II 10, or gen chemistry's 9 becoming Gen Chem I 7 / Gen Chem II 2, is
+// ours to defend. The Sources screen says exactly this to students.
+//
+// Statistics carries 0. AAMC lists no discipline share for it — research methods
+// is tested as a skill woven through all three science sections rather than as a
+// discipline with its own questions. It stays on the Route as territory and as a
+// real admissions requirement; it just doesn't inflate a percentage AAMC doesn't
+// support. See sourceStatsNote().
+//
+// Course-linked weights total 77; CARS is the remaining 23 and no class teaches
+// it. The `mcat` field below is a DISPLAY grouping, not the exam's section math —
+// several disciplines span more than one section (biochemistry is tested in both
+// Bio/Biochem and Chem/Phys), so these display totals are bb 32 / cp 20 / ps 25 /
+// cars 23 and are not comparable to the exam's four equal quarters.
+//
+// A student's coverage percentage answers "how much of the material have my
+// classes covered", not "what fraction of questions would I get right", and
+// never predicts a score.
 //
 // mcat: bb = Bio & Biochem, cp = Chem & Physics, ps = Psych & Soc, cars = CARS
 const TOPICS = [
-  { id:'cell-bio', name:'Cell biology',      w:4,  course:'bio1',  disp:'Bio I',       mcat:'bb'   },
+  { id:'cell-bio', name:'Cell biology',      w:3,  course:'bio1',  disp:'Bio I',       mcat:'bb'   },
   { id:'genetics', name:'Genetics',          w:3,  course:'bio1',  disp:'Bio I',       mcat:'bb'   },
   { id:'mol-bio',  name:'Mol. biology',      w:3,  course:'bio1',  disp:'Bio I',       mcat:'bb'   },
-  { id:'biochem',  name:'Biochemistry',      w:8,  course:'biochem',disp:'Biochem',    mcat:'bb'   },
+  { id:'biochem',  name:'Biochemistry',      w:13,  course:'biochem',disp:'Biochem',    mcat:'bb'   },
   { id:'physio',   name:'Physiology',        w:6,  course:'bio2',  disp:'Bio II',      mcat:'bb'   },
   { id:'neuro',    name:'Neuroscience',      w:4,  course:'bio2',  disp:'Bio II',      mcat:'bb'   },
-  { id:'atomic',   name:'Atomic structure',  w:3,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
-  { id:'bonding',  name:'Chem bonding',      w:3,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
-  { id:'stoich',   name:'Stoichiometry',     w:2,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
+  { id:'atomic',   name:'Atomic structure',  w:2,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
+  { id:'bonding',  name:'Chem bonding',      w:2,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
+  { id:'stoich',   name:'Stoichiometry',     w:1,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
   { id:'acid-base',name:'Acid-base',         w:2,  course:'gc1',   disp:'Gen Chem I',  mcat:'cp'   },
-  { id:'thermo',   name:'Thermodynamics',    w:4,  course:'gc2',   disp:'Gen Chem II', mcat:'cp'   },
-  { id:'orgo',     name:'Org. chem I',       w:4,  course:'oc1',   disp:'Orgo I',      mcat:'cp'   },
-  { id:'orgo2',    name:'Org. chem II',      w:4,  course:'oc2',   disp:'Orgo II',     mcat:'cp'   },
-  { id:'physics',  name:'Physics I',         w:4,  course:'ph1',   disp:'Physics I',   mcat:'cp'   },
+  { id:'thermo',   name:'Thermodynamics',    w:2,  course:'gc2',   disp:'Gen Chem II', mcat:'cp'   },
+  { id:'orgo',     name:'Org. chem I',       w:3,  course:'oc1',   disp:'Orgo I',      mcat:'cp'   },
+  { id:'orgo2',    name:'Org. chem II',      w:2,  course:'oc2',   disp:'Orgo II',     mcat:'cp'   },
+  { id:'physics',  name:'Physics I',         w:3,  course:'ph1',   disp:'Physics I',   mcat:'cp'   },
   { id:'physics2', name:'Physics II',        w:3,  course:'ph2',   disp:'Physics II',  mcat:'cp'   },
-  { id:'psych',    name:'Psychology',        w:11, course:'psych', disp:'Psych',       mcat:'ps'   },
-  { id:'soc',      name:'Sociology',         w:7,  course:'soc',   disp:'Soc',         mcat:'ps'   },
-  { id:'research', name:'Research methods',  w:4,  course:'stats', disp:'Statistics',  mcat:'ps'   },
-  { id:'cars',     name:'CARS',              w:21, course:null,    disp:'Ongoing',     mcat:'cars' },
+  { id:'psych',    name:'Psychology',        w:17, course:'psych', disp:'Psych',       mcat:'ps'   },
+  { id:'soc',      name:'Sociology',         w:8,  course:'soc',   disp:'Soc',         mcat:'ps'   },
+  { id:'research', name:'Research methods',  w:0,  course:'stats', disp:'Statistics',  mcat:'ps'   },
+  { id:'cars',     name:'CARS',              w:23, course:null,    disp:'Ongoing',     mcat:'cars' },
 ];
 
 const MCAT_SECTIONS = [
@@ -4466,6 +4481,7 @@ function load() {
     if (ms) S.milestonesShown = JSON.parse(ms);
     const cms = localStorage.getItem('wp_cov_milestones');
     if (cms) S.covMilestonesShown = JSON.parse(cms);
+    migrateCovMilestones();
     const tls = localStorage.getItem('wp_topic_last_seen');
     if (tls) S.topicLastSeen = JSON.parse(tls);
     const nd = localStorage.getItem('wp_nudge_dismissed');
@@ -4855,13 +4871,36 @@ function coverage(courses, statusAware = false) {
 }
 
 // Coverage-percentage celebration moments — fire once each as the route fills in
+// Thresholds sit on the sequence totals these weights actually produce —
+// 16 / 31 / 64 with 77 the course-linked maximum. They moved when the weights
+// were re-derived; see the migration in load() that stops them re-firing for
+// anyone who had already passed them under the old numbers.
 const COVERAGE_MILESTONES = [
-  { at: 15, title: 'First waypoint reached',     text: '15% of the MCAT is on your route — and you\'re mapping it while the material is still in front of you.' },
-  { at: 22, title: 'Freshman benchmark cleared', text: '22% covered — past what a standard freshman sequence adds up to. You\'re here, and you\'re just getting started.' },
-  { at: 44, title: 'Sophomore ground covered',   text: '44% covered. Less than half the route left to map.' },
-  { at: 68, title: 'Junior-year territory',      text: '68% covered — past what a standard sequence adds up to by the end of junior year.' },
-  { at: 79, title: 'Full route unlocked',        text: 'Every course on your route is covered. From here, it\'s practice and retention.' },
+  { at: 12, title: 'First waypoint reached',     text: '12% of the MCAT is on your route — and you\'re mapping it while the material is still in front of you.' },
+  { at: 16, title: 'Freshman benchmark cleared', text: '16% covered — past what a standard freshman sequence adds up to. You\'re here, and you\'re just getting started.' },
+  { at: 31, title: 'Sophomore ground covered',   text: '31% covered — past a standard sophomore\'s ground, with the biggest blocks still ahead.' },
+  { at: 64, title: 'Junior-year territory',      text: '64% covered — past what a standard sequence adds up to by the end of junior year.' },
+  { at: 77, title: 'Full route unlocked',        text: 'Every course on your route is covered. From here, it\'s practice and retention.' },
 ];
+
+// The coverage weights were re-derived from AAMC's published figures, which
+// moved every milestone threshold. Keyed by threshold, the stored map would then
+// read as "unseen" for the new numbers and congratulate a returning student all
+// over again for ground they crossed months ago.
+//
+// So: anyone who had seen at least one milestone has every threshold at or below
+// their current coverage marked as seen, once. A genuinely new user has an empty
+// map and is left alone — they should get their milestones.
+function migrateCovMilestones() {
+  if (S.covMilestonesShown.v2) return;
+  const seenAny = Object.keys(S.covMilestonesShown).length > 0;
+  if (seenAny) {
+    const cov = coverage(S.courses, true);
+    COVERAGE_MILESTONES.forEach(m => { if (cov >= m.at) S.covMilestonesShown[m.at] = true; });
+  }
+  S.covMilestonesShown.v2 = true;
+  save();
+}
 
 function milestoneCopy() {
   const cov = coverage(S.courses, true);
@@ -5023,7 +5062,7 @@ function coveredTileHTML(t, live, open) {
           <div style="font-size:11px;color:#4DE3AB;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
             ${status}
-            <div style="font-size:11px;font-weight:700;color:#1D9E75;flex-shrink:0;margin-left:4px;">${t.w}%</div>
+            <div style="font-size:11px;font-weight:700;color:#1D9E75;flex-shrink:0;margin-left:4px;">${wLabel(t)}</div>
           </div>`;
   const box = `background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);${TILE_BOX}`;
   if (!f) return `<div style="${box}">${inner}</div>`;
@@ -5031,14 +5070,19 @@ function coveredTileHTML(t, live, open) {
           style="${box}text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;${open === t.id ? 'box-shadow:0 0 0 1px rgba(255,255,255,0.18);' : ''}">${inner}</button>`;
 }
 
+// A topic AAMC gives no discipline share to (statistics/research methods) carries
+// weight 0 on purpose. Everywhere a weight is shown to a student it reads as the
+// skill it is, rather than as a zero that looks like an error or a slight.
+function wLabel(t, plus) { return t.w === 0 ? 'skill' : (plus ? '+' : '') + t.w + '%'; }
+
 // Locked / addable — tap to add the course that unlocks it.
 function lockedTileHTML(t) {
   const cName = (COURSES.find(c => c.id === t.course) || {}).name || 'a course';
-  return `<button onclick="go('courses')" title="Add ${cName} to unlock +${t.w}%" style="background:#101319;border:1px dashed rgba(255,255,255,0.15);${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
+  return `<button onclick="go('courses')" title="Add ${cName} to unlock ${wLabel(t, true)}" style="background:#101319;border:1px dashed rgba(255,255,255,0.15);${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
         <div style="font-size:11px;color:#8A93A8;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
           <div style="font-size:11px;color:#767E96;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${t.disp}</div>
-          <div style="font-size:11px;font-weight:700;color:#8A93A8;flex-shrink:0;margin-left:4px;">+${t.w}%</div>
+          <div style="font-size:11px;font-weight:700;color:#8A93A8;flex-shrink:0;margin-left:4px;">${wLabel(t, true)}</div>
         </div>
       </button>`;
 }
@@ -5050,7 +5094,7 @@ function carsTileHTML(t) {
           <div style="font-size:11px;color:#F5B36A;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
             <div style="font-size:11px;color:#8A93A8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-style:italic;">ongoing</div>
-            <div style="font-size:11px;font-weight:700;color:#B98B3E;flex-shrink:0;margin-left:4px;">${t.w}%</div>
+            <div style="font-size:11px;font-weight:700;color:#B98B3E;flex-shrink:0;margin-left:4px;">${wLabel(t)}</div>
           </div>
         </div>`;
 }
@@ -5091,8 +5135,12 @@ function termTimelineHTML(live, open) {
     // which of the two numbers it is rather than quietly picking one. The untagged
     // pile isn't a term at all, so it gets no total: a single figure over a stack
     // of unrelated classes would read as the weight of the first one.
-    const worth = unset ? '' : g.now ? `worth ${g.weight}% when you finish`
-                                     : `${g.weight}% of the exam`;
+    // A term of nothing but skill courses carries no exam weight, and "0% of the
+    // exam" reads as a verdict on the class rather than a fact about AAMC's
+    // question counts.
+    const worth = unset || g.weight === 0 ? ''
+                : g.now ? `worth ${g.weight}% when you finish`
+                        : `${g.weight}% of the exam`;
 
     // Laid out by course, not by topic: the chip that fixes this belongs to a
     // class, and the tiles under it show exactly what dating that class would
@@ -5973,8 +6021,12 @@ function briefAction() {
                         .sort((a, b) => b.w - a.w);
   if (onRoute.length) {
     const t = onRoute[0];
+    // A route of nothing but Statistics tops out at weight 0, and "the biggest
+    // single block, at 0% of the exam" is not a sentence to show anyone.
     return { topic: t, subId: null,
-             text: `Five questions on ${t.name}. At ${t.w}% of the exam, it's the biggest single block on your route.` };
+             text: t.w === 0
+               ? `Five questions on ${t.name}. Research reasoning shows up across all three science sections.`
+               : `Five questions on ${t.name}. At ${t.w}% of the exam, it's the biggest single block on your route.` };
   }
   return null;
 }
@@ -7502,7 +7554,7 @@ function todayPick(skip = null) {
     const t = d.topic;
     const reason = d.reason === 'retention'   ? `You covered it ${weeksAgo(d.days)}.`
                  : d.reason === 'in-progress' ? `You're taking it in class right now.`
-                 : `${t.w}% of the exam.`;
+                 : (t.w === 0 ? 'A skill tested across the exam.' : `${t.w}% of the exam.`);
     return { label: 'Do this now', accent: '#1D9E75',
              title: `5 questions on ${t.name}`, reason,
              onclick: `startQuickLog('${t.id}', null)`,
@@ -7846,7 +7898,7 @@ function courseTopicsBreakdown(courseId) {
     return `<p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0;">This course's MCAT content is counted under the intro course in its sequence, so it adds 0% on its own.</p>`;
   }
   const total = ts.reduce((s, t) => s + t.w, 0);
-  const rows = ts.map(t => `<div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;padding:2px 0;"><span>${t.name}</span><strong style="color:#B0B5C8;font-weight:600;">${t.w}%</strong></div>`).join('');
+  const rows = ts.map(t => `<div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;padding:2px 0;"><span>${t.name}</span><strong style="color:#B0B5C8;font-weight:600;">${wLabel(t)}</strong></div>`).join('');
   const note = courseReqNote(courseId);
   const noteHTML = note ? `<p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:8px;">${note}</p>` : '';
   return `${rows}<div style="display:flex;justify-content:space-between;font-size:13px;color:#4DE3AB;font-weight:700;border-top:1px solid rgba(255,255,255,0.08);margin-top:5px;padding-top:5px;"><span>${ts.length > 1 ? 'Together' : 'On the MCAT'}</span><span>${total}% of the MCAT</span></div>${noteHTML}`;
@@ -7902,19 +7954,19 @@ function breakdownHTML() {
         <div style="margin-bottom:18px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
             <span style="font-size:11px;font-weight:700;color:#8A93A8;text-transform:uppercase;letter-spacing:0.06em;">${sec.short}</span>
-            <span style="font-size:11px;color:#8A93A8;">${sec.id === 'cars' ? '21% · ongoing' : `${secCredited} / ${secTotal}%`}</span>
+            <span style="font-size:11px;color:#8A93A8;">${sec.id === 'cars' ? '23% · ongoing' : `${secCredited} / ${secTotal}%`}</span>
           </div>
           ${items.map(({ t, state }) => `
             <div class="bd-row">
               <span class="bd-name">${mark(state)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.name}</span></span>
-              <span class="bd-w" style="color:${wColor(state)};">${t.w}%</span>
+              <span class="bd-w" style="color:${wColor(state)};">${wLabel(t)}</span>
             </div>`).join('')}
         </div>`).join('')}
 
       <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;margin-top:4px;">
         <div style="display:flex;justify-content:space-between;font-size:13px;color:#B0B5C8;margin-bottom:6px;"><span>Course content covered</span><strong style="color:#4DE3AB;">${cov}%</strong></div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;"><span>Max from courses</span><span>79%</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;"><span>CARS — a reading skill built all along</span><span>21% here · 53 of 230 questions</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;"><span>Max from courses</span><span>77%</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;"><span>CARS — a reading skill built all along</span><span>23% here · 53 of 230 questions</span></div>
         <p style="font-size:11px;color:#767E96;line-height:1.55;margin-top:10px;">✓ done · ½ taking now (counts half until you finish) · · not yet · ~ ongoing.</p>
         <p style="font-size:11px;color:#767E96;line-height:1.6;margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">These weights are Waypoint's own estimate, built from AAMC's content outline and the standard scope of each course — a typical course load, not a survey of students. <button onclick="openSources()" style="background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:#2DB88A;font-weight:600;cursor:pointer;text-decoration:underline;-webkit-tap-highlight-color:transparent;">Where these numbers come from →</button></p>
       </div>
@@ -7938,7 +7990,7 @@ function screenCoverage() {
       <p class="label">Your route</p>
       <h2 style="margin-bottom:6px;">How coverage works.</h2>
       <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:10px;">This percentage is the share of MCAT <strong style="color:#B0B5C8;">content</strong> your coursework covers — not the share of questions you would get right.</p>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:4px;">Courses map to 79% of Waypoint's content map. The other 21% is CARS — a reading skill, not a topic to unlock. On the exam itself CARS is 53 of the 230 questions, and because all four sections count equally toward your score, it is about a quarter of it.</p>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:4px;">Courses map to 77% of MCAT content. The other 23% is CARS — a reading skill, not a topic to unlock, and the one figure here that is simply AAMC's: 53 of the 230 questions. Because all four sections count equally toward your score, CARS is about a quarter of it.</p>
 
       ${breakdownHTML()}
 
@@ -8147,26 +8199,30 @@ function screenReveal() {
   // The year bands are computed from this file's own weights, not from any
   // survey of students — they say what a standard course sequence adds up to,
   // and nothing about what other premeds have actually taken:
-  //   20% = Bio I + Gen Chem I                      (end of freshman year)
-  //   38% = + Bio II, Gen Chem II, Orgo I           (end of sophomore year)
-  //   61% = + Physics I, Biochem, Psych             (end of junior year)
-  //   79% = every course on the route; the rest is CARS, which no class teaches
+  //   16% = Bio I + Gen Chem I                      (end of freshman year)
+  //   31% = + Bio II, Gen Chem II, Orgo I           (end of sophomore year)
+  //   64% = + Physics I, Biochem, Psych             (end of junior year)
+  //   77% = every course on the route; the rest is CARS, which no class teaches
   // Sequence and timing follow the standard premed prerequisite set, which is
   // also what the MSAR course-requirements chart describes school by school.
   //
-  // The band edges below (22 / 44 / 68) sit ABOVE those totals on purpose, so a
+  // The band edges below (18 / 33 / 66) sit ABOVE those totals on purpose, so a
   // student who has finished the sequence for their year reads as being in it
-  // rather than one band ahead. Do not mistake them for the sequence totals —
-  // an earlier version of this comment claimed 42% and 68% were the sophomore
-  // and junior figures, and both were wrong against this file's own weights.
+  // rather than one band ahead. Do not mistake them for the sequence totals.
   if (cov === 0) {
     headline = 'Your MCAT route.';
-    subhead  = 'Add your courses to see your coverage.';
+    // Coverage can be 0 with courses already added: statistics is tested as a
+    // skill rather than as its own share of questions, so it carries no weight.
+    // Telling that student to "add your courses" would be telling them their
+    // class didn't count.
+    subhead  = S.courses.size
+      ? 'Those are tested as skills rather than as their own share of questions. Add a science course to see coverage climb.'
+      : 'Add your courses to see your coverage.';
   } else {
     headline = `${nCov} content area${nCov !== 1 ? 's' : ''} unlocked.`;
-    subhead  = cov <= 22 ? `${cov}% covered — freshman territory.`
-             : cov <= 44 ? `${cov}% covered — sophomore territory.`
-             : cov <= 68 ? `${cov}% covered — junior-year ground.`
+    subhead  = cov <= 18 ? `${cov}% covered — freshman territory.`
+             : cov <= 33 ? `${cov}% covered — sophomore territory.`
+             : cov <= 66 ? `${cov}% covered — junior-year ground.`
              :             `${cov}% covered — senior-year territory.`;
   }
 
@@ -9336,7 +9392,7 @@ function syncDesktopShell() {
   const note = document.getElementById('dt-ring-note');
   if (note) {
     note.innerHTML = cov > 0
-      ? `<strong>${cov}%</strong> of MCAT content so far. Courses map to 79% of Waypoint's map; CARS is the rest — a reading skill worth about a quarter of your exam score.`
+      ? `<strong>${cov}%</strong> of MCAT content so far. Courses map to 77%; CARS is the remaining 23% — a reading skill worth about a quarter of your exam score.`
       : 'Set up your route to see coverage climb.';
   }
 
