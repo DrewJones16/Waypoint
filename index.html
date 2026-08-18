@@ -4967,7 +4967,61 @@ function milestoneCopy() {
   </div>`;
 }
 
+// ── The curated first session ────────────────────────────────────────────────
+// The first five questions are the only ones a student meets before deciding
+// whether this product is worth their time, and an algorithm has no opinion
+// about which five those should be. These are hand-picked per course: a
+// foundational idea to start, and at least one question whose Twist is the kind
+// that makes the point of Waypoint land in a single screen — your professor
+// tests the definition, the MCAT tests the consequence.
+//
+// Ids only. Everything downstream — streak, qStats, topicLastSeen, the twist
+// after each answer — runs exactly as it does for any other session.
+const FIRST_SESSION = {
+  bio1:    ['b03', 'b17', 'b06', 'b28'],   // ETC toxin · Tay-Sachs · Punnett -> pedigree · silent mutation
+  bio2:    ['p01', 'n15', 'p04', 'p10'],   // refractory period · MS · O2-Hb shift · COPD blood gas
+  gc1:     ['c01', 'c13', 'c12', 'c08'],   // blood buffer · periodic trends · IMFs · limiting reagent
+  gc2:     ['th01', 'th03', 'th08', 'th13'], // spontaneity at body temp · galvanic · rate law · dG and K
+  oc1:     ['og08', 'og02', 'og14', 'og19'], // enantiomeric drugs · SN2 · SN1 · anti-periplanar E2
+  oc2:     ['og07', 'og04', 'og06', 'og05'], // amino acid at pH 7.4 · selective reduction · NMR · EAS
+  biochem: ['bc02', 'bc05', 'bc03', 'bc09'], // Lineweaver-Burk · Complex IV · Warburg · familial hyperchol.
+  ph1:     ['phy03', 'phy01', 'phy12', 'phy08'], // atherosclerosis · muscle force · lever arm · SCUBA
+  ph2:     ['phy05', 'phy09', 'phy13', 'phy07'], // capillary bed · hyperopia · MRI · laryngoscope
+  psych:   ['py01', 'py04', 'py05', 'py12'], // exposure therapy · Alzheimer's · bystander · attribution
+  soc:     ['sc05', 'sc08', 'sc03', 'sc07'], // health gradient · institutional racism · relativism · sex/gender
+  stats:   ['s02', 's06', 's09', 's05'],   // causation · p-values · sensitivity · spread
+};
+
+// Their strongest in-progress course, then any selected course. Weight order,
+// so a student taking Bio II and Statistics opens on physiology rather than
+// research methods.
+function firstSessionCourse() {
+  const weightOf = id => TOPICS.reduce((n, t) => n + (t.course === id ? t.w : 0), 0);
+  const pick = list => list.filter(id => FIRST_SESSION[id])
+                           .sort((a, b) => weightOf(b) - weightOf(a))[0] || null;
+  const mine = [...S.courses];
+  return pick(mine.filter(id => S.courseStatus[id] === 'in-progress')) || pick(mine);
+}
+
+// Only ever the first session — zero history, nothing answered. Everything after
+// this is the ordinary build.
+function firstSessionQuestions() {
+  if (S.sessionHistory.length > 0 || S.totalAnswered > 0) return null;
+  const courseId = firstSessionCourse();
+  if (!courseId) return null;
+  const qs = FIRST_SESSION[courseId]
+    .map(id => QUESTIONS.find(q => q.id === id))
+    .filter(Boolean);
+  return qs.length >= 3 ? qs : null;   // a half-missing set is worse than the algorithm
+}
+
 function buildSession() {
+  // The curated set if this is their first ever session and their courses have
+  // one; otherwise the ordinary build, unchanged.
+  const first = firstSessionQuestions();
+  S._firstSession = !!first;
+  if (first) return first;
+
   // course === null means "always available" (CARS is ongoing, not tied to a specific course)
   const covered = new Set(TOPICS.filter(t => t.course === null || (t.course && S.courses.has(t.course))).map(t => t.id));
   const pool    = QUESTIONS.filter(q => covered.has(q.topic));
@@ -8884,7 +8938,24 @@ function logoTap() {
   go(S.courses.size > 0 ? 'brief' : 'landing');
 }
 
+// One event per onboarding screen, fired on arrival rather than on render — a
+// re-render (tapping a course, opening a term picker) is not a new visit. Names
+// only: no course selections, no coverage numbers, nothing about the person.
+// Enough to see where the first two minutes leak, and nothing more.
+const ONBOARD_EVENTS = { landing: 'onboard_landing', year: 'onboard_year',
+                         courses: 'onboard_courses', reveal: 'onboard_reveal' };
+
+function trackScreen(screen) {
+  const name = ONBOARD_EVENTS[screen];
+  if (!name || !window.plausible) return;
+  S._trackedScreens = S._trackedScreens || {};
+  if (S._trackedScreens[screen]) return;   // once per app open, not once per render
+  S._trackedScreens[screen] = true;
+  plausible(name);
+}
+
 function go(screen) {
+  trackScreen(screen);
   if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
   // An open term picker belongs to the screen that opened it. Leaving is a way
   // of not answering, which is allowed.
@@ -8994,6 +9065,9 @@ function startSession() {
     return;
   }
   if (window.plausible) plausible('session_start');
+  // The curated set is the one whose completion rate actually says whether the
+  // first two minutes worked.
+  if (S._firstSession && window.plausible) plausible('first_session_start');
   go('question');
 }
 
@@ -9116,6 +9190,8 @@ function next() {
     bumpStreak();
     save();
     if (window.plausible) plausible('session_complete');
+    if (S._firstSession && window.plausible) plausible('first_session_complete');
+    S._firstSession = false;
     go('complete');
   } else {
     render();
@@ -9775,6 +9851,9 @@ if (S.courses.size > 0) {
   S.screen = S.sessionHistory.length > 0 ? 'brief' : 'reveal';
   if (window.plausible) plausible('app_open');
 }
+// The boot screen is set here rather than through go(), so the funnel's first
+// step would otherwise never fire for the visitor who matters most.
+trackScreen(S.screen);
 // Sync is queued here but runs after the first paint, since render() below is
 // synchronous. Failures are swallowed on purpose: an offline or broken sync must
 // leave the local app fully usable, and must never reach onunhandledrejection
