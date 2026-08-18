@@ -8166,9 +8166,23 @@ function screenCoverage() {
         </button>
       </div>
 
+      <!-- Nobody arrives here wanting mechanics. They arrive because they just
+           saw a number and want to know whether it is real. So: the size of the
+           thing that was mapped, the work of mapping it, and then the invitation
+           to check it — the mechanics that were here before now follow.
+           Every sentence in this block has to survive being read straight
+           against the Sources screen, which is one tap away and is arithmetic.
+           Nothing here calls the model clever; the transparency is the claim. -->
       <p class="label">Your route</p>
-      <h2 style="margin-bottom:6px;">How coverage works.</h2>
-      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:10px;">This percentage is the share of MCAT <strong style="color:#B0B5C8;">content</strong> your coursework covers — not the share of questions you would get right.</p>
+      <h2 style="margin-bottom:8px;">The Waypoint Coverage Model.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:10px;">The MCAT is 230 questions, and AAMC publishes exactly what is in them: 59 on biology and biochemistry, 59 on chemistry and physics, 59 on psychology and sociology, 53 on reading — and a stated mix of disciplines inside each one.</p>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:10px;">The Coverage Model maps premed coursework onto that structure: each course to the MCAT topics it teaches, each topic to its discipline's real share of the exam. AAMC publishes what the exam contains. Nobody publishes which of your classes covers it. That mapping is what turns <em>I took Biochem</em> into a number.</p>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:6px;">Every figure comes from AAMC's own published data, the arithmetic is written out, and you can recheck the whole thing with a calculator. <strong style="color:#B0B5C8;">Complex enough to be right. Simple enough that you can check it.</strong></p>
+      <button onclick="openSources()" style="display:block;background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:13px;font-weight:600;color:#2DB88A;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;margin-bottom:10px;">See the whole derivation →</button>
+
+      <div class="section-divider"></div>
+      <p class="label" style="margin-bottom:8px;">What the number means</p>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:10px;">It is the share of MCAT <strong style="color:#B0B5C8;">content</strong> your coursework covers — not the share of questions you would get right, and not a prediction of how you will score.</p>
       <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:4px;">Courses map to 77% of MCAT content. The other 23% is CARS — a reading skill, not a topic to unlock, and the one figure here that is simply AAMC's: 53 of the 230 questions. Because all four sections count equally toward your score, CARS is about a quarter of it.</p>
 
       ${breakdownHTML()}
@@ -8182,8 +8196,9 @@ function screenCoverage() {
         <p style="font-size:11px;color:#767E96;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
       </div>
 
-      <button onclick="openSources()" style="display:block;width:100%;background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:13px;font-weight:600;color:#2DB88A;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;">Where these numbers come from →</button>
-      <div style="height:8px;"></div>
+      <!-- Sources is already offered twice above — as the closing move of the
+           opening block, and under the weights table that cites it. A third
+           link at the foot was the same destination wearing a third label. -->
       <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
     </div>`;
 }
