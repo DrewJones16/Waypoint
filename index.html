@@ -4308,7 +4308,12 @@ const S = {
   briefs:    [],      // [{weekStart, coverage, totalAnswered, ...}] — Sunday Brief snapshots
   briefSeen: null,    // weekStart of the most recently dismissed brief
   remindAsked: 0,     // the daily-reminder offer is made once, after session 3
-  acctPrompt: 0,      // the account invitation is made once, and never again
+  // Which surfaces have spent their account invitation, comma separated.
+  // This was a 0/1 "asked once, anywhere, never again" flag. The ask now has two
+  // moments — the reveal, where the number first lands, and the end of a session
+  // — and dismissing the first must not silently spend the second. 'all' means
+  // they opened it, which is terminal everywhere.
+  acctPrompt: '',
 };
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
@@ -4374,7 +4379,7 @@ function save() {
   localStorage.setItem('wp_briefs', JSON.stringify(S.briefs.slice(-12)));
   localStorage.setItem('wp_brief_seen', S.briefSeen || '');
   localStorage.setItem('wp_remind_asked', S.remindAsked ? '1' : '');
-  localStorage.setItem('wp_acct_prompt', S.acctPrompt ? '1' : '');
+  localStorage.setItem('wp_acct_prompt', S.acctPrompt || '');
   // Stamp every write so cloud sync can tell which side is newer. Harmless and
   // inert when logged out; schedulePush() returns immediately without a session.
   localStorage.setItem('wp_updated_at', new Date().toISOString());
@@ -4480,7 +4485,10 @@ function load() {
     if (br) { const p = JSON.parse(br); if (Array.isArray(p)) S.briefs = p; }
     S.briefSeen = localStorage.getItem('wp_brief_seen') || null;
     S.remindAsked = localStorage.getItem('wp_remind_asked') ? 1 : 0;
-    S.acctPrompt  = localStorage.getItem('wp_acct_prompt')  ? 1 : 0;
+    // A stored '1' predates per-surface tracking: those users were asked once
+    // and declined, and 'all' is what they chose.
+    const ap = localStorage.getItem('wp_acct_prompt') || '';
+    S.acctPrompt = ap === '1' ? 'all' : ap;
     if (migratedUpcoming) {
       const mt = localStorage.getItem('wp_midterm');
       if (mt) {
@@ -8062,6 +8070,14 @@ function screenReveal() {
           </div>
         </div>` : ''}
 
+      <!-- Directly under the number, because that is the only place it works.
+           Most first-time visitors read the percentage and leave; an offer to
+           keep it 1400px further down, past the map, is an offer nobody sees.
+           It is quiet and secondary — the practice button below stays the loud
+           one — and it is absent entirely for signed-in users and for anyone
+           who has waved it away here before. -->
+      ${cov > 0 ? acctPromptHTML('reveal') : ''}
+
       ${freshnessLineHTML()}
       <div id="sectioned-map" style="margin-bottom:22px;"></div>
 
@@ -8196,36 +8212,71 @@ function remindOnceHTML() {
     </div>`;
 }
 
-// The one moment the ask is honest: they just finished a session, the stats above
-// are the thing at risk, and nothing has been asked of them before. Dismissing it
-// is permanent — Waypoint gets exactly one shot at this.
-function acctPromptHTML() {
-  if (S.acctPrompt) return '';
+// ── The account invitation ────────────────────────────────────────────────────
+// Two moments, one invitation. The reveal is the earliest honest one: they have
+// just been handed a number, they were asked for nothing to get it, and for most
+// first-time visitors it is the only moment that will ever exist — they read the
+// percentage and leave, and it dies with them. The end of a session is the second
+// chance for anyone who waved the first away.
+//
+// It is never a gate. The reveal renders in full either way, and every path to a
+// number works signed out exactly as it did.
+
+function acctSpent(surface) {
+  const v = S.acctPrompt || '';
+  return v === 'all' || v.split(',').indexOf(surface) !== -1;
+}
+
+function acctSpend(surface) {
+  if (acctSpent(surface)) return;
+  S.acctPrompt = (S.acctPrompt ? S.acctPrompt + ',' : '') + surface;
+  save();
+}
+
+// `surface` is 'reveal' or 'complete'. Each is spent on its own, so declining
+// the first still leaves the second — but declining is permanent for the surface
+// it was declined on. Waypoint gets one shot per moment, not one per visit.
+function acctPromptHTML(surface) {
+  if (acctSpent(surface)) return '';
   if (authSession()) return '';
-  if (S.sessionHistory.length < 2) return '';   // nothing to lose yet
-  if (remindOnceHTML()) return '';              // one ask per screen, never two
+
+  if (surface === 'complete') {
+    if (S.sessionHistory.length < 2) return '';   // nothing to lose yet
+    if (remindOnceHTML()) return '';              // one ask per screen, never two
+  }
+
+  // Never "create an account" or "sign up". What is on offer is keeping the
+  // thing they are looking at, which is also the truth.
+  const line = surface === 'reveal'
+    ? 'Keep this route — Waypoint remembers where you are.'
+    : 'That progress is only on this device.';
+  const cta = surface === 'reveal'
+    ? 'Add your email to keep it →'
+    : 'Add your email and Waypoint keeps it safe →';
+
   return `
-    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
-      <p style="font-size:13px;color:#B0B5C8;line-height:1.55;margin:0 0 10px;">That progress is only on this device.</p>
-      <button class="btn btn-share" style="margin:0;" onclick="acctPromptOpen()">Add your email and Waypoint keeps it safe →</button>
-      <button style="background:none;border:none;font-size:13px;color:#8A93A8;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;justify-content:center;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="acctPromptDismiss()">Not now</button>
+    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;margin-bottom:22px;">
+      <p style="font-size:13px;color:#8A93A8;line-height:1.55;margin:0 0 10px;">${line}</p>
+      <button class="btn btn-share" style="margin:0 0 4px;" onclick="acctPromptOpen('${surface}')">${cta}</button>
+      <button style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:13px;font-weight:600;color:#767E96;cursor:pointer;-webkit-tap-highlight-color:transparent;" onclick="acctPromptDismiss('${surface}')">Not now</button>
     </div>`;
 }
 
-function acctPromptOpen() {
-  S.acctPrompt = 1;
+function acctPromptOpen(surface) {
+  // Opening it is terminal on every surface — they are in the flow now, and
+  // being asked again on the next screen would be nagging.
+  S.acctPrompt = 'all';
   save();
-  if (window.plausible) plausible('acct_prompt_open');
+  if (window.plausible) plausible('acct_prompt_open', { props: { surface: surface || 'complete' } });
   go('settings');
   // Settings is long and the account block sits mid-page — land them on it.
   const el = document.getElementById('account-section');
   if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
 }
 
-function acctPromptDismiss() {
-  S.acctPrompt = 1;
-  save();
-  if (window.plausible) plausible('acct_prompt_dismiss');
+function acctPromptDismiss(surface) {
+  acctSpend(surface || 'complete');
+  if (window.plausible) plausible('acct_prompt_dismiss', { props: { surface: surface || 'complete' } });
   render();
 }
 
@@ -8312,7 +8363,7 @@ function screenComplete() {
         </div>
       </div>
 
-      ${acctPromptHTML()}
+      ${acctPromptHTML('complete')}
       ${remindOnceHTML()}
 
       <button class="btn btn-primary" onclick="go('brief')">Done &rarr;</button>
