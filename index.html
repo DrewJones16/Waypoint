@@ -1127,6 +1127,9 @@ const COURSE_REQ = {
   oc1:'required', oc2:'required', ph1:'required', ph2:'required',
   biochem:'recommended', stats:'recommended', psych:'mcat', soc:'mcat',
 };
+// A route mostly behind them. Post-bacc sits with senior in the year picker.
+const DONE_FIRST_YEARS = ['junior', 'senior'];
+
 const REQ_META = {
   required:    { short:'Required',    color:'#4DE3AB', bg:'rgba(29,158,117,0.14)' },
   recommended: { short:'Recommended', color:'#F5B36A', bg:'rgba(245,179,106,0.16)' },
@@ -4869,6 +4872,47 @@ const IN_PROGRESS_CREDIT = 0.5;
 function courseCredit(courseId) {
   return S.courseStatus[courseId] === 'in-progress' ? IN_PROGRESS_CREDIT : 1;
 }
+// Per-section coverage, in one place. The desktop rail and the landing example
+// card both need it, and two copies of this arithmetic is exactly how a
+// marketing number drifts away from the model it claims to illustrate.
+// CARS is excluded: no course teaches it.
+function sectionCoverage(courses) {
+  const tot = { bb: 0, cp: 0, ps: 0 }, cov = { bb: 0, cp: 0, ps: 0 };
+  TOPICS.forEach(t => {
+    if (tot[t.mcat] === undefined) return;
+    tot[t.mcat] += t.w;
+    if (t.course && courses.has(t.course)) cov[t.mcat] += t.w * courseCredit(t.course);
+  });
+  const out = {};
+  ['bb', 'cp', 'ps'].forEach(k => out[k] = tot[k] > 0 ? Math.round(cov[k] / tot[k] * 100) : 0);
+  return out;
+}
+
+// The landing page's example route. Every figure on that card is computed from
+// TOPICS through the same functions the app uses on a real student, so a change
+// to the weights moves the marketing card with it. A visitor who reads the
+// Sources screen can recompute this card and find it correct — which is the
+// whole point of having derived the weights.
+const EXAMPLE_ROUTE = {
+  done:   ['bio1', 'bio2', 'gc1', 'gc2', 'psych', 'oc1'],
+  taking: ['ph1'],
+  label:  'Bio I &amp; II, Gen Chem I &amp; II, Psychology and Orgo I finished, Physics I in progress',
+};
+
+function exampleRoute() {
+  const courses = new Set([...EXAMPLE_ROUTE.done, ...EXAMPLE_ROUTE.taking]);
+  const status = {};
+  EXAMPLE_ROUTE.done.forEach(c => status[c] = 'completed');
+  EXAMPLE_ROUTE.taking.forEach(c => status[c] = 'in-progress');
+  // Stand S in the example's shoes for the length of the call, the way
+  // coverageAfterCourse() does, rather than reimplementing credit handling.
+  const prev = S.courseStatus;
+  S.courseStatus = status;
+  try {
+    return { cov: coverage(courses, true), sections: sectionCoverage(courses) };
+  } finally { S.courseStatus = prev; }
+}
+
 function coverage(courses, statusAware = false) {
   return Math.round(TOPICS.reduce((n, t) => {
     if (!t.course || !courses.has(t.course)) return n;
@@ -4923,7 +4967,61 @@ function milestoneCopy() {
   </div>`;
 }
 
+// ── The curated first session ────────────────────────────────────────────────
+// The first five questions are the only ones a student meets before deciding
+// whether this product is worth their time, and an algorithm has no opinion
+// about which five those should be. These are hand-picked per course: a
+// foundational idea to start, and at least one question whose Twist is the kind
+// that makes the point of Waypoint land in a single screen — your professor
+// tests the definition, the MCAT tests the consequence.
+//
+// Ids only. Everything downstream — streak, qStats, topicLastSeen, the twist
+// after each answer — runs exactly as it does for any other session.
+const FIRST_SESSION = {
+  bio1:    ['b03', 'b17', 'b06', 'b28'],   // ETC toxin · Tay-Sachs · Punnett -> pedigree · silent mutation
+  bio2:    ['p01', 'n15', 'p04', 'p10'],   // refractory period · MS · O2-Hb shift · COPD blood gas
+  gc1:     ['c01', 'c13', 'c12', 'c08'],   // blood buffer · periodic trends · IMFs · limiting reagent
+  gc2:     ['th01', 'th03', 'th08', 'th13'], // spontaneity at body temp · galvanic · rate law · dG and K
+  oc1:     ['og08', 'og02', 'og14', 'og19'], // enantiomeric drugs · SN2 · SN1 · anti-periplanar E2
+  oc2:     ['og07', 'og04', 'og06', 'og05'], // amino acid at pH 7.4 · selective reduction · NMR · EAS
+  biochem: ['bc02', 'bc05', 'bc03', 'bc09'], // Lineweaver-Burk · Complex IV · Warburg · familial hyperchol.
+  ph1:     ['phy03', 'phy01', 'phy12', 'phy08'], // atherosclerosis · muscle force · lever arm · SCUBA
+  ph2:     ['phy05', 'phy09', 'phy13', 'phy07'], // capillary bed · hyperopia · MRI · laryngoscope
+  psych:   ['py01', 'py04', 'py05', 'py12'], // exposure therapy · Alzheimer's · bystander · attribution
+  soc:     ['sc05', 'sc08', 'sc03', 'sc07'], // health gradient · institutional racism · relativism · sex/gender
+  stats:   ['s02', 's06', 's09', 's05'],   // causation · p-values · sensitivity · spread
+};
+
+// Their strongest in-progress course, then any selected course. Weight order,
+// so a student taking Bio II and Statistics opens on physiology rather than
+// research methods.
+function firstSessionCourse() {
+  const weightOf = id => TOPICS.reduce((n, t) => n + (t.course === id ? t.w : 0), 0);
+  const pick = list => list.filter(id => FIRST_SESSION[id])
+                           .sort((a, b) => weightOf(b) - weightOf(a))[0] || null;
+  const mine = [...S.courses];
+  return pick(mine.filter(id => S.courseStatus[id] === 'in-progress')) || pick(mine);
+}
+
+// Only ever the first session — zero history, nothing answered. Everything after
+// this is the ordinary build.
+function firstSessionQuestions() {
+  if (S.sessionHistory.length > 0 || S.totalAnswered > 0) return null;
+  const courseId = firstSessionCourse();
+  if (!courseId) return null;
+  const qs = FIRST_SESSION[courseId]
+    .map(id => QUESTIONS.find(q => q.id === id))
+    .filter(Boolean);
+  return qs.length >= 3 ? qs : null;   // a half-missing set is worse than the algorithm
+}
+
 function buildSession() {
+  // The curated set if this is their first ever session and their courses have
+  // one; otherwise the ordinary build, unchanged.
+  const first = firstSessionQuestions();
+  S._firstSession = !!first;
+  if (first) return first;
+
   // course === null means "always available" (CARS is ongoing, not tied to a specific course)
   const covered = new Set(TOPICS.filter(t => t.course === null || (t.course && S.courses.has(t.course))).map(t => t.id));
   const pool    = QUESTIONS.filter(q => covered.has(q.topic));
@@ -7701,6 +7799,7 @@ function screenBrief() {
 
 
 function screenLanding() {
+  const ex = exampleRoute();
   return `
     <div class="screen" style="padding-top:36px;padding-bottom:40px;">
       <div class="app-brand">
@@ -7726,11 +7825,11 @@ function screenLanding() {
 
       <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:16px 16px 14px;margin-bottom:28px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:13px;gap:12px;">
-          <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;padding-top:4px;">Example — a sophomore<br>bio major's route</div>
-          <div style="text-align:right;flex-shrink:0;"><span class="disp" style="font-size:32px;font-weight:800;color:#F0F2F8;line-height:1;">41%</span><div style="font-size:11px;color:#767E96;letter-spacing:0.04em;margin-top:1px;">of the MCAT covered</div></div>
+          <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;padding-top:4px;">Example —<br>seven courses in</div>
+          <div style="text-align:right;flex-shrink:0;"><span class="disp" style="font-size:32px;font-weight:800;color:#F0F2F8;line-height:1;">${ex.cov}%</span><div style="font-size:11px;color:#767E96;letter-spacing:0.04em;margin-top:1px;">of the MCAT covered</div></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:9px;"><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Bio &amp; Biochem</span><span style="font-size:11px;font-weight:700;color:#1D9E75;">59%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:59%;height:100%;background:#1D9E75;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Chem &amp; Physics</span><span style="font-size:11px;font-weight:700;color:#60A5FA;">34%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:34%;height:100%;background:#60A5FA;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Psych &amp; Soc</span><span style="font-size:11px;font-weight:700;color:#A78BFA;">50%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:50%;height:100%;background:#A78BFA;border-radius:3px;"></div></div></div></div>
-        <div style="font-size:11px;color:#767E96;margin-top:13px;line-height:1.55;">41% of the exam already familiar, just from Bio I &amp; II, Gen Chem, and Psych. You're probably further along than you think.</div>
+        <div style="display:flex;flex-direction:column;gap:9px;"><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Bio &amp; Biochem</span><span style="font-size:11px;font-weight:700;color:#1D9E75;">${ex.sections.bb}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:${ex.sections.bb}%;height:100%;background:#1D9E75;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Chem &amp; Physics</span><span style="font-size:11px;font-weight:700;color:#60A5FA;">${ex.sections.cp}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:${ex.sections.cp}%;height:100%;background:#60A5FA;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Psych &amp; Soc</span><span style="font-size:11px;font-weight:700;color:#A78BFA;">${ex.sections.ps}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:${ex.sections.ps}%;height:100%;background:#A78BFA;border-radius:3px;"></div></div></div></div>
+        <div style="font-size:11px;color:#767E96;margin-top:13px;line-height:1.55;">${EXAMPLE_ROUTE.label} — which counts half until it's finished. You're probably further along than you think.</div>
       </div>
 
       <button class="btn btn-primary" onclick="go('year')" style="font-size:15px;font-weight:600;letter-spacing:-0.01em;">See where you are →</button>
@@ -8240,8 +8339,20 @@ function screenCourses() {
   // Decided once per visit. Recomputing it each render flipped the screen to the
   // full catalog the moment the first course was selected, so only one class
   // could ever be picked. Cleared in go() when leaving this screen.
-  if (S._pickerMode == null) S._pickerMode = S.courses.size === 0 ? 'simple' : 'full';
+  //
+  // Which question comes first depends on where they are. A freshman's route is
+  // ahead of them, so "what are you taking right now?" is the whole answer. A
+  // junior's is mostly behind them, and asking about this term first makes them
+  // find an escape hatch before they can answer honestly. Same two pickers, same
+  // state — only the order of the question changes.
+  if (S._pickerMode == null) {
+    S._pickerMode = (S.courses.size > 0 || DONE_FIRST_YEARS.includes(S.year)) ? 'full' : 'simple';
+  }
   if (S._pickerMode === 'simple') return screenCoursesSimple(sections);
+
+  // Done-first only on the way in: once they have courses, this is the ordinary
+  // edit screen again and the neutral wording is right.
+  const doneFirst = DONE_FIRST_YEARS.includes(S.year) && S.courses.size === 0;
 
   return `
     <div class="screen">
@@ -8250,8 +8361,8 @@ function screenCourses() {
         Back
       </button>
       <p class="label">Your courses</p>
-      <h2>What are you taking?</h2>
-      <p style="font-size:15px;color:#8A93A8;margin:6px 0 12px;">Mark each course as <strong style="color:#4DE3AB;">Taking</strong> (in progress) or <strong style="color:#C8F0E0;">Done</strong> (completed).</p>
+      <h2>${doneFirst ? 'What have you taken?' : 'What are you taking?'}</h2>
+      <p style="font-size:15px;color:#8A93A8;margin:6px 0 12px;">${doneFirst ? 'Mark everything you\'ve finished as <strong style="color:#C8F0E0;">Done</strong>. Taking classes this term? Mark those <strong style="color:#4DE3AB;">Taking</strong> too' : 'Mark each course as <strong style="color:#4DE3AB;">Taking</strong> (in progress) or <strong style="color:#C8F0E0;">Done</strong> (completed)'}.</p>
       <div class="courses-scroll" style="padding-bottom:80px;">
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
@@ -8284,6 +8395,39 @@ function screenCourses() {
     </div>`;
 }
 
+// ── The territory line ───────────────────────────────────────────────────────
+// Designed for the week-one freshman with two in-progress classes, not the
+// average case. Half credit on two courses is single digits, and that is exactly
+// where "feel ahead, never stressed" is easiest to break: a bare "8% covered"
+// invites a student to read a deficit into a number that is, for someone eight
+// weeks into a four-year run, entirely on track.
+//
+// Two rules it never breaks. No apology — never "only", never "just". And no
+// claim about what other students have done, which is a structural statement or
+// nothing at all. "Most of the exam's ground is still ahead" is true of the exam
+// regardless of who is reading it.
+//
+// A junior or senior at the same number means something different: their route
+// is mostly behind them, so a low figure usually means there is more transcript
+// to enter, and saying so is more useful than telling them they are early.
+function territoryLine(cov) {
+  const early = !DONE_FIRST_YEARS.includes(S.year);
+
+  if (cov <= 9) {
+    return early
+      ? `${cov}% mapped already — most of the exam's ground is still ahead, and being early is the whole advantage.`
+      : `${cov}% mapped so far — add the rest of what you've finished and this climbs quickly.`;
+  }
+  if (cov <= 18) {
+    return early
+      ? `${cov}% covered — freshman territory, and the sequence is just getting started.`
+      : `${cov}% covered so far — there's likely more on your transcript to add.`;
+  }
+  if (cov <= 33) return `${cov}% covered — sophomore territory.`;
+  if (cov <= 66) return `${cov}% covered — junior-year ground.`;
+  return `${cov}% covered — senior-year territory.`;
+}
+
 function screenReveal() {
   const cov  = coverage(S.courses, true);
   const nCov = TOPICS.filter(t => t.course && S.courses.has(t.course)).length;
@@ -8314,10 +8458,7 @@ function screenReveal() {
       : 'Add your courses to see your coverage.';
   } else {
     headline = `${nCov} content area${nCov !== 1 ? 's' : ''} unlocked.`;
-    subhead  = cov <= 18 ? `${cov}% covered — freshman territory.`
-             : cov <= 33 ? `${cov}% covered — sophomore territory.`
-             : cov <= 66 ? `${cov}% covered — junior-year ground.`
-             :             `${cov}% covered — senior-year territory.`;
+    subhead  = territoryLine(cov);
   }
 
   // Best single course to add next
@@ -8337,7 +8478,7 @@ function screenReveal() {
     <div class="screen">
       <p class="label">Your route</p>
       <h2 style="margin-bottom:5px;">${headline}</h2>
-      <p style="font-size:15px;margin-bottom:${milestone ? '14px' : '22px'};">${subhead}</p>
+      <p id="reveal-subhead" style="font-size:15px;margin-bottom:${milestone ? '14px' : '22px'};">${subhead}</p>
 
       ${milestone}
 
@@ -8797,7 +8938,24 @@ function logoTap() {
   go(S.courses.size > 0 ? 'brief' : 'landing');
 }
 
+// One event per onboarding screen, fired on arrival rather than on render — a
+// re-render (tapping a course, opening a term picker) is not a new visit. Names
+// only: no course selections, no coverage numbers, nothing about the person.
+// Enough to see where the first two minutes leak, and nothing more.
+const ONBOARD_EVENTS = { landing: 'onboard_landing', year: 'onboard_year',
+                         courses: 'onboard_courses', reveal: 'onboard_reveal' };
+
+function trackScreen(screen) {
+  const name = ONBOARD_EVENTS[screen];
+  if (!name || !window.plausible) return;
+  S._trackedScreens = S._trackedScreens || {};
+  if (S._trackedScreens[screen]) return;   // once per app open, not once per render
+  S._trackedScreens[screen] = true;
+  plausible(name);
+}
+
 function go(screen) {
+  trackScreen(screen);
   if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
   // An open term picker belongs to the screen that opened it. Leaving is a way
   // of not answering, which is allowed.
@@ -8817,6 +8975,10 @@ function finishCourses() {
   if (S.year && S.courses.size > 0) {
     if (window.plausible) plausible('onboarding_complete');
   }
+  // Transient, like _pickerMode — never persisted, so it cannot survive into a
+  // later visit to the Route. Gated on having practised nothing yet, so someone
+  // editing their courses months in doesn't get the first-run theater again.
+  S._firstReveal = S.sessionHistory.length === 0 && S.totalAnswered === 0;
   go('reveal');
 }
 
@@ -8903,6 +9065,9 @@ function startSession() {
     return;
   }
   if (window.plausible) plausible('session_start');
+  // The curated set is the one whose completion rate actually says whether the
+  // first two minutes worked.
+  if (S._firstSession && window.plausible) plausible('first_session_start');
   go('question');
 }
 
@@ -9025,6 +9190,8 @@ function next() {
     bumpStreak();
     save();
     if (window.plausible) plausible('session_complete');
+    if (S._firstSession && window.plausible) plausible('first_session_complete');
+    S._firstSession = false;
     go('complete');
   } else {
     render();
@@ -9491,24 +9658,87 @@ function syncDesktopShell() {
       : 'Set up your route to see coverage climb.';
   }
 
-  const secTot = { bb: 0, cp: 0, ps: 0 }, secCov = { bb: 0, cp: 0, ps: 0 };
-  TOPICS.forEach(t => {
-    if (secTot[t.mcat] === undefined) return; // CARS excluded — not course-based
-    secTot[t.mcat] += t.w;
-    if (t.course && S.courses.has(t.course)) secCov[t.mcat] += t.w * courseCredit(t.course);
-  });
+  const secPct = sectionCoverage(S.courses);
   ['bb', 'cp', 'ps'].forEach(k => {
-    const pct = secTot[k] > 0 ? Math.round(secCov[k] / secTot[k] * 100) : 0;
     const p = shell.querySelector(`[data-secpct="${k}"]`);
     const f = shell.querySelector(`[data-secfill="${k}"]`);
-    if (p) p.textContent = pct + '%';
-    if (f) f.style.width = pct + '%';
+    if (p) p.textContent = secPct[k] + '%';
+    if (f) f.style.width = secPct[k] + '%';
   });
 
   const st = document.getElementById('dt-streak');
   if (st) st.textContent = S.streak || 0;
   const an = document.getElementById('dt-answered');
   if (an) an.textContent = S.totalAnswered || 0;
+}
+
+// ── The first reveal ─────────────────────────────────────────────────────────
+// People judge an experience by its peak and its end, and this is the peak of
+// the first two minutes. Everywhere else the Route renders instantly, which is
+// right — theater on a screen you visit daily is friction. So all of this is
+// gated on one transient flag set when onboarding completes, and none of it
+// touches screenReveal()'s markup: a repeat visit produces byte-for-byte the
+// same HTML and the same instant render it did before.
+
+function reducedMotion() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function animateCoverageRing() {
+  const ring = document.querySelector('[data-target]');
+  if (ring) requestAnimationFrame(() => setTimeout(() => {
+    ring.style.strokeDashoffset = ring.dataset.target;
+  }, 80));
+
+  const cn = document.getElementById('cov-num');
+  if (!cn) return;
+  const target = parseInt(cn.dataset.count, 10) || 0;
+  if (target <= 0) return;
+  if (reducedMotion()) { cn.textContent = target + '%'; return; }
+
+  cn.textContent = '0%';
+  let t0 = null;
+  const tick = (ts) => {
+    if (!t0) t0 = ts;
+    const pr = Math.min((ts - t0) / 1100, 1);
+    cn.textContent = Math.round((1 - Math.pow(1 - pr, 3)) * target) + '%';
+    if (pr < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+const FIRST_REVEAL_BEAT = 800;
+
+// Build-up, then number, then meaning, then everything else. The flag is
+// cleared before anything animates, so an error mid-sequence costs one dropped
+// animation rather than a screen that replays the beat forever.
+function playFirstReveal() {
+  S._firstReveal = false;
+  const screen = document.querySelector('#app > .screen');
+  const subhead = document.getElementById('reveal-subhead');
+
+  if (!screen || reducedMotion()) { animateCoverageRing(); return; }
+
+  const beat = document.createElement('div');
+  beat.id = 'reveal-beat';
+  beat.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:11px;z-index:5;background:#0A0B10;';
+  beat.innerHTML = '<span class="pulse-dot" style="width:8px;height:8px;margin:0;"></span>' +
+                   '<span style="font-size:15px;color:#8A93A8;font-weight:600;">Mapping your route…</span>';
+  screen.style.position = 'relative';
+  screen.style.visibility = 'hidden';
+  screen.appendChild(beat);
+  beat.style.visibility = 'visible';
+
+  if (subhead) { subhead.style.opacity = '0'; subhead.style.transition = 'opacity 420ms ease-out'; }
+
+  setTimeout(() => {
+    beat.remove();
+    screen.style.visibility = '';
+    animateCoverageRing();
+    // After the number has landed, not with it — the figure is the event and the
+    // sentence is what it means.
+    if (subhead) setTimeout(() => { subhead.style.opacity = '1'; }, 700);
+  }, FIRST_REVEAL_BEAT);
 }
 
 function render() {
@@ -9571,31 +9801,10 @@ function render() {
     if (m) m.innerHTML = mapHTML(true, todayTopics());
   }
   // Animate the coverage ring wherever it renders — it lives on Route now.
-  {
-    const ring = document.querySelector('[data-target]');
-    if (ring) requestAnimationFrame(() => setTimeout(() => {
-      ring.style.strokeDashoffset = ring.dataset.target;
-    }, 80));
-    const cn = document.getElementById('cov-num');
-    if (cn) {
-      const target = parseInt(cn.dataset.count, 10) || 0;
-      if (target > 0) {
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          cn.textContent = target + '%';
-        } else {
-          cn.textContent = '0%';
-          let t0 = null;
-          const tick = (ts) => {
-            if (!t0) t0 = ts;
-            const pr = Math.min((ts - t0) / 1100, 1);
-            cn.textContent = Math.round((1 - Math.pow(1 - pr, 3)) * target) + '%';
-            if (pr < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        }
-      }
-    }
-  }
+  // On the very first reveal the beat runs first and this is called after it,
+  // so the number starts climbing when the student is looking at it.
+  if (S._firstReveal && S.screen === 'reveal') playFirstReveal();
+  else animateCoverageRing();
 
   syncDesktopShell();
   } catch(e) {
@@ -9642,6 +9851,9 @@ if (S.courses.size > 0) {
   S.screen = S.sessionHistory.length > 0 ? 'brief' : 'reveal';
   if (window.plausible) plausible('app_open');
 }
+// The boot screen is set here rather than through go(), so the funnel's first
+// step would otherwise never fire for the visitor who matters most.
+trackScreen(S.screen);
 // Sync is queued here but runs after the first paint, since render() below is
 // synchronous. Failures are swallowed on purpose: an offline or broken sync must
 // leave the local app fully usable, and must never reach onunhandledrejection
