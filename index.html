@@ -677,34 +677,6 @@
     padding: 4px 10px;
     border-radius: 20px;
   }
-  .lf-row {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-  }
-  .lf-icon {
-    width: 30px;
-    height: 30px;
-    background: rgba(29,158,117,0.12);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-  .lf-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: #F0F2F8;
-    line-height: 1.3;
-    margin-bottom: 3px;
-  }
-  .lf-body {
-    font-size: 13px;
-    color: #8A93A8;
-    line-height: 1.5;
-  }
 
   /* ── Brief screen ─────────────────────────────────────────────────── */
   .brief-topbar {
@@ -7600,51 +7572,27 @@ function screenLanding() {
         <span class="app-brand-name">Waypoint</span>
       </div>
 
-      <h1 style="font-size:32px;font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:#F0F2F8;margin-bottom:10px;">Get ahead on the MCAT with the classes you're already taking.</h1>
-      <p style="font-size:17px;font-weight:600;color:#4DE3AB;line-height:1.4;margin-bottom:12px;letter-spacing:-0.01em;">If you start now, you won't be scrambling later.</p>
-      <p style="font-size:15px;color:#767E96;line-height:1.7;margin-bottom:26px;">Most classmates don't realize it until year 3. Waypoint plots your coursework onto a route through the exam, so coverage grows every semester — and year 3 is review, not panic.</p>
+      <!-- One promise. Waypoint's north star is knowing exactly where you stand:
+           the thing no competitor offers, the question premeds actually wake up
+           asking, and — unlike getting ahead — a payoff that arrives in the next
+           two minutes rather than in two years. The argument for starting early
+           is still worth making, but it argues against advice the visitor has
+           already accepted from their advisor, so it belongs on About, one tap
+           away, where it is better written. -->
+      <h1 style="font-size:32px;font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:#F0F2F8;margin-bottom:12px;">Find out how much of the MCAT you've already covered.</h1>
+      <p style="font-size:17px;color:#8A93A8;line-height:1.55;margin-bottom:26px;letter-spacing:-0.01em;">Your classes have been building it all along. Waypoint shows you where you stand — in about two minutes.</p>
 
-      <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:16px 16px 14px;margin-bottom:20px;">
+      <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:16px 16px 14px;margin-bottom:28px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:13px;gap:12px;">
           <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;padding-top:4px;">Example — a sophomore<br>bio major's route</div>
           <div style="text-align:right;flex-shrink:0;"><span class="disp" style="font-size:32px;font-weight:800;color:#F0F2F8;line-height:1;">41%</span><div style="font-size:11px;color:#767E96;letter-spacing:0.04em;margin-top:1px;">of the MCAT covered</div></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:9px;"><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Bio & Biochem</span><span style="font-size:11px;font-weight:700;color:#1D9E75;">59%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:59%;height:100%;background:#1D9E75;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Chem & Physics</span><span style="font-size:11px;font-weight:700;color:#60A5FA;">34%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:34%;height:100%;background:#60A5FA;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Psych & Soc</span><span style="font-size:11px;font-weight:700;color:#A78BFA;">50%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:50%;height:100%;background:#A78BFA;border-radius:3px;"></div></div></div></div>
-        <div style="font-size:11px;color:#767E96;margin-top:13px;line-height:1.55;">Two years before dedicated prep — and 41% of the exam is already familiar, just from Bio I &amp; II, Gen Chem, and Psych. You're probably further along than you think.</div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:36px;">
-        <div class="lf-row">
-          <div class="lf-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-          </div>
-          <div>
-            <div class="lf-title">Know exactly where you stand</div>
-            <div class="lf-body">Every class you take maps onto the exam.</div>
-          </div>
-        </div>
-        <div class="lf-row">
-          <div class="lf-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          </div>
-          <div>
-            <div class="lf-title">Practice only what you've learned</div>
-            <div class="lf-body">Questions filtered to the courses you've taken.</div>
-          </div>
-        </div>
-        <div class="lf-row">
-          <div class="lf-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          </div>
-          <div>
-            <div class="lf-title">Practice the skill, not just the content</div>
-            <div class="lf-body">Written in real exam style — passages, traps, novel scenarios.</div>
-          </div>
-        </div>
+        <div style="display:flex;flex-direction:column;gap:9px;"><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Bio &amp; Biochem</span><span style="font-size:11px;font-weight:700;color:#1D9E75;">59%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:59%;height:100%;background:#1D9E75;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Chem &amp; Physics</span><span style="font-size:11px;font-weight:700;color:#60A5FA;">34%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:34%;height:100%;background:#60A5FA;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Psych &amp; Soc</span><span style="font-size:11px;font-weight:700;color:#A78BFA;">50%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:50%;height:100%;background:#A78BFA;border-radius:3px;"></div></div></div></div>
+        <div style="font-size:11px;color:#767E96;margin-top:13px;line-height:1.55;">41% of the exam already familiar, just from Bio I &amp; II, Gen Chem, and Psych. You're probably further along than you think.</div>
       </div>
 
       <button class="btn btn-primary" onclick="go('year')" style="font-size:15px;font-weight:600;letter-spacing:-0.01em;">See where you are →</button>
-      <p style="text-align:center;font-size:13px;color:#333B52;margin-top:10px;">Free · no account · 2 minutes</p>
+      <p style="text-align:center;font-size:13px;color:#333B52;margin-top:10px;">Free · about 2 minutes</p>
       <button onclick="openAbout()" style="display:block;margin:14px auto 0;background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;">What is Waypoint? Why I built it →</button>
       <p style="text-align:center;font-size:11px;color:#767E96;margin-top:22px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
     </div>`;
