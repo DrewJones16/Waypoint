@@ -733,26 +733,8 @@
   }
 
   /* ── Select-all toggle ────────────────────────────────────────────── */
-  .section-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 16px 0 8px;
-  }
+  .section-head { margin: 16px 0 8px; }
   .section-head .section-label { margin: 0; }
-  .sa-btn {
-    background: none;
-    border: none;
-    color: #1D9E75;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    cursor: pointer;
-    padding: 2px 0;
-    font-family: inherit;
-  }
-  .sa-btn:hover { color: #4DE3AB; }
 
   /* ── Journey path visualization ───────────────────────────────────── */
   .journey-wrap {
@@ -1003,10 +985,6 @@
     #app.has-tabbar .screen { padding-bottom: 48px; }
   }
   /* Course→topic breakdown (expandable rows + breakdown screen) */
-  .course-name-btn { display:flex; align-items:center; gap:8px; background:none; border:none; cursor:pointer; color:#F0F2F8; font-family:inherit; font-size:15px; text-align:left; padding:0; min-width:0; flex:1; -webkit-tap-highlight-color:transparent; }
-  .course-name-btn .chev { color:#8A93A8; transition:transform 0.18s ease; flex-shrink:0; }
-  .course-name-btn .chev.open { transform:rotate(90deg); color:#8A93A8; }
-  .course-name-btn:hover .chev { color:#8A93A8; }
   .course-topics-panel { margin:-2px 8px 9px; padding:9px 13px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; }
   .bd-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
   .bd-row:last-child { border-bottom:none; }
@@ -8327,7 +8305,6 @@ function screenSources() {
     </div>`;
 }
 
-function secSlug(sec) { return sec.replace(/[^a-z0-9]/gi, '').toLowerCase(); }
 function screenCoursesSimple(sections) {
   return `
     <div class="screen">
@@ -8394,7 +8371,7 @@ function screenCourses() {
 
   return `
     <div class="screen">
-      <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-size:13px;margin-bottom:16px;-webkit-tap-highlight-color:transparent;">
+      <button onclick="go('brief')" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;min-height:44px;padding:0;color:#8A93A8;font-size:13px;margin-bottom:8px;-webkit-tap-highlight-color:transparent;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Back
       </button>
@@ -8410,9 +8387,7 @@ function screenCourses() {
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
           return `
-          <div class="section-head">
-            <p class="section-label">${sec}</p>
-          </div>
+          <div class="section-head"><p class="section-label">${sec}</p></div>
           ${secCourses.map(c => {
             const on   = S.courses.has(c.id);
             const open = !!(S._expandedCourses && S._expandedCourses.has(c.id));
@@ -9272,21 +9247,6 @@ function toggleCourseFull(id) {
   }
 }
 
-function toggleCat(section) {
-  const checked = !COURSES.filter(c => c.section === section).every(c => S.courses.has(c.id));
-  COURSES.filter(c => c.section === section).forEach(c => {
-    if (checked) {
-      S.courses.add(c.id);
-      if (!S.courseStatus[c.id]) S.courseStatus[c.id] = S._doneFirst ? 'completed' : 'in-progress';
-    } else {
-      S.courses.delete(c.id);
-      delete S.courseStatus[c.id];
-    }
-  });
-  save();
-  render();
-}
-
 function startSession() {
   S.session  = buildSession();
   S.idx      = 0;
@@ -10056,7 +10016,6 @@ function render() {
 window.go           = go;
 window.selectYear   = selectYear;
 window.finishCourses = finishCourses;
-window.toggleCat      = toggleCat;
 window.startSession = startSession;
 window.answer       = answer;
 window.next         = next;
