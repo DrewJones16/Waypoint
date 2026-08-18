@@ -1140,9 +1140,31 @@ function courseReqNote(id) {
   return '';
 }
 
-// Typical premed course set by year — used to compute benchmark coverage
-
-// weights sum to 100; bio1 + gc1 + stats = 24
+// ── The coverage model ────────────────────────────────────────────────────────
+// `w` is the share of total MCAT *content* a topic accounts for, in Waypoint's
+// own estimate. It is not an AAMC figure and there is no AAMC figure to copy:
+// AAMC publishes question counts per section and the discipline mix inside each
+// section, but no mapping from undergraduate courses to exam content. That
+// mapping is the judgment this product adds.
+//
+// How the values were arrived at: take the categories in AAMC's content outline,
+// ask how much of each an ordinary undergraduate course actually covers, and
+// distribute 100 points accordingly. Biochem carries 8 because it is the single
+// largest block and draws on everything else; Gen Chem I carries 10 across four
+// topics because its content is assumed knowledge throughout Chem/Phys; CARS
+// carries 21 with no course attached because no class teaches it.
+//
+// Section totals are bb 28 / cp 29 / ps 22 / cars 21, summing to 100. They do
+// NOT match the exam's four equal quarters, and that is deliberate: the exam
+// weights *questions* equally across sections, while these weight *content*. A
+// student's coverage percentage answers "how much of the material have my
+// classes covered", not "what fraction of questions would I get right". The
+// Sources screen states this to students in the same terms.
+//
+// Changing any weight changes the product's core number. If you change one,
+// change the Sources screen's explanation with it — the per-course table there
+// is generated from this array, so it will follow, but the prose will not.
+//
 // mcat: bb = Bio & Biochem, cp = Chem & Physics, ps = Psych & Soc, cars = CARS
 const TOPICS = [
   { id:'cell-bio', name:'Cell biology',      w:4,  course:'bio1',  disp:'Bio I',       mcat:'bb'   },
@@ -4835,9 +4857,9 @@ function coverage(courses, statusAware = false) {
 // Coverage-percentage celebration moments — fire once each as the route fills in
 const COVERAGE_MILESTONES = [
   { at: 15, title: 'First waypoint reached',     text: '15% of the MCAT is on your route — and you\'re mapping it while the material is still in front of you.' },
-  { at: 22, title: 'Freshman benchmark cleared', text: '22% covered — the ground a standard freshman sequence covers. You\'re here, and you\'re just getting started.' },
+  { at: 22, title: 'Freshman benchmark cleared', text: '22% covered — past what a standard freshman sequence adds up to. You\'re here, and you\'re just getting started.' },
   { at: 44, title: 'Sophomore ground covered',   text: '44% covered. Less than half the route left to map.' },
-  { at: 68, title: 'Junior-year territory',      text: '68% covered — the ground a full premed sequence covers by the end of junior year.' },
+  { at: 68, title: 'Junior-year territory',      text: '68% covered — past what a standard sequence adds up to by the end of junior year.' },
   { at: 79, title: 'Full route unlocked',        text: 'Every course on your route is covered. From here, it\'s practice and retention.' },
 ];
 
@@ -5409,6 +5431,22 @@ function showMoreTerms() {
 //
 // The frame is possession, never loss. Fading is normal, stated plainly, and
 // fixable in one tap.
+// ── Freshness thresholds ──────────────────────────────────────────────────────
+// These day counts are Waypoint's judgment, not a published forgetting curve.
+// There is a real literature on spaced repetition, but it measures recall of
+// isolated items under controlled review schedules — it does not license a claim
+// about how long one student holds "Genetics" after a semester of it, and
+// borrowing its numbers would dress up a guess as a finding.
+//
+// What they are instead: 60 days is roughly the gap between a midterm and a
+// final, so a topic inside it is still live. 180 days is about two terms, past
+// which a topic has plausibly not been thought about since the class ended. The
+// strong-accuracy windows are half again as long, on the ordinary reasoning that
+// material you could answer well is material you learned well.
+//
+// This is also why the model never emits a retention *percentage* — the
+// thresholds are defensible as categories and would be false as a number. The
+// Sources screen says exactly that to students.
 const FRESH = {
   freshDays: { normal: 60,  strong: 90  },
   fadeDays:  { normal: 180, strong: 240 },
@@ -8106,13 +8144,21 @@ function screenReveal() {
 
   // Headline scales with how much they have
   let headline, subhead;
-  // Honest benchmarks based on actual course weights:
-  // ~20% = end of freshman year (Bio I + Gen Chem I)
-  // ~42% = end of sophomore year (+ Bio II, Gen Chem II, Orgo I)
-  // ~68% = end of junior year (+ Physics I, Biochem, Psych)
-  // ~79% = max (all courses)
-  // One clause. The peer comparison earns its place on the first reveal, where
-  // it's genuinely new information — not on every visit.
+  // The year bands are computed from this file's own weights, not from any
+  // survey of students — they say what a standard course sequence adds up to,
+  // and nothing about what other premeds have actually taken:
+  //   20% = Bio I + Gen Chem I                      (end of freshman year)
+  //   38% = + Bio II, Gen Chem II, Orgo I           (end of sophomore year)
+  //   61% = + Physics I, Biochem, Psych             (end of junior year)
+  //   79% = every course on the route; the rest is CARS, which no class teaches
+  // Sequence and timing follow the standard premed prerequisite set, which is
+  // also what the MSAR course-requirements chart describes school by school.
+  //
+  // The band edges below (22 / 44 / 68) sit ABOVE those totals on purpose, so a
+  // student who has finished the sequence for their year reads as being in it
+  // rather than one band ahead. Do not mistake them for the sequence totals —
+  // an earlier version of this comment claimed 42% and 68% were the sophomore
+  // and junior figures, and both were wrong against this file's own weights.
   if (cov === 0) {
     headline = 'Your MCAT route.';
     subhead  = 'Add your courses to see your coverage.';
