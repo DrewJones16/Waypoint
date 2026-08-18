@@ -5752,10 +5752,14 @@ function standingSummary() {
 function standingLineHTML() {
   const st = standingSummary();
   if (!st.total) return '';
-  // A zero here would read as a failure the moment someone arrives, when in fact
-  // they have simply not been asked for anything yet.
+  // Before the first session there is nothing to hold and nothing to report, and
+  // a line saying so is a line about work not done — on the one screen whose job
+  // is to say what a student has already got. It starts once the record starts.
+  if (S.sessionHistory.length === 0) return '';
+  // Practised nothing that counts toward coverage yet — rare after a session, but
+  // a zero here would read as a failure rather than as an empty record.
   const text = st.practiced === 0
-    ? 'Nothing verified yet — 10 questions starts the record.'
+    ? 'Nothing verified yet — practice is what turns covered into held.'
     : `Holding <strong style="color:#B0B5C8;">${st.heldPct}%</strong> of what you've covered.`;
   return `<p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0 0 2px;">${text}</p>`;
 }
