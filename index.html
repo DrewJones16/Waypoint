@@ -1168,7 +1168,7 @@ function courseReqNote(id) {
 // is tested as a skill woven through all three science sections rather than as a
 // discipline with its own questions. It stays on the Route as territory and as a
 // real admissions requirement; it just doesn't inflate a percentage AAMC doesn't
-// support. See sourceStatsNote().
+// support. See STATS_NOTE and isSkillCourse().
 //
 // Course-linked weights total 77; CARS is the remaining 23 and no class teaches
 // it. The `mcat` field below is a DISPLAY grouping, not the exam's section math —
@@ -7891,6 +7891,20 @@ function screenYear() {
     </div>`;
 }
 
+// Statistics in one sentence. AAMC lists a discipline percentage for every
+// subject the MCAT tests as a body of content; research methods isn't one,
+// because it's tested as reasoning woven through all three science sections.
+// So it carries no derived weight — and saying that once, in one place, keeps
+// the course list and the Sources screen from ever drifting apart.
+const STATS_NOTE = 'Research methods is tested as reasoning across all three science sections rather than as a discipline with its own share of questions, so AAMC publishes no percentage for it and Waypoint gives it no weight. It still counts as territory on your route.';
+
+// Derived from the weights rather than a hardcoded course id, so a second
+// skill course would be handled without anyone remembering to add it here.
+function isSkillCourse(courseId) {
+  const ts = TOPICS.filter(t => t.course === courseId);
+  return ts.length > 0 && ts.every(t => t.w === 0);
+}
+
 // Topic breakdown for one course (used in the expandable course rows).
 function courseTopicsBreakdown(courseId) {
   const ts = TOPICS.filter(t => t.course === courseId);
@@ -7901,7 +7915,12 @@ function courseTopicsBreakdown(courseId) {
   const rows = ts.map(t => `<div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;padding:2px 0;"><span>${t.name}</span><strong style="color:#B0B5C8;font-weight:600;">${wLabel(t)}</strong></div>`).join('');
   const note = courseReqNote(courseId);
   const noteHTML = note ? `<p style="font-size:11px;color:#767E96;line-height:1.5;margin-top:8px;">${note}</p>` : '';
-  return `${rows}<div style="display:flex;justify-content:space-between;font-size:13px;color:#4DE3AB;font-weight:700;border-top:1px solid rgba(255,255,255,0.08);margin-top:5px;padding-top:5px;"><span>${ts.length > 1 ? 'Together' : 'On the MCAT'}</span><span>${total}% of the MCAT</span></div>${noteHTML}`;
+  // A skill course has no percentage to total, and "0% of the MCAT" under a
+  // class a student is taking reads as a verdict on the class.
+  const foot = isSkillCourse(courseId)
+    ? `<p style="font-size:11px;color:#767E96;line-height:1.55;border-top:1px solid rgba(255,255,255,0.08);margin-top:5px;padding-top:5px;">${STATS_NOTE}</p>`
+    : `<div style="display:flex;justify-content:space-between;font-size:13px;color:#4DE3AB;font-weight:700;border-top:1px solid rgba(255,255,255,0.08);margin-top:5px;padding-top:5px;"><span>${ts.length > 1 ? 'Together' : 'On the MCAT'}</span><span>${total}% of the MCAT</span></div>`;
+  return `${rows}${foot}${noteHTML}`;
 }
 
 function toggleCourseExpand(courseId) {
@@ -8019,6 +8038,21 @@ function screenCoverage() {
 // Waypoint's own estimate and show how it was built. Nothing in between, and
 // nothing from prep-company blogs.
 
+// The derivation, as a table a student can check line by line. Question counts
+// are AAMC's section totals times AAMC's discipline mix; share is that over 230.
+// Kept beside the constants it explains rather than inline in the screen, so the
+// arithmetic is reviewable without reading markup.
+const DERIVATION = [
+  { label: 'Introductory biology',      q: '44.25 q', pct: '19.24', w: 19 },
+  { label: 'CARS',                      q: '53.00 q', pct: '23.04', w: 23 },
+  { label: 'Introductory psychology',   q: '38.35 q', pct: '16.67', w: 17 },
+  { label: 'First-semester biochem',    q: '29.50 q', pct: '12.83', w: 13 },
+  { label: 'General chemistry',         q: '20.65 q', pct: '8.98',  w:  9 },
+  { label: 'Introductory sociology',    q: '17.70 q', pct: '7.70',  w:  8 },
+  { label: 'Introductory physics',      q: '14.75 q', pct: '6.41',  w:  6 },
+  { label: 'Organic chemistry',         q: '11.80 q', pct: '5.13',  w:  5 },
+];
+
 const AAMC_OUTLINE = 'https://students-residents.aamc.org/whats-mcat-exam/whats-mcat-exam';
 const AAMC_MSAR    = 'https://students-residents.aamc.org/applying-medical-school/article/msar-getting-started/';
 
@@ -8071,9 +8105,22 @@ function screenSources() {
       ${p(`Source: ${A(AAMC_OUTLINE, 'AAMC, "What\'s on the MCAT Exam?"')} — the content outline hub and its four section overview pages.`)}
 
       ${h("Waypoint's coverage weights")}
-      ${p(`This is the one with no external source, so here it is in full. Each topic carries a weight for roughly how much MCAT content it accounts for, built from the categories in AAMC's content outline and the standard scope of each undergraduate course. They sum to ${total}.`)}
-      ${p(`<strong style="color:#B0B5C8;">They are Waypoint's estimate, not an AAMC figure.</strong> AAMC publishes question counts and discipline mixes; it does not publish a mapping from undergraduate courses to exam content. That mapping is what Waypoint adds — and the part to argue with.`)}
-      ${p(`Your percentage is the share of this content your coursework covers — not the share of exam questions you would answer correctly. That is why these section totals differ from the exam's equal quarters.`)}
+      ${p(`These are derived from the two AAMC figures above, not estimated. Multiply each section's question count by each discipline's share of it, total across the exam, and divide by 230. You can check every line of this with a calculator.`)}
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;margin:12px 0 10px;overflow-x:auto;">
+        <div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#767E96;text-transform:uppercase;letter-spacing:0.06em;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07);">
+          <span>Discipline</span><span style="flex-shrink:0;">Questions · share · weight</span>
+        </div>
+        ${DERIVATION.map(d => `
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:13px;color:#B0B5C8;">${d.label}</span>
+            <span style="font-size:12px;color:#8A93A8;flex-shrink:0;">${d.q} · ${d.pct}% · <strong style="color:#4DE3AB;">${d.w}</strong></span>
+          </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;padding-top:10px;font-size:13px;color:#B0B5C8;"><span>230 questions</span><strong style="color:#4DE3AB;">${total}</strong></div>
+      </div>
+      ${p(`Integers rounded by largest remainder so they still sum to ${total}.`)}
+      ${p(`<strong style="color:#B0B5C8;">What is still Waypoint's judgment:</strong> the split of a discipline across courses and topics. AAMC publishes no course-level breakdown, so intro biology's 19 becoming Bio I 9 and Bio II 10, or general chemistry's 9 becoming Gen Chem I 7 and Gen Chem II 2, is ours — and the part to argue with.`)}
+      ${p(`<strong style="color:#B0B5C8;">Statistics.</strong> ${STATS_NOTE}`)}
+      ${p(`Your percentage is the share of this content your coursework covers — not the share of exam questions you would answer correctly, and never a predicted score. The per-course totals below group these weights by class; they are not the exam's four equal quarters, because several disciplines span more than one section.`)}
       <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;margin:12px 0 10px;">
         ${sourceWeightRows()}
         <div style="display:flex;justify-content:space-between;padding-top:10px;font-size:13px;color:#B0B5C8;"><span>Total</span><strong style="color:#4DE3AB;">${total}%</strong></div>
