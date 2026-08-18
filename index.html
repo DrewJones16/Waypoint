@@ -4481,7 +4481,6 @@ function load() {
     if (ms) S.milestonesShown = JSON.parse(ms);
     const cms = localStorage.getItem('wp_cov_milestones');
     if (cms) S.covMilestonesShown = JSON.parse(cms);
-    migrateCovMilestones();
     const tls = localStorage.getItem('wp_topic_last_seen');
     if (tls) S.topicLastSeen = JSON.parse(tls);
     const nd = localStorage.getItem('wp_nudge_dismissed');
@@ -4548,6 +4547,13 @@ function load() {
     if (migratedUpcoming) {
       ['wp_sem_start','wp_sem_prompt','wp_midterm'].forEach(k => localStorage.removeItem(k));
     }
+
+    // Runs last, and only here. It calls save(), which writes the whole state
+    // object — anything not yet read back from storage at that moment would be
+    // overwritten with its in-memory default. An earlier version of this call
+    // sat in the middle of load() and silently wiped practice history, syllabi
+    // and semester dates on the next open.
+    migrateCovMilestones();
   } catch(e) {
     // Corrupted or unparseable localStorage — wipe all Waypoint keys and start fresh.
     // Silent recovery: new users see the landing screen, not an error.
@@ -5616,6 +5622,44 @@ function freshnessLineHTML() {
         <strong style="color:#4DE3AB;">${head}</strong>${parts.length ? sep + parts.join(sep) : '.'}
       </p>
       ${parts.length ? `<p style="font-size:11px;color:#767E96;margin:0 0 12px;">Tap a topic to see why.</p>` : ''}`;
+}
+
+// ── Covered vs held ──────────────────────────────────────────────────────────
+// "Where you are" has meant exposure: you took the class. Whether the material
+// stuck is a different question, and Waypoint already knows the answer — it just
+// never said it next to the number.
+//
+// Covered is what your coursework has taught. Held is the part of that you have
+// practised recently enough that there is evidence you still have it. It is a
+// share OF the covered ground, not a second score, and it is weighted on the
+// same credit basis as coverage — an in-progress course counts half in both —
+// so the share can never exceed 100%.
+//
+// This is a count of topics with recent verified practice. It is not a retention
+// estimate and not a predicted score; the model has no basis for either.
+function standingSummary() {
+  const f = freshnessSummary();
+  const wOf = list => list.reduce((n, st) => n + st.topic.w * courseCredit(st.topic.course), 0);
+  const totalW = wOf(f.states);
+  return {
+    cov: coverage(S.courses, true),
+    practiced: f.practiced,
+    total: f.total,
+    heldPct: totalW > 0 ? Math.round(wOf(f.fresh) / totalW * 100) : 0,
+  };
+}
+
+// One quiet line under the ring. Never a second headline — coverage is the
+// promise the landing page makes, and this is the footnote that keeps it honest.
+function standingLineHTML() {
+  const st = standingSummary();
+  if (!st.total) return '';
+  // A zero here would read as a failure the moment someone arrives, when in fact
+  // they have simply not been asked for anything yet.
+  const text = st.practiced === 0
+    ? 'Nothing verified yet — 10 questions starts the record.'
+    : `Holding <strong style="color:#B0B5C8;">${st.heldPct}%</strong> of what you've covered.`;
+  return `<p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0 0 2px;">${text}</p>`;
 }
 
 // A re-pin is 10 questions, or the whole topic if the bank holds fewer. Orgo I,
@@ -8099,13 +8143,13 @@ function screenSources() {
       <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:4px;">Some are AAMC's. Some are Waypoint's own estimates. This page says which is which, and shows the working.</p>
 
       ${h('Exam structure')}
-      ${p(`The MCAT has four sections. Bio/Biochem, Chem/Phys and Psych/Soc are 59 questions each; CARS is 53 — 230 questions in total. Each section contributes equally to your total score, so CARS is 23% of the questions and a quarter of the score.`)}
+      ${p(`Four sections. Bio/Biochem, Chem/Phys and Psych/Soc are 59 questions each; CARS is 53 — 230 in total. All four count equally toward your score, so CARS is 23% of the questions and a quarter of the score.`)}
       ${p(`AAMC also publishes each section's discipline mix. Psych/Soc: introductory psychology 65%, introductory sociology 30%, introductory biology 5%. Chem/Phys: general chemistry 30%, first-semester biochemistry 25%, introductory physics 25%, organic chemistry 15%, introductory biology 5%.`)}
       ${p(`AAMC states those percentages are approximated to the nearest 5% and vary between test forms.`)}
       ${p(`Source: ${A(AAMC_OUTLINE, 'AAMC, "What\'s on the MCAT Exam?"')} — the content outline hub and its four section overview pages.`)}
 
       ${h("Waypoint's coverage weights")}
-      ${p(`These are derived from the two AAMC figures above, not estimated. Multiply each section's question count by each discipline's share of it, total across the exam, and divide by 230. You can check every line of this with a calculator.`)}
+      ${p(`Derived from the two AAMC figures above, not estimated: each section's question count times each discipline's share of it, totalled across the exam, over 230. Check any line with a calculator.`)}
       <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;margin:12px 0 10px;overflow-x:auto;">
         <div style="display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#767E96;text-transform:uppercase;letter-spacing:0.06em;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.07);">
           <span>Discipline</span><span style="flex-shrink:0;">Questions · share · weight</span>
@@ -8117,24 +8161,27 @@ function screenSources() {
           </div>`).join('')}
         <div style="display:flex;justify-content:space-between;padding-top:10px;font-size:13px;color:#B0B5C8;"><span>230 questions</span><strong style="color:#4DE3AB;">${total}</strong></div>
       </div>
-      ${p(`Integers rounded by largest remainder so they still sum to ${total}.`)}
-      ${p(`<strong style="color:#B0B5C8;">What is still Waypoint's judgment:</strong> the split of a discipline across courses and topics. AAMC publishes no course-level breakdown, so intro biology's 19 becoming Bio I 9 and Bio II 10, or general chemistry's 9 becoming Gen Chem I 7 and Gen Chem II 2, is ours — and the part to argue with.`)}
+      ${p(`Rounded by largest remainder so the integers still sum to ${total}.`)}
+      ${p(`<strong style="color:#B0B5C8;">Still Waypoint's judgment:</strong> the split of a discipline across courses and topics. AAMC publishes no course-level breakdown, so intro biology's 19 becoming Bio I 9 and Bio II 10, or general chemistry's 9 becoming Gen Chem I 7 and Gen Chem II 2, is ours — and the part to argue with.`)}
       ${p(`<strong style="color:#B0B5C8;">Statistics.</strong> ${STATS_NOTE}`)}
-      ${p(`Your percentage is the share of this content your coursework covers — not the share of exam questions you would answer correctly, and never a predicted score. The per-course totals below group these weights by class; they are not the exam's four equal quarters, because several disciplines span more than one section.`)}
+      ${p(`Your percentage is the share of this content your coursework covers — not the share of questions you would answer correctly, and never a predicted score. The table below groups these weights by class; it is not the exam's four equal quarters, because several disciplines span more than one section.`)}
       <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;margin:12px 0 10px;">
         ${sourceWeightRows()}
         <div style="display:flex;justify-content:space-between;padding-top:10px;font-size:13px;color:#B0B5C8;"><span>Total</span><strong style="color:#4DE3AB;">${total}%</strong></div>
       </div>
 
       ${h('Course requirements')}
-      ${p(`Waypoint's Required / Recommended / MCAT-tested tags describe the common pattern across medical schools — they are not any one school's rules.`)}
-      ${p(`AAMC's own framing: requirements vary from school to school, and some schools have moved to competency-based admissions with no specific course list at all. Check your target schools directly.`)}
+      ${p(`Waypoint's Required / Recommended / MCAT-tested tags describe the common pattern across medical schools, not any one school's rules. AAMC's own framing: requirements vary school to school, and some have moved to competency-based admissions with no specific course list. Check your target schools directly.`)}
       ${p(`Source: ${A(AAMC_MSAR, 'AAMC MSAR')} — its Premed Course Requirements chart lists required and recommended coursework school by school, updated annually.`)}
 
+      ${h('Covered vs held')}
+      ${p(`Covered means your coursework has taught it. Held means you have practised it recently enough that Waypoint has evidence you still have it — it counts topics with recent verified practice, nothing more.`)}
+      ${p(`Held is a share of what you have covered, not a second score, and neither number predicts how you would do on the exam. Waypoint has no basis for that and does not claim it.`)}
+
       ${h('How Waypoint tracks what you\'ve kept')}
-      ${p(`Derived from two things Waypoint records: when you last practised a topic, and how accurately. A topic reads fresh under ${FRESH.freshDays.normal} days, fading to ${FRESH.fadeDays.normal}, faded beyond; answering at ${Math.round(FRESH.strongPct * 100)}% or better over at least ${FRESH.strongMin} questions stretches those to ${FRESH.freshDays.strong} and ${FRESH.fadeDays.strong}.`)}
+      ${p(`From when you last practised a topic and how accurately. Fresh under ${FRESH.freshDays.normal} days, fading to ${FRESH.fadeDays.normal}, faded beyond; answering at ${Math.round(FRESH.strongPct * 100)}% or better over at least ${FRESH.strongMin} questions stretches those to ${FRESH.freshDays.strong} and ${FRESH.fadeDays.strong}.`)}
       ${p(`<strong style="color:#B0B5C8;">Those day counts are Waypoint's judgment, not a published forgetting curve.</strong> A semester is about four months, and a topic untouched since last term deserves a second look.`)}
-      ${p(`Waypoint never estimates a retention percentage — you will never see "you have retained 72% of Genetics", because the underlying science does not support a number that precise about one person. Only fresh, fading, faded or unpinned, with the reason attached.`)}
+      ${p(`Waypoint never estimates a retention percentage — you will never see "you have retained 72% of Genetics", because the science does not support a number that precise about one person. Only fresh, fading, faded or unpinned, with the reason attached.`)}
 
       <p style="text-align:center;font-size:11px;color:#767E96;margin-top:28px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
 
@@ -8311,6 +8358,7 @@ function screenReveal() {
             </div>
           </div>
           <div style="flex:1;min-width:0;">
+            ${standingLineHTML()}
             <button onclick="go('coverage')" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;text-align:left;-webkit-tap-highlight-color:transparent;">How coverage works →</button>
           </div>
         </div>` : ''}
