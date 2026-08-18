@@ -8341,6 +8341,39 @@ function screenCourses() {
     </div>`;
 }
 
+// ── The territory line ───────────────────────────────────────────────────────
+// Designed for the week-one freshman with two in-progress classes, not the
+// average case. Half credit on two courses is single digits, and that is exactly
+// where "feel ahead, never stressed" is easiest to break: a bare "8% covered"
+// invites a student to read a deficit into a number that is, for someone eight
+// weeks into a four-year run, entirely on track.
+//
+// Two rules it never breaks. No apology — never "only", never "just". And no
+// claim about what other students have done, which is a structural statement or
+// nothing at all. "Most of the exam's ground is still ahead" is true of the exam
+// regardless of who is reading it.
+//
+// A junior or senior at the same number means something different: their route
+// is mostly behind them, so a low figure usually means there is more transcript
+// to enter, and saying so is more useful than telling them they are early.
+function territoryLine(cov) {
+  const early = !DONE_FIRST_YEARS.includes(S.year);
+
+  if (cov <= 9) {
+    return early
+      ? `${cov}% mapped already — most of the exam's ground is still ahead, and being early is the whole advantage.`
+      : `${cov}% mapped so far — add the rest of what you've finished and this climbs quickly.`;
+  }
+  if (cov <= 18) {
+    return early
+      ? `${cov}% covered — freshman territory, and the sequence is just getting started.`
+      : `${cov}% covered so far — there's likely more on your transcript to add.`;
+  }
+  if (cov <= 33) return `${cov}% covered — sophomore territory.`;
+  if (cov <= 66) return `${cov}% covered — junior-year ground.`;
+  return `${cov}% covered — senior-year territory.`;
+}
+
 function screenReveal() {
   const cov  = coverage(S.courses, true);
   const nCov = TOPICS.filter(t => t.course && S.courses.has(t.course)).length;
@@ -8371,10 +8404,7 @@ function screenReveal() {
       : 'Add your courses to see your coverage.';
   } else {
     headline = `${nCov} content area${nCov !== 1 ? 's' : ''} unlocked.`;
-    subhead  = cov <= 18 ? `${cov}% covered — freshman territory.`
-             : cov <= 33 ? `${cov}% covered — sophomore territory.`
-             : cov <= 66 ? `${cov}% covered — junior-year ground.`
-             :             `${cov}% covered — senior-year territory.`;
+    subhead  = territoryLine(cov);
   }
 
   // Best single course to add next
@@ -8394,7 +8424,7 @@ function screenReveal() {
     <div class="screen">
       <p class="label">Your route</p>
       <h2 style="margin-bottom:5px;">${headline}</h2>
-      <p style="font-size:15px;margin-bottom:${milestone ? '14px' : '22px'};">${subhead}</p>
+      <p id="reveal-subhead" style="font-size:15px;margin-bottom:${milestone ? '14px' : '22px'};">${subhead}</p>
 
       ${milestone}
 
@@ -8874,6 +8904,10 @@ function finishCourses() {
   if (S.year && S.courses.size > 0) {
     if (window.plausible) plausible('onboarding_complete');
   }
+  // Transient, like _pickerMode — never persisted, so it cannot survive into a
+  // later visit to the Route. Gated on having practised nothing yet, so someone
+  // editing their courses months in doesn't get the first-run theater again.
+  S._firstReveal = S.sessionHistory.length === 0 && S.totalAnswered === 0;
   go('reveal');
 }
 
@@ -9562,6 +9596,75 @@ function syncDesktopShell() {
   if (an) an.textContent = S.totalAnswered || 0;
 }
 
+// ── The first reveal ─────────────────────────────────────────────────────────
+// People judge an experience by its peak and its end, and this is the peak of
+// the first two minutes. Everywhere else the Route renders instantly, which is
+// right — theater on a screen you visit daily is friction. So all of this is
+// gated on one transient flag set when onboarding completes, and none of it
+// touches screenReveal()'s markup: a repeat visit produces byte-for-byte the
+// same HTML and the same instant render it did before.
+
+function reducedMotion() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function animateCoverageRing() {
+  const ring = document.querySelector('[data-target]');
+  if (ring) requestAnimationFrame(() => setTimeout(() => {
+    ring.style.strokeDashoffset = ring.dataset.target;
+  }, 80));
+
+  const cn = document.getElementById('cov-num');
+  if (!cn) return;
+  const target = parseInt(cn.dataset.count, 10) || 0;
+  if (target <= 0) return;
+  if (reducedMotion()) { cn.textContent = target + '%'; return; }
+
+  cn.textContent = '0%';
+  let t0 = null;
+  const tick = (ts) => {
+    if (!t0) t0 = ts;
+    const pr = Math.min((ts - t0) / 1100, 1);
+    cn.textContent = Math.round((1 - Math.pow(1 - pr, 3)) * target) + '%';
+    if (pr < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+const FIRST_REVEAL_BEAT = 800;
+
+// Build-up, then number, then meaning, then everything else. The flag is
+// cleared before anything animates, so an error mid-sequence costs one dropped
+// animation rather than a screen that replays the beat forever.
+function playFirstReveal() {
+  S._firstReveal = false;
+  const screen = document.querySelector('#app > .screen');
+  const subhead = document.getElementById('reveal-subhead');
+
+  if (!screen || reducedMotion()) { animateCoverageRing(); return; }
+
+  const beat = document.createElement('div');
+  beat.id = 'reveal-beat';
+  beat.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:11px;z-index:5;background:#0A0B10;';
+  beat.innerHTML = '<span class="pulse-dot" style="width:8px;height:8px;margin:0;"></span>' +
+                   '<span style="font-size:15px;color:#8A93A8;font-weight:600;">Mapping your route…</span>';
+  screen.style.position = 'relative';
+  screen.style.visibility = 'hidden';
+  screen.appendChild(beat);
+  beat.style.visibility = 'visible';
+
+  if (subhead) { subhead.style.opacity = '0'; subhead.style.transition = 'opacity 420ms ease-out'; }
+
+  setTimeout(() => {
+    beat.remove();
+    screen.style.visibility = '';
+    animateCoverageRing();
+    // After the number has landed, not with it — the figure is the event and the
+    // sentence is what it means.
+    if (subhead) setTimeout(() => { subhead.style.opacity = '1'; }, 700);
+  }, FIRST_REVEAL_BEAT);
+}
+
 function render() {
   try {
   const el = document.getElementById('app');
@@ -9622,31 +9725,10 @@ function render() {
     if (m) m.innerHTML = mapHTML(true, todayTopics());
   }
   // Animate the coverage ring wherever it renders — it lives on Route now.
-  {
-    const ring = document.querySelector('[data-target]');
-    if (ring) requestAnimationFrame(() => setTimeout(() => {
-      ring.style.strokeDashoffset = ring.dataset.target;
-    }, 80));
-    const cn = document.getElementById('cov-num');
-    if (cn) {
-      const target = parseInt(cn.dataset.count, 10) || 0;
-      if (target > 0) {
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          cn.textContent = target + '%';
-        } else {
-          cn.textContent = '0%';
-          let t0 = null;
-          const tick = (ts) => {
-            if (!t0) t0 = ts;
-            const pr = Math.min((ts - t0) / 1100, 1);
-            cn.textContent = Math.round((1 - Math.pow(1 - pr, 3)) * target) + '%';
-            if (pr < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        }
-      }
-    }
-  }
+  // On the very first reveal the beat runs first and this is called after it,
+  // so the number starts climbing when the student is looking at it.
+  if (S._firstReveal && S.screen === 'reveal') playFirstReveal();
+  else animateCoverageRing();
 
   syncDesktopShell();
   } catch(e) {
