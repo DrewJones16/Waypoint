@@ -7569,7 +7569,37 @@ function inProgressClaim() {
     .sort((a, b) => b.delta - a.delta);
 }
 
+// Marking a class done is a claim about the class, and asking for it in week 3
+// is asking someone to guess. It is a useful reminder near the end of a term and
+// a nudge to lie at the start of one, so the block waits.
+const CLAIM_WEEK = 10;
+const CLAIM_DAYS = 60;
+
+// How long Waypoint has known this student, in days: the oldest date on record
+// across their practice history and their topic freshness. Both are lower bounds
+// — history keeps the last seven sessions, freshness keeps only the most recent
+// visit to each topic — so this under-counts rather than over-counts, which is
+// the safe direction for a gate that should stay shut when it cannot tell.
+// Returns null when there is nothing on record at all.
+function daysOnRecord(now = new Date()) {
+  const stamps = [];
+  (S.sessionHistory || []).forEach(h => { const t = Date.parse(h && h.date); if (!isNaN(t)) stamps.push(t); });
+  Object.values(S.topicLastSeen || {}).forEach(v => { const t = Date.parse(v); if (!isNaN(t)) stamps.push(t); });
+  if (!stamps.length) return null;
+  return Math.floor((now.getTime() - Math.min(...stamps)) / 86400000);
+}
+
+// Week 10 of a known semester, or — with no semester on file — two months of
+// using Waypoint. Anything less and the block stays quiet.
+function claimReady() {
+  const wk = semesterWeek();
+  if (wk !== null) return wk >= CLAIM_WEEK;
+  const days = daysOnRecord();
+  return days !== null && days >= CLAIM_DAYS;
+}
+
 function claimHTML() {
+  if (!claimReady()) return '';
   const items = inProgressClaim();
   if (!items.length) return '';
   const top = items[0];
