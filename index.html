@@ -7607,6 +7607,8 @@ function screenLanding() {
 }
 
 function openAbout() { S._aboutBack = S.screen; go('about'); }
+function openSources() { S._sourcesBack = S.screen; go('sources'); }
+function backFromSources() { go(S._sourcesBack || 'coverage'); }
 function backFromAbout() { go(S._aboutBack || 'brief'); }
 
 function screenAbout() {
@@ -7656,6 +7658,10 @@ function screenSettings() {
 
       <button onclick="openAbout()" style="width:100%;text-align:left;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:14px 16px;margin-bottom:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:inherit;">
         <span><span style="display:block;font-size:15px;font-weight:600;color:#F0F2F8;margin-bottom:2px;">What is Waypoint?</span><span style="font-size:13px;color:#767E96;">Why I built it, and how it helps — from the maker.</span></span>
+        <span style="color:#1D9E75;font-size:19px;flex-shrink:0;">→</span>
+      </button>
+<button onclick="openSources()" style="width:100%;text-align:left;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:14px 16px;margin-bottom:22px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:inherit;">
+        <span><span style="display:block;font-size:15px;font-weight:600;color:#F0F2F8;margin-bottom:2px;">Where these numbers come from</span><span style="font-size:13px;color:#767E96;">Sources for every figure, and the working behind Waypoint's own estimates.</span></span>
         <span style="color:#1D9E75;font-size:19px;flex-shrink:0;">→</span>
       </button>
 
@@ -7872,7 +7878,7 @@ function breakdownHTML() {
         <div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;"><span>Max from courses</span><span>79%</span></div>
         <div style="display:flex;justify-content:space-between;font-size:13px;color:#8A93A8;"><span>CARS — a reading skill built all along</span><span>21% here · 53 of 230 questions</span></div>
         <p style="font-size:11px;color:#767E96;line-height:1.55;margin-top:10px;">✓ done · ½ taking now (counts half until you finish) · · not yet · ~ ongoing.</p>
-        <p style="font-size:11px;color:#767E96;line-height:1.6;margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">Sources: section weights follow the <a href="https://students-residents.aamc.org/whats-mcat-exam/publication-chapters/whats-mcat-exam" target="_blank" rel="noopener" style="color:#767E96;text-decoration:underline;">AAMC MCAT content outline</a>; typical-year coverage follows the <a href="https://medschoolinsiders.com/pre-med/premed-requirements/" target="_blank" rel="noopener" style="color:#767E96;text-decoration:underline;">standard premed course sequence</a> — a typical course load, not a survey of students.</p>
+        <p style="font-size:11px;color:#767E96;line-height:1.6;margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">These weights are Waypoint's own estimate, built from AAMC's content outline and the standard scope of each course — a typical course load, not a survey of students. <button onclick="openSources()" style="background:none;border:none;padding:0;font-family:inherit;font-size:11px;color:#2DB88A;font-weight:600;cursor:pointer;text-decoration:underline;-webkit-tap-highlight-color:transparent;">Where these numbers come from →</button></p>
       </div>
     </div>`;
 }
@@ -7907,7 +7913,95 @@ function screenCoverage() {
         <p style="font-size:11px;color:#767E96;margin:9px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
       </div>
 
+      <button onclick="openSources()" style="display:block;width:100%;background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size:13px;font-weight:600;color:#2DB88A;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;">Where these numbers come from →</button>
+      <div style="height:8px;"></div>
       <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
+    </div>`;
+}
+
+// ── Sources ──────────────────────────────────────────────────────────────────
+// Waypoint's claim is that it knows where a premed stands, and every number it
+// shows is that claim in practice. A student who checks — and premeds check, on
+// Reddit, with advisors, in club meetings — should find a derivation rather than
+// a shrug.
+//
+// The rule this screen is built on: cite AAMC, or say plainly that the number is
+// Waypoint's own estimate and show how it was built. Nothing in between, and
+// nothing from prep-company blogs.
+
+const AAMC_OUTLINE = 'https://students-residents.aamc.org/whats-mcat-exam/whats-mcat-exam';
+const AAMC_MSAR    = 'https://students-residents.aamc.org/applying-medical-school/article/msar-getting-started/';
+
+// One row per course, from TOPICS itself rather than a second hand-kept list —
+// a table that could drift from the weights it documents would be worse than
+// no table at all.
+function sourceWeightRows() {
+  const byCourse = {};
+  TOPICS.forEach(t => {
+    const key = t.course || 'cars';
+    (byCourse[key] = byCourse[key] || { w: 0, names: [] });
+    byCourse[key].w += t.w;
+    byCourse[key].names.push(t.name);
+  });
+  const label = id => id === 'cars' ? 'CARS (no course)'
+                    : (COURSES.find(c => c.id === id) || {}).name || id;
+  return Object.entries(byCourse)
+    .sort((a, b) => b[1].w - a[1].w)
+    .map(([id, v]) => `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+        <span style="font-size:13px;color:#B0B5C8;min-width:0;">${label(id)}
+          <span style="display:block;font-size:11px;color:#767E96;line-height:1.4;">${v.names.join(' · ')}</span></span>
+        <span style="font-size:13px;font-weight:700;color:#4DE3AB;flex-shrink:0;">${v.w}%</span>
+      </div>`).join('');
+}
+
+function screenSources() {
+  const total = TOPICS.reduce((n, t) => n + t.w, 0);
+  const A = (href, text) => `<a href="${href}" target="_blank" rel="noopener" style="color:#2DB88A;text-decoration:underline;">${text}</a>`;
+  const h = text => `<p class="label" style="margin:26px 0 8px;">${text}</p>`;
+  const p = text => `<p style="font-size:13px;color:#8A93A8;line-height:1.65;margin:0 0 10px;">${text}</p>`;
+
+  return `
+    <div class="screen" style="padding-bottom:40px;">
+      <div class="brief-topbar">
+        <button onclick="backFromSources()" style="display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;padding:0;color:#8A93A8;font-family:inherit;font-size:15px;font-weight:600;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back
+        </button>
+      </div>
+
+      <p class="label">Your route</p>
+      <h2 style="margin-bottom:6px;">Where these numbers come from.</h2>
+      <p style="font-size:15px;color:#8A93A8;line-height:1.6;margin-bottom:4px;">Some are AAMC's. Some are Waypoint's own estimates. This page says which is which, and shows the working.</p>
+
+      ${h('Exam structure')}
+      ${p(`The MCAT has four sections. Bio/Biochem, Chem/Phys and Psych/Soc are 59 questions each; CARS is 53 — 230 questions in total. Each section contributes equally to your total score, so CARS is 23% of the questions and a quarter of the score.`)}
+      ${p(`AAMC also publishes each section's discipline mix. Psych/Soc: introductory psychology 65%, introductory sociology 30%, introductory biology 5%. Chem/Phys: general chemistry 30%, first-semester biochemistry 25%, introductory physics 25%, organic chemistry 15%, introductory biology 5%.`)}
+      ${p(`AAMC states those percentages are approximated to the nearest 5% and vary between test forms.`)}
+      ${p(`Source: ${A(AAMC_OUTLINE, 'AAMC, "What\'s on the MCAT Exam?"')} — the content outline hub and its four section overview pages.`)}
+
+      ${h("Waypoint's coverage weights")}
+      ${p(`This is the one with no external source, so here it is in full. Each topic carries a weight for roughly how much MCAT content it accounts for, built from the categories in AAMC's content outline and the standard scope of each undergraduate course. They sum to ${total}.`)}
+      ${p(`<strong style="color:#B0B5C8;">They are Waypoint's estimate, not an AAMC figure.</strong> AAMC publishes question counts and discipline mixes; it does not publish a mapping from undergraduate courses to exam content. That mapping is what Waypoint adds — and the part to argue with.`)}
+      ${p(`Your percentage is the share of this content your coursework covers — not the share of exam questions you would answer correctly. That is why these section totals differ from the exam's equal quarters.`)}
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;margin:12px 0 10px;">
+        ${sourceWeightRows()}
+        <div style="display:flex;justify-content:space-between;padding-top:10px;font-size:13px;color:#B0B5C8;"><span>Total</span><strong style="color:#4DE3AB;">${total}%</strong></div>
+      </div>
+
+      ${h('Course requirements')}
+      ${p(`Waypoint's Required / Recommended / MCAT-tested tags describe the common pattern across medical schools — they are not any one school's rules.`)}
+      ${p(`AAMC's own framing: requirements vary from school to school, and some schools have moved to competency-based admissions with no specific course list at all. Check your target schools directly.`)}
+      ${p(`Source: ${A(AAMC_MSAR, 'AAMC MSAR')} — its Premed Course Requirements chart lists required and recommended coursework school by school, updated annually.`)}
+
+      ${h('How Waypoint tracks what you\'ve kept')}
+      ${p(`Derived from two things Waypoint records: when you last practised a topic, and how accurately. A topic reads fresh under ${FRESH.freshDays.normal} days, fading to ${FRESH.fadeDays.normal}, faded beyond; answering at ${Math.round(FRESH.strongPct * 100)}% or better over at least ${FRESH.strongMin} questions stretches those to ${FRESH.freshDays.strong} and ${FRESH.fadeDays.strong}.`)}
+      ${p(`<strong style="color:#B0B5C8;">Those day counts are Waypoint's judgment, not a published forgetting curve.</strong> A semester is about four months, and a topic untouched since last term deserves a second look.`)}
+      ${p(`Waypoint never estimates a retention percentage — you will never see "you have retained 72% of Genetics", because the underlying science does not support a number that precise about one person. Only fresh, fading, faded or unpinned, with the reason attached.`)}
+
+      <p style="text-align:center;font-size:11px;color:#767E96;margin-top:28px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
+
+      <button class="btn btn-ghost" style="margin-top:18px;" onclick="backFromSources()">← Back</button>
     </div>`;
 }
 
@@ -9164,7 +9258,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50 };
+const PROG = { landing:0, brief:10, year:15, courses:30, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, sources:50 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -9241,6 +9335,7 @@ function render() {
     case 'examplan': html += screenExamPlan(); break;
     case 'syllabus': html += screenSyllabus(); break;
     case 'coverage': html += screenCoverage(); break;
+    case 'sources':  html += screenSources();  break;
     case 'quicklog':          html += screenQuickLog();         break;
     // Retired: topic and subtopic are one screen now. A stale S.screen (an
     // interrupted session, a tab left open across the deploy) lands on it.
