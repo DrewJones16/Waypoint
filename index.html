@@ -4869,6 +4869,47 @@ const IN_PROGRESS_CREDIT = 0.5;
 function courseCredit(courseId) {
   return S.courseStatus[courseId] === 'in-progress' ? IN_PROGRESS_CREDIT : 1;
 }
+// Per-section coverage, in one place. The desktop rail and the landing example
+// card both need it, and two copies of this arithmetic is exactly how a
+// marketing number drifts away from the model it claims to illustrate.
+// CARS is excluded: no course teaches it.
+function sectionCoverage(courses) {
+  const tot = { bb: 0, cp: 0, ps: 0 }, cov = { bb: 0, cp: 0, ps: 0 };
+  TOPICS.forEach(t => {
+    if (tot[t.mcat] === undefined) return;
+    tot[t.mcat] += t.w;
+    if (t.course && courses.has(t.course)) cov[t.mcat] += t.w * courseCredit(t.course);
+  });
+  const out = {};
+  ['bb', 'cp', 'ps'].forEach(k => out[k] = tot[k] > 0 ? Math.round(cov[k] / tot[k] * 100) : 0);
+  return out;
+}
+
+// The landing page's example route. Every figure on that card is computed from
+// TOPICS through the same functions the app uses on a real student, so a change
+// to the weights moves the marketing card with it. A visitor who reads the
+// Sources screen can recompute this card and find it correct — which is the
+// whole point of having derived the weights.
+const EXAMPLE_ROUTE = {
+  done:   ['bio1', 'bio2', 'gc1', 'gc2', 'psych', 'oc1'],
+  taking: ['ph1'],
+  label:  'Bio I &amp; II, Gen Chem I &amp; II, Psychology and Orgo I finished, Physics I in progress',
+};
+
+function exampleRoute() {
+  const courses = new Set([...EXAMPLE_ROUTE.done, ...EXAMPLE_ROUTE.taking]);
+  const status = {};
+  EXAMPLE_ROUTE.done.forEach(c => status[c] = 'completed');
+  EXAMPLE_ROUTE.taking.forEach(c => status[c] = 'in-progress');
+  // Stand S in the example's shoes for the length of the call, the way
+  // coverageAfterCourse() does, rather than reimplementing credit handling.
+  const prev = S.courseStatus;
+  S.courseStatus = status;
+  try {
+    return { cov: coverage(courses, true), sections: sectionCoverage(courses) };
+  } finally { S.courseStatus = prev; }
+}
+
 function coverage(courses, statusAware = false) {
   return Math.round(TOPICS.reduce((n, t) => {
     if (!t.course || !courses.has(t.course)) return n;
@@ -7701,6 +7742,7 @@ function screenBrief() {
 
 
 function screenLanding() {
+  const ex = exampleRoute();
   return `
     <div class="screen" style="padding-top:36px;padding-bottom:40px;">
       <div class="app-brand">
@@ -7726,11 +7768,11 @@ function screenLanding() {
 
       <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius:12px;padding:16px 16px 14px;margin-bottom:28px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:13px;gap:12px;">
-          <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;padding-top:4px;">Example — a sophomore<br>bio major's route</div>
-          <div style="text-align:right;flex-shrink:0;"><span class="disp" style="font-size:32px;font-weight:800;color:#F0F2F8;line-height:1;">41%</span><div style="font-size:11px;color:#767E96;letter-spacing:0.04em;margin-top:1px;">of the MCAT covered</div></div>
+          <div style="font-size:11px;font-weight:700;color:#1D9E75;text-transform:uppercase;letter-spacing:0.08em;padding-top:4px;">Example —<br>seven courses in</div>
+          <div style="text-align:right;flex-shrink:0;"><span class="disp" style="font-size:32px;font-weight:800;color:#F0F2F8;line-height:1;">${ex.cov}%</span><div style="font-size:11px;color:#767E96;letter-spacing:0.04em;margin-top:1px;">of the MCAT covered</div></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:9px;"><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Bio &amp; Biochem</span><span style="font-size:11px;font-weight:700;color:#1D9E75;">59%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:59%;height:100%;background:#1D9E75;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Chem &amp; Physics</span><span style="font-size:11px;font-weight:700;color:#60A5FA;">34%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:34%;height:100%;background:#60A5FA;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Psych &amp; Soc</span><span style="font-size:11px;font-weight:700;color:#A78BFA;">50%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:50%;height:100%;background:#A78BFA;border-radius:3px;"></div></div></div></div>
-        <div style="font-size:11px;color:#767E96;margin-top:13px;line-height:1.55;">41% of the exam already familiar, just from Bio I &amp; II, Gen Chem, and Psych. You're probably further along than you think.</div>
+        <div style="display:flex;flex-direction:column;gap:9px;"><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Bio &amp; Biochem</span><span style="font-size:11px;font-weight:700;color:#1D9E75;">${ex.sections.bb}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:${ex.sections.bb}%;height:100%;background:#1D9E75;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Chem &amp; Physics</span><span style="font-size:11px;font-weight:700;color:#60A5FA;">${ex.sections.cp}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:${ex.sections.cp}%;height:100%;background:#60A5FA;border-radius:3px;"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;color:#767E96;">Psych &amp; Soc</span><span style="font-size:11px;font-weight:700;color:#A78BFA;">${ex.sections.ps}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;"><div style="width:${ex.sections.ps}%;height:100%;background:#A78BFA;border-radius:3px;"></div></div></div></div>
+        <div style="font-size:11px;color:#767E96;margin-top:13px;line-height:1.55;">${EXAMPLE_ROUTE.label} — which counts half until it's finished. You're probably further along than you think.</div>
       </div>
 
       <button class="btn btn-primary" onclick="go('year')" style="font-size:15px;font-weight:600;letter-spacing:-0.01em;">See where you are →</button>
@@ -9491,18 +9533,12 @@ function syncDesktopShell() {
       : 'Set up your route to see coverage climb.';
   }
 
-  const secTot = { bb: 0, cp: 0, ps: 0 }, secCov = { bb: 0, cp: 0, ps: 0 };
-  TOPICS.forEach(t => {
-    if (secTot[t.mcat] === undefined) return; // CARS excluded — not course-based
-    secTot[t.mcat] += t.w;
-    if (t.course && S.courses.has(t.course)) secCov[t.mcat] += t.w * courseCredit(t.course);
-  });
+  const secPct = sectionCoverage(S.courses);
   ['bb', 'cp', 'ps'].forEach(k => {
-    const pct = secTot[k] > 0 ? Math.round(secCov[k] / secTot[k] * 100) : 0;
     const p = shell.querySelector(`[data-secpct="${k}"]`);
     const f = shell.querySelector(`[data-secfill="${k}"]`);
-    if (p) p.textContent = pct + '%';
-    if (f) f.style.width = pct + '%';
+    if (p) p.textContent = secPct[k] + '%';
+    if (f) f.style.width = secPct[k] + '%';
   });
 
   const st = document.getElementById('dt-streak');
