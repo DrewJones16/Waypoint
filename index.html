@@ -5752,10 +5752,14 @@ function standingSummary() {
 function standingLineHTML() {
   const st = standingSummary();
   if (!st.total) return '';
-  // A zero here would read as a failure the moment someone arrives, when in fact
-  // they have simply not been asked for anything yet.
+  // Before the first session there is nothing to hold and nothing to report, and
+  // a line saying so is a line about work not done — on the one screen whose job
+  // is to say what a student has already got. It starts once the record starts.
+  if (S.sessionHistory.length === 0) return '';
+  // Practised nothing that counts toward coverage yet — rare after a session, but
+  // a zero here would read as a failure rather than as an empty record.
   const text = st.practiced === 0
-    ? 'Nothing verified yet — 10 questions starts the record.'
+    ? 'Nothing verified yet — practice is what turns covered into held.'
     : `Holding <strong style="color:#B0B5C8;">${st.heldPct}%</strong> of what you've covered.`;
   return `<p style="font-size:13px;color:#8A93A8;line-height:1.5;margin:0 0 2px;">${text}</p>`;
 }
@@ -7565,7 +7569,37 @@ function inProgressClaim() {
     .sort((a, b) => b.delta - a.delta);
 }
 
+// Marking a class done is a claim about the class, and asking for it in week 3
+// is asking someone to guess. It is a useful reminder near the end of a term and
+// a nudge to lie at the start of one, so the block waits.
+const CLAIM_WEEK = 10;
+const CLAIM_DAYS = 60;
+
+// How long Waypoint has known this student, in days: the oldest date on record
+// across their practice history and their topic freshness. Both are lower bounds
+// — history keeps the last seven sessions, freshness keeps only the most recent
+// visit to each topic — so this under-counts rather than over-counts, which is
+// the safe direction for a gate that should stay shut when it cannot tell.
+// Returns null when there is nothing on record at all.
+function daysOnRecord(now = new Date()) {
+  const stamps = [];
+  (S.sessionHistory || []).forEach(h => { const t = Date.parse(h && h.date); if (!isNaN(t)) stamps.push(t); });
+  Object.values(S.topicLastSeen || {}).forEach(v => { const t = Date.parse(v); if (!isNaN(t)) stamps.push(t); });
+  if (!stamps.length) return null;
+  return Math.floor((now.getTime() - Math.min(...stamps)) / 86400000);
+}
+
+// Week 10 of a known semester, or — with no semester on file — two months of
+// using Waypoint. Anything less and the block stays quiet.
+function claimReady() {
+  const wk = semesterWeek();
+  if (wk !== null) return wk >= CLAIM_WEEK;
+  const days = daysOnRecord();
+  return days !== null && days >= CLAIM_DAYS;
+}
+
 function claimHTML() {
+  if (!claimReady()) return '';
   const items = inProgressClaim();
   if (!items.length) return '';
   const top = items[0];
@@ -8474,15 +8508,23 @@ function screenReveal() {
   const ringR = 46, ringCirc = Math.round(2 * Math.PI * ringR);
   const ringOffset = Math.round(ringCirc * (1 - cov / 100));
 
-  return `
-    <div class="screen">
-      <p class="label">Your route</p>
+  // The blocks, defined once and composed in two orders. A first reveal has a
+  // job the returning Route does not: get a student who has never answered a
+  // question into their first one. So the practice CTA follows the number
+  // immediately, and the account ask and the map wait their turn behind it.
+  // Every later visit keeps the layout the Route was designed for, character
+  // for character — the blocks carry their own indentation and are joined with
+  // the same blank lines the single template used.
+  //
+  // Same flag the animation sequence uses — one definition of "first reveal",
+  // not two.
+  const first = !!S._firstReveal;
+
+  const head = `      <p class="label">Your route</p>
       <h2 style="margin-bottom:5px;">${headline}</h2>
-      <p id="reveal-subhead" style="font-size:15px;margin-bottom:${milestone ? '14px' : '22px'};">${subhead}</p>
+      <p id="reveal-subhead" style="font-size:15px;margin-bottom:${milestone ? '14px' : '22px'};">${subhead}</p>`;
 
-      ${milestone}
-
-      ${cov > 0 ? `
+  const ring = `      ${cov > 0 ? `
         <div style="display:flex;align-items:center;gap:20px;margin:4px 0 22px;">
           <div style="position:relative;flex-shrink:0;width:112px;height:112px;">
             <svg width="112" height="112" viewBox="0 0 112 112" style="transform:rotate(-90deg);position:absolute;inset:0;">
@@ -8502,27 +8544,46 @@ function screenReveal() {
             ${standingLineHTML()}
             <button onclick="go('coverage')" style="background:none;border:none;color:#2DB88A;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;text-align:left;-webkit-tap-highlight-color:transparent;">How coverage works →</button>
           </div>
-        </div>` : ''}
+        </div>` : ''}`;
 
-      <!-- Directly under the number, because that is the only place it works.
+  // On a first reveal this block follows the practice button rather than
+  // preceding it; either way it stays inside the top group, under the number.
+  const ask = `      <!-- Directly under the number, because that is the only place it works.
            Most first-time visitors read the percentage and leave; an offer to
            keep it 1400px further down, past the map, is an offer nobody sees.
            It is quiet and secondary — the practice button below stays the loud
            one — and it is absent entirely for signed-in users and for anyone
            who has waved it away here before. -->
-      ${cov > 0 ? acctPromptHTML('reveal') : ''}
+      ${cov > 0 ? acctPromptHTML('reveal') : ''}`;
 
-      ${freshnessLineHTML()}
+  const body = `      ${freshnessLineHTML()}
       <div id="sectioned-map" style="margin-bottom:22px;"></div>
 
       ${nextCourse && cov > 0 ? `
         <p style="font-size:13px;color:#8A93A8;line-height:1.6;margin:0 0 22px;">Next to unlock: add <strong style="color:#F0F2F8;">${nextCourse.name}</strong> and move your route by <strong style="color:#1D9E75;">+${nextCourse.gain}%</strong>.</p>` : ''}
 
-      ${claimHTML()}
+      ${claimHTML()}`;
 
-      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} onclick="startSession()">Practice from what you know →</button>
-      ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
-      <button class="btn btn-ghost" onclick="go('courses')">← Update my courses</button>
+  // On a first reveal this button starts the curated set, so it says what it
+  // actually delivers rather than describing practice in general.
+  const curated = first ? firstSessionQuestions() : null;
+  const curatedCourse = curated ? COURSES.find(c => c.id === firstSessionCourse()) : null;
+  const ctaLabel = curated && curatedCourse
+    ? `Verify it — ${curated.length} questions from your ${curatedCourse.name} →`
+    : 'Practice from what you know →';
+  const cta = `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} onclick="startSession()">${ctaLabel}</button>`;
+
+  const tail = `      ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
+      <button class="btn btn-ghost" onclick="go('courses')">← Update my courses</button>`;
+
+  const middle = first ? [cta, ask, body] : [ask, body, cta];
+
+  return `
+    <div class="screen">
+${head}
+
+${['      ' + milestone, ring, ...middle].join('\n\n')}
+${tail}
     </div>`;
 }
 
@@ -8957,6 +9018,9 @@ function trackScreen(screen) {
 function go(screen) {
   trackScreen(screen);
   if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
+  // The first reveal keeps its own order for as long as the student is on it —
+  // through the account ask, through a re-render — and ends when they leave.
+  if (screen !== 'reveal') { S._firstReveal = false; S._revealAnimated = false; }
   // An open term picker belongs to the screen that opened it. Leaving is a way
   // of not answering, which is allowed.
   S._whenOpen = null;
@@ -9709,11 +9773,13 @@ function animateCoverageRing() {
 
 const FIRST_REVEAL_BEAT = 800;
 
-// Build-up, then number, then meaning, then everything else. The flag is
-// cleared before anything animates, so an error mid-sequence costs one dropped
-// animation rather than a screen that replays the beat forever.
+// Build-up, then number, then meaning, then everything else. The beat is marked
+// as spent before anything animates, so an error mid-sequence costs one dropped
+// animation rather than a screen that replays the beat forever. S._firstReveal
+// itself stays set until they leave the Route, so a re-render here (tapping
+// "Not now" on the account ask) keeps the first-reveal order in place.
 function playFirstReveal() {
-  S._firstReveal = false;
+  S._revealAnimated = true;
   const screen = document.querySelector('#app > .screen');
   const subhead = document.getElementById('reveal-subhead');
 
@@ -9803,7 +9869,7 @@ function render() {
   // Animate the coverage ring wherever it renders — it lives on Route now.
   // On the very first reveal the beat runs first and this is called after it,
   // so the number starts climbing when the student is looking at it.
-  if (S._firstReveal && S.screen === 'reveal') playFirstReveal();
+  if (S._firstReveal && !S._revealAnimated && S.screen === 'reveal') playFirstReveal();
   else animateCoverageRing();
 
   syncDesktopShell();
