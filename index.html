@@ -5849,7 +5849,7 @@ function freshnessLineHTML() {
   const sep = `<span style="color:var(--dim);"> · </span>`;
   return `
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 ${parts.length ? '3px' : '12px'};">
-        <strong style="color:var(--green-bright);">${head}</strong>${parts.length ? sep + parts.join(sep) : '.'}
+        <strong style="color:var(--ink-2);">${head}</strong>${parts.length ? sep + parts.join(sep) : '.'}
       </p>
       ${parts.length ? `<p style="font-size: var(--fs-11);color:var(--faint);margin:0 0 12px;">Tap a topic to see why.</p>` : ''}`;
 }
