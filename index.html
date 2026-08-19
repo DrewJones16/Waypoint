@@ -84,7 +84,13 @@
     --dur:  0.16s;
 
     /* One focus ring, everywhere */
-    --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--green-bright);
+    --focus: 2px solid var(--green-bright);
+
+    /* Small caps are the app's second voice; they all speak at one width */
+    --track-caps: 0.08em;
+
+    /* One press, everywhere a finger lands */
+    --press: scale(0.985);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -183,7 +189,7 @@
     font-weight: 700;
     color: var(--green);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--track-caps);
     margin-bottom: 8px;
   }
 
@@ -221,6 +227,45 @@
   .p-lead { font-size: var(--fs-15); color: var(--muted); line-height: 1.6; margin-bottom: var(--s-4); }
   .p-note { font-size: var(--fs-13); color: var(--muted); line-height: 1.55; margin-bottom: var(--s-3); }
 
+
+  /* ── The feel ──────────────────────────────────────────────────────────
+     Everything below is the difference between "works" and "made". */
+
+  /* One press. The same finger action feels the same everywhere. */
+  .btn, .link-btn, .back-btn, .topic-pick-btn, .term-chip, .csb, .tg-cell,
+  .cpick-info, .course-row, .sa-btn, .ans-btn, .exit-btn, .tab-btn {
+    transition: transform var(--dur) var(--ease), background var(--dur), border-color var(--dur), color var(--dur);
+  }
+  .btn:active, .link-btn:active, .back-btn:active, .topic-pick-btn:active,
+  .term-chip:active, .csb:active, .tg-cell:active, .cpick-info:active,
+  .ans-btn:not(:disabled):active, .exit-btn:active {
+    transform: var(--press);
+  }
+
+  /* Numbers that change must not jitter as their digits do. */
+  .disp, .num, [data-count], [data-w], [data-secfill], .q-count,
+  #cov-num, #course-counter, #simple-counter, .streak-badge, .coverage-num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Small caps: one width, one weight, one case. */
+  .label, .section-label, .kicker, .tg-head {
+    text-transform: uppercase;
+    letter-spacing: var(--track-caps);
+  }
+
+  /* Headlines break where a person would break them. */
+  h1, h2, h3, .q-stem { text-wrap: balance; }
+
+  /* A control smaller than a thumb keeps its shape and grows its target.
+     The pseudo-element reaches into the gap around it, never past it. */
+  .csb, .term-chip { position: relative; }
+  .csb::after, .term-chip::after {
+    content: ""; position: absolute; left: 0; right: 0;
+    top: 50%; height: 44px; transform: translateY(-50%);
+  }
+
   .section-divider {
     height: 1px;
     background: rgba(255,255,255,0.06);
@@ -237,6 +282,7 @@
   .btn {
     display: block;
     width: 100%;
+    min-height: 44px;
     border: none;
     border-radius: var(--r-ctl);
     padding: 16px 20px;
@@ -253,8 +299,10 @@
     letter-spacing: -0.01em;
     box-shadow: var(--glow);
   }
-  .btn-primary:hover  { background: var(--green-bright); box-shadow: var(--glow-lg); transform: translateY(-1px); }
-  .btn-primary:active { transform: translateY(0); box-shadow: var(--glow); }
+  /* Hover lifts and brightens; the press is the one press. Brightness rather
+     than a second green, so the label keeps its contrast on the way up. */
+  .btn-primary:hover  { filter: brightness(1.12); box-shadow: var(--glow-lg); transform: translateY(-1px); }
+  .btn-primary:active { transform: var(--press); box-shadow: var(--glow); }
   .btn-primary:disabled { background: rgba(29,158,117,0.25); color: rgba(255,255,255,0.4); cursor: default; box-shadow: none; }
   .btn-ghost {
     background: transparent;
@@ -314,7 +362,7 @@
     cursor: pointer;
     margin-bottom: 12px;
     font-family: inherit;
-    transition: all 0.15s;
+    transition: background var(--dur), border-color var(--dur), color var(--dur), transform var(--dur) var(--ease);
     text-align: left;
   }
   .year-btn:hover { background: var(--surface-2); border-color: rgba(255,255,255,0.16); }
@@ -328,7 +376,7 @@
     font-weight: 700;
     color: var(--dim);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--track-caps);
     margin: 16px 0 8px;
   }
   .section-label:first-child { margin-top: 0; }
@@ -359,7 +407,7 @@
     color: var(--muted);
     cursor: pointer;
     white-space: nowrap;
-    transition: all 0.15s;
+    transition: background var(--dur), border-color var(--dur), color var(--dur), transform var(--dur) var(--ease);
     flex-shrink: 0;
     line-height: 1;
   }
@@ -395,7 +443,7 @@
     color: var(--ink-2);
     cursor: pointer;
     white-space: nowrap;
-    transition: all 0.15s;
+    transition: background var(--dur), border-color var(--dur), color var(--dur), transform var(--dur) var(--ease);
     -webkit-tap-highlight-color: transparent;
   }
   .term-chip:active { opacity: 0.7; }
@@ -457,7 +505,7 @@
   }
   .cpick-info:hover, .cpick-info.open { color: var(--muted); }
   .cpick-badge {
-    font-size: var(--fs-11); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    font-size: var(--fs-11); font-weight: 700; text-transform: uppercase; letter-spacing: var(--track-caps);
     padding: 4px 8px; border-radius: var(--r-ctl); flex-shrink: 0; white-space: nowrap;
   }
 
@@ -466,7 +514,7 @@
   .tgrid { display: grid; gap: 4px; align-items: center; }
   .tgrid .tg-head {
     font-size: var(--fs-11); font-weight: 700; color: var(--faint);
-    text-transform: uppercase; letter-spacing: 0.04em; text-align: center;
+    text-transform: uppercase; letter-spacing: var(--track-caps); text-align: center;
     padding-bottom: 4px;
   }
   .tgrid .tg-label {
@@ -474,10 +522,10 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .tg-cell {
-    min-height: 38px; border-radius: var(--r-ctl);
+    min-height: 44px; border-radius: var(--r-ctl);
     border: 1px solid rgba(255,255,255,0.1); background: transparent;
     color: var(--dim); font-family: inherit; font-size: var(--fs-13); font-weight: 600;
-    cursor: pointer; -webkit-tap-highlight-color: transparent; transition: all 0.15s;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background var(--dur), border-color var(--dur), color var(--dur), transform var(--dur) var(--ease);
   }
   .tg-cell:active { opacity: 0.7; }
   .tg-cell.on { border-color: rgba(29,158,117,0.5); background: rgba(29,158,117,0.16); color: var(--green-bright); }
@@ -495,7 +543,7 @@
     font-weight: 700;
     color: var(--violet);
     text-transform: uppercase;
-    letter-spacing: 0.07em;
+    letter-spacing: var(--track-caps);
     margin-bottom: 4px;
   }
   .nudge-card p {
@@ -800,7 +848,7 @@
     font-weight: 700;
     color: var(--green);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: var(--track-caps);
     margin-bottom: 12px;
   }
   .topic-pill {
@@ -975,7 +1023,7 @@
     }
     .dt-brand-sub {
       display: block;
-      font-size: var(--fs-11); font-weight: 700; letter-spacing: 0.11em;
+      font-size: var(--fs-11); font-weight: 700; letter-spacing: var(--track-caps);
       text-transform: uppercase; color: var(--muted); margin-top: 4px;
     }
 
@@ -1006,7 +1054,7 @@
 
     /* Coverage dashboard */
     .dt-dash-label {
-      font-size: var(--fs-11); font-weight: 800; letter-spacing: 0.1em;
+      font-size: var(--fs-11); font-weight: 800; letter-spacing: var(--track-caps);
       text-transform: uppercase; color: var(--green); margin-bottom: 16px;
     }
     .dt-ring-wrap {
@@ -1025,7 +1073,7 @@
       font-variant-numeric: tabular-nums;
     }
     .dt-ring-pct .u { font-size: var(--fs-13); color: var(--faint); }
-    .dt-ring-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; letter-spacing: 0.04em; }
+    .dt-ring-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; letter-spacing: var(--track-caps); }
     .dt-ring-note { font-size: var(--fs-13); line-height: 1.5; color: var(--faint); }
     .dt-ring-note strong { color: var(--muted); font-weight: 600; }
 
@@ -1057,7 +1105,7 @@
       font-variant-numeric: tabular-nums;
     }
     .dt-stat-num.streak { color: var(--amber); }
-    .dt-stat-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; letter-spacing: 0.03em; }
+    .dt-stat-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; letter-spacing: var(--track-caps); }
 
     /* Pre-onboarding (no courses yet) */
     .dt-setup-hint { display: none; }
@@ -1094,9 +1142,12 @@
   .reveal-banner .rb-badge { width: 26px; height: 26px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .reveal-banner.ok { color: var(--green-bright); } .reveal-banner.ok .rb-badge { background: rgba(29,158,117,0.18); }
   .reveal-banner.no { color: var(--red); } .reveal-banner.no .rb-badge { background: rgba(216,90,48,0.16); }
-  *:focus-visible { outline: 2px solid var(--green-bright); outline-offset: 2px; border-radius: var(--r-pill); }
+  /* Nothing interactive is allowed to be focusable without showing it. */
+  *:focus-visible { outline: var(--focus); outline-offset: 2px; border-radius: var(--r-ctl); }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    /* Including the press: a transform is motion even when it is instant. */
+    *:active { transform: none !important; }
   }
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
@@ -1138,7 +1189,7 @@
 <aside class="dt-shell dt-empty" aria-hidden="true">
   <button class="dt-brand" onclick="logoTap()">
     <span class="dt-brand-mark">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/><polyline points="12 8 12 12 14.5 14.5"/><circle cx="12" cy="12" r="1.2" fill="#1D9E75" stroke="none"/>
       </svg>
     </span>
@@ -1150,19 +1201,19 @@
 
   <nav class="dt-nav">
     <button class="dt-nav-item" data-nav="brief" onclick="go('brief')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
       <span>Home</span>
     </button>
     <button class="dt-nav-item" data-nav="reveal" onclick="go('reveal')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>
       <span>Route</span>
     </button>
     <button class="dt-nav-item" data-nav="quicklog" onclick="go('quicklog')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
       <span>Log</span>
     </button>
     <button class="dt-nav-item" data-nav="settings" onclick="go('settings')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span>Settings</span>
     </button>
   </nav>
@@ -1327,10 +1378,10 @@ const MCAT_SECTIONS = [
 
 // Custom icon set for each MCAT section — uses currentColor so it inherits the tag's text color
 const ICONS = {
-  bb:   `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3c4 4 10 4 14 0M5 21c4-4 10-4 14 0M7.5 6c2 2 7 2 9 0M7.5 18c2-2 7-2 9 0"/></svg>`,
-  cp:   `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>`,
-  ps:   `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3a3.5 3.5 0 0 0-3.5 3.5v.5A3 3 0 0 0 4 10v1a3 3 0 0 0 1.5 2.6V15a3.5 3.5 0 0 0 3.5 3.5"/><path d="M14.5 3A3.5 3.5 0 0 1 18 6.5v.5A3 3 0 0 1 20 10v1a3 3 0 0 1-1.5 2.6V15a3.5 3.5 0 0 1-3.5 3.5"/><path d="M9.5 3v15.5M14.5 3v15.5"/></svg>`,
-  cars: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5h7a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H2z"/><path d="M22 4.5h-7a3 3 0 0 0-3 3v12a2.5 2.5 0 0 1 2.5-2.5H22z"/></svg>`,
+  bb:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3c4 4 10 4 14 0M5 21c4-4 10-4 14 0M7.5 6c2 2 7 2 9 0M7.5 18c2-2 7-2 9 0"/></svg>`,
+  cp:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>`,
+  ps:   `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3a3.5 3.5 0 0 0-3.5 3.5v.5A3 3 0 0 0 4 10v1a3 3 0 0 0 1.5 2.6V15a3.5 3.5 0 0 0 3.5 3.5"/><path d="M14.5 3A3.5 3.5 0 0 1 18 6.5v.5A3 3 0 0 1 20 10v1a3 3 0 0 1-1.5 2.6V15a3.5 3.5 0 0 1-3.5 3.5"/><path d="M9.5 3v15.5M14.5 3v15.5"/></svg>`,
+  cars: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5h7a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H2z"/><path d="M22 4.5h-7a3 3 0 0 0-3 3v12a2.5 2.5 0 0 1 2.5-2.5H22z"/></svg>`,
 };
 function sectionIcon(mcat) { return ICONS[mcat] || ''; }
 
@@ -5072,8 +5123,8 @@ function milestoneCopy() {
   S.covMilestonesShown[m.at] = true;
   save();
   return `<div class="cov-milestone-card">
-    <div style="margin-bottom:12px;line-height:0;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
-    <div style="font-size: var(--fs-11);font-weight:800;color:var(--green-bright);text-transform:uppercase;letter-spacing:0.09em;margin-bottom:8px;">${m.title}</div>
+    <div style="margin-bottom:12px;line-height:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
+    <div style="font-size: var(--fs-11);font-weight:800;color:var(--green-bright);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">${m.title}</div>
     <p style="font-size: var(--fs-15);color:var(--green-bright);line-height:1.55;margin-bottom:12px;">${m.text}</p>
     <button class="btn btn-share" style="margin-top:0;font-size: var(--fs-13);padding:12px 16px;" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share this</button>
   </div>`;
@@ -5295,7 +5346,7 @@ function wLabel(t, plus) { return t.w === 0 ? 'skill' : (plus ? '+' : '') + t.w 
 function lockedTileHTML(t) {
   const cName = (COURSES.find(c => c.id === t.course) || {}).name || 'a course';
   return `<button onclick="go('courses')" title="Add ${cName} to unlock ${wLabel(t, true)}" style="background:var(--surface);border:1px dashed rgba(255,255,255,0.15);${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
-        <div style="font-size: var(--fs-11);color:var(--muted);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
+        <div style="font-size: var(--fs-11);color:var(--muted);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
           <div style="font-size: var(--fs-11);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${t.disp}</div>
           <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);flex-shrink:0;margin-left:4px;">${wLabel(t, true)}</div>
@@ -5383,7 +5434,7 @@ function termTimelineHTML(live, open) {
     return `
       <div style="margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:${unset ? 'var(--faint)' : 'var(--ink-2)'};text-transform:uppercase;letter-spacing:0.07em;">
+          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:${unset ? 'var(--faint)' : 'var(--ink-2)'};text-transform:uppercase;letter-spacing:var(--track-caps);">
             ${g.now ? '<span class="pulse-dot" style="width:5px;height:5px;margin-right:0;"></span>' : ''}${label}
           </div>
           ${worth ? `<div style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${worth}</div>` : ''}
@@ -5417,7 +5468,7 @@ function lockedMapHTML() {
     return `
       <div style="margin-bottom:24px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em;"><span style="display:inline-flex;color:var(--green);">${sectionIcon(sec.id)}</span>${sec.short}</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);"><span style="display:inline-flex;color:var(--green);">${sectionIcon(sec.id)}</span>${sec.short}</div>
           <div style="font-size: var(--fs-11);color:${hasAny ? 'var(--green)' : 'var(--faint)'};">${Math.round(secCovered)}/${secTotal}%</div>
         </div>
         <div style="height:3px;background:rgba(255,255,255,0.06);border-radius: var(--r-pill);margin-bottom:12px;overflow:hidden;">
@@ -5436,7 +5487,7 @@ function sectionedMapHTML() {
   const locked   = lockedMapHTML();
   // Headings only earn their place once there are two blocks to tell apart. A
   // student with no courses sees exactly the map they saw before this sprint.
-  const head = text => `<p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:0.1em;margin:0 0 12px;">${text}</p>`;
+  const head = text => `<p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">${text}</p>`;
   // "Your semesters", not "where you've been": the newest group is the term the
   // student is sitting in right now, and a past-tense heading would misname it.
   if (!timeline) return locked;
@@ -5515,7 +5566,7 @@ function getTopicInsight() {
   const { topic, desc } = withCrunch[0];
   return `
     <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius: var(--r-ctl);padding:16px 16px;margin-bottom:16px;">
-      <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;">You just practiced</div>
+      <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">You just practiced</div>
       <div style="font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">${topic.name}</div>
       <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.5;">${desc}</p>
     </div>`;
@@ -5880,7 +5931,7 @@ function freshDetailHTML(tid) {
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
             <span style="width:7px;height:7px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1.5px solid ${m.color};"></span>
             <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${f.topic.name}</span>
-            <span style="font-size: var(--fs-11);font-weight:700;color:${m.color};text-transform:uppercase;letter-spacing:0.07em;">${m.word}</span>
+            <span style="font-size: var(--fs-11);font-weight:700;color:${m.color};text-transform:uppercase;letter-spacing:var(--track-caps);">${m.word}</span>
           </div>
           <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0;">${f.why}</p>
           ${action}
@@ -6138,7 +6189,7 @@ function screenPace() {
     <div class="screen">
       <div class="brief-topbar">
         <button onclick="go('brief')" class="back-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Back
         </button>
       </div>
@@ -6341,7 +6392,7 @@ function card(accent, kicker, title, body, cta, opts) {
   return `
     <div style="background:linear-gradient(135deg,${wash(accent, 13)},${wash(accent, 3)});border:1px solid ${wash(accent, 33)};border-radius: var(--r-card);padding:20px;margin-bottom:${o.gap === undefined ? 18 : o.gap}px;">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:${title ? 9 : 12}px;">
-        <div style="font-size: var(--fs-11);font-weight:800;color:${tint};text-transform:uppercase;letter-spacing:0.1em;">${kicker}</div>
+        <div style="font-size: var(--fs-11);font-weight:800;color:${tint};text-transform:uppercase;letter-spacing:var(--track-caps);">${kicker}</div>
         ${o.aside || ''}
       </div>
       ${title ? `<div style="font-size:${o.titleSize || 'var(--fs-20)'};font-weight:700;color:var(--ink);line-height:1.25;margin-bottom:8px;">${title}</div>` : ''}
@@ -6356,7 +6407,7 @@ function briefCardHTML() {
   const stat = (v, label) => `
     <div style="flex:1;min-width:0;">
       <div class="disp" style="font-size: var(--fs-20);font-weight:700;color:var(--ink);line-height:1;">${v}</div>
-      <div style="font-size: var(--fs-11);color:var(--faint);margin-top:4px;letter-spacing:0.02em;">${label}</div>
+      <div style="font-size: var(--fs-11);color:var(--faint);margin-top:4px;letter-spacing:var(--track-caps);">${label}</div>
     </div>`;
 
   const headline = b.quiet
@@ -6389,7 +6440,7 @@ function briefCardHTML() {
       ${b.weakest && !b.quiet ? `<p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin:0 0 12px;">Weakest right now: <strong style="color:var(--ink-2);">${b.weakest.topic.name}</strong> at ${Math.round(b.weakest.accuracy * 100)}% across ${b.weakest.attempts} question${b.weakest.attempts !== 1 ? 's' : ''}.</p>` : ''}
 
       ${b.action ? `
-        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">This week, do this one thing</div>
+        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">This week, do this one thing</div>
         <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 12px;">${b.action.text}</p>` : ''}`;
 
   const cta = b.action
@@ -6560,7 +6611,7 @@ function screenExamPlan() {
   const back = `
     <div class="brief-topbar">
       <button onclick="go('brief')" class="back-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         Back
       </button>
     </div>`;
@@ -6646,7 +6697,7 @@ function screenMidterm() {
     <div class="screen">
       <div class="brief-topbar">
         <button onclick="go('brief')" class="back-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Back
         </button>
       </div>
@@ -7289,7 +7340,7 @@ function sylWeekRowHTML(w, i, units, reason) {
   return `
       <div style="${SYL_CARD}padding:12px 12px;margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-          <span style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:0.07em;">Week ${w.week}</span>
+          <span style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);">Week ${w.week}</span>
           ${w.unitIds.length ? `<button onclick="sylDropWeek(${i})" style="background:none;border:none;padding:0;font-family:inherit;font-size: var(--fs-11);color:var(--faint);cursor:pointer;-webkit-tap-highlight-color:transparent;">Clear</button>` : ''}
         </div>
         <p style="font-size: var(--fs-13);color:var(--ink);line-height:1.5;margin:0 0 ${reason ? '6px' : '8px'};">${w.label ? esc(w.label) : '<span style="color:var(--faint);font-style:italic;">(no topic listed)</span>'}</p>
@@ -7318,7 +7369,7 @@ function screenSyllabus() {
   const back = `
       <div class="brief-topbar">
         <button onclick="S.syl=null;go('brief')" class="back-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Back
         </button>
       </div>`;
@@ -7397,14 +7448,14 @@ function screenSyllabus() {
 
       ${next ? `
         <div style="${SYL_CARD}padding:16px 16px;margin-bottom:12px;">
-          <p style="font-size: var(--fs-11);font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
+          <p style="font-size: var(--fs-11);font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 4px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
           <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.5;margin:0 0 4px;font-weight:600;">${esc(next.row.label) || 'Week ' + next.row.week}</p>
           <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0 0 12px;">${next.row.unitIds.map(id => { const u = unitFromId(id); return u ? u.label : id; }).join(' · ')}</p>
           <button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="syllabusStartWeek('${next.row.unitIds[0]}')">Start ${next.now ? 'this week' : 'week ' + next.row.week}'s 5 →</button>
         </div>` : ''}
 
       <div style="${SYL_CARD}padding:16px 16px;margin-bottom:20px;">
-        <p style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px;">What the term adds up to</p>
+        <p style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 4px;">What the term adds up to</p>
         <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;">${month ? `By ${month}` : 'By the end of term'} this course takes you to <strong style="color:var(--green-bright);">${end}% of MCAT content</strong>.</p>
       </div>
 
@@ -7547,7 +7598,7 @@ function screenSyllabus() {
       ${cameraInput}
 
       ${pages.length ? `
-        <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:0.07em;margin:0 0 8px;">${pages.length} page${s(pages.length)} captured</p>
+        <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 8px;">${pages.length} page${s(pages.length)} captured</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
           ${pages.map((p, i) => `
             <div style="width:72px;">
@@ -7568,7 +7619,7 @@ function screenSyllabus() {
       ` : d.file ? `
         <div style="${SYL_CARD}padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
           <span style="display:flex;align-items:center;gap:8px;min-width:0;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span style="min-width:0;">
               <span style="display:block;font-size: var(--fs-13);color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.file.name)}</span>
               <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${(d.file.size / 1048576).toFixed(1)}MB · ready to read</span>
@@ -7579,14 +7630,14 @@ function screenSyllabus() {
       ` : `
         ${camera ? shootBtn('Take a photo of it') : ''}
         <button onclick="document.getElementById('syl-file').click()" style="width:100%;box-sizing:border-box;background:none;border:1px dashed rgba(255,255,255,0.18);border-radius: var(--r-ctl);padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Upload the PDF
         </button>
         <input type="file" id="syl-file" accept="application/pdf,.pdf"
                style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
                onchange="sylPickFile(this)">
 
-        <p style="text-align:center;font-size: var(--fs-11);color:var(--dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">or paste it</p>
+        <p style="text-align:center;font-size: var(--fs-11);color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:12px;">or paste it</p>
         <textarea id="syl-text" oninput="sylPasteInput(this)" rows="9" spellcheck="false"
           placeholder="Week 1: Muscle structure and contraction&#10;Week 2: Cardiac cycle&#10;Week 3: Midterm exam&#10;…"
           style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);line-height:1.5;resize:vertical;margin-bottom:12px;-webkit-appearance:none;">${esc(d.text || '')}</textarea>
@@ -7692,7 +7743,7 @@ function claimHTML() {
   const more = items.length > 1 ? ` <span style="color:var(--muted);">(+${items.length - 1} more in progress)</span>` : '';
   return `
       <button onclick="go('courses')" style="width:100%;text-align:left;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.22);border-radius: var(--r-card);padding:12px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
-        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">In progress</div>
+        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">In progress</div>
         <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.5;margin:0;">You're taking <strong style="color:var(--ink);">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:var(--amber);">+${top.delta}%</strong> coverage →</p>
       </button>`;
 }
@@ -7893,7 +7944,7 @@ function screenBrief() {
       <div class="brief-topbar">
         <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
           <div style="width:30px;height:30px;background:rgba(29,158,117,0.15);border-radius: var(--r-ctl);display:flex;align-items:center;justify-content:center;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="9"/>
               <polyline points="12 8 12 12 14.5 14.5"/>
               <circle cx="12" cy="12" r="1.2" fill="#1D9E75" stroke="none"/>
@@ -7905,7 +7956,7 @@ function screenBrief() {
           ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.28);border-radius: var(--r-pill);cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;margin:-12px 0;font-family:inherit;font-size: var(--fs-13);font-weight:700;color:var(--green-bright);-webkit-tap-highlight-color:transparent;">Route · ${cov}%</button>` : ''}
           ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size: var(--fs-13);font-weight:600;">${S.streak}</span></div>` : ''}
           <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
           </button>
         </div>
       </div>
@@ -7924,7 +7975,7 @@ function screenLanding() {
     <div class="screen" style="padding-top:32px;padding-bottom:48px;">
       <div class="app-brand">
         <div class="app-brand-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="9"/>
             <polyline points="12 8 12 12 14.5 14.5"/>
             <circle cx="12" cy="12" r="1.2" fill="#1D9E75" stroke="none"/>
@@ -7945,8 +7996,8 @@ function screenLanding() {
 
       <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius: var(--r-card);padding:16px 16px 16px;margin-bottom:32px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:12px;">
-          <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.08em;padding-top:4px;">Example —<br>seven courses in</div>
-          <div style="text-align:right;flex-shrink:0;"><span class="disp" style="font-size: var(--fs-32);font-weight:800;color:var(--ink);line-height:1;">${ex.cov}%</span><div style="font-size: var(--fs-11);color:var(--faint);letter-spacing:0.04em;margin-top:4px;">of the MCAT covered</div></div>
+          <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);padding-top:4px;">Example —<br>seven courses in</div>
+          <div style="text-align:right;flex-shrink:0;"><span class="disp" style="font-size: var(--fs-32);font-weight:800;color:var(--ink);line-height:1;">${ex.cov}%</span><div style="font-size: var(--fs-11);color:var(--faint);letter-spacing:var(--track-caps);margin-top:4px;">of the MCAT covered</div></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;"><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size: var(--fs-11);font-weight:600;color:var(--faint);">Bio &amp; Biochem</span><span style="font-size: var(--fs-11);font-weight:700;color:var(--green);">${ex.sections.bb}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius: var(--r-pill);overflow:hidden;"><div style="width:${ex.sections.bb}%;height:100%;background:var(--green);border-radius: var(--r-pill);"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size: var(--fs-11);font-weight:600;color:var(--faint);">Chem &amp; Physics</span><span style="font-size: var(--fs-11);font-weight:700;color:var(--blue);">${ex.sections.cp}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius: var(--r-pill);overflow:hidden;"><div style="width:${ex.sections.cp}%;height:100%;background:var(--blue);border-radius: var(--r-pill);"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size: var(--fs-11);font-weight:600;color:var(--faint);">Psych &amp; Soc</span><span style="font-size: var(--fs-11);font-weight:700;color:var(--violet);">${ex.sections.ps}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius: var(--r-pill);overflow:hidden;"><div style="width:${ex.sections.ps}%;height:100%;background:var(--violet);border-radius: var(--r-pill);"></div></div></div></div>
         <div style="font-size: var(--fs-11);color:var(--faint);margin-top:12px;line-height:1.55;">${EXAMPLE_ROUTE.label} — which counts half until it's finished. You're probably further along than you think.</div>
@@ -7970,7 +8021,7 @@ function screenAbout() {
     <div class="screen" style="padding-bottom:48px;">
       <div class="brief-topbar">
         <button onclick="backFromAbout()" class="back-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Back
         </button>
       </div>
@@ -8004,7 +8055,7 @@ function screenSettings() {
     <div class="screen">
       <div class="brief-topbar">
         <button onclick="go('brief')" class="back-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Settings
         </button>
       </div>
@@ -8235,7 +8286,7 @@ function breakdownHTML() {
       ${sections.map(({ sec, items, secTotal, secCredited }) => `
         <div style="margin-bottom:20px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-            <span style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">${sec.short}</span>
+            <span style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);">${sec.short}</span>
             <span style="font-size: var(--fs-11);color:var(--muted);">${sec.id === 'cars' ? '23% · ongoing' : `${secCredited} / ${secTotal}%`}</span>
           </div>
           ${items.map(({ t, state }) => `
@@ -8264,7 +8315,7 @@ function screenCoverage() {
     <div class="screen" style="padding-bottom:48px;">
       <div class="brief-topbar">
         <button onclick="go('reveal')" class="back-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Back
         </button>
       </div>
@@ -8367,7 +8418,7 @@ function screenSources() {
     <div class="screen" style="padding-bottom:48px;">
       <div class="brief-topbar">
         <button onclick="backFromSources()" class="back-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           Back
         </button>
       </div>
@@ -8385,7 +8436,7 @@ function screenSources() {
       ${h("Waypoint's coverage weights")}
       ${p(`Derived from the two AAMC figures above, not estimated: each section's question count times each discipline's share of it, totalled across the exam, over 230. Check any line with a calculator.`)}
       <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;overflow-x:auto;">
-        <div style="display:flex;justify-content:space-between;gap:12px;font-size: var(--fs-11);color:var(--faint);text-transform:uppercase;letter-spacing:0.06em;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.07);">
+        <div style="display:flex;justify-content:space-between;gap:12px;font-size: var(--fs-11);color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.07);">
           <span>Discipline</span><span style="flex-shrink:0;">Questions · share · weight</span>
         </div>
         ${DERIVATION.map(d => `
@@ -8452,7 +8503,7 @@ function screenCoursesSimple(sections) {
       </div>
 
       <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 32px;flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
-        <p id="simple-counter" style="text-align:center;font-size: var(--fs-13);color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:0.03em;${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
+        <p id="simple-counter" style="text-align:center;font-size: var(--fs-13);color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:var(--track-caps);${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
         <button id="simple-cta" class="btn btn-primary" ${S.courses.size ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
       </div>
     </div>`;
@@ -8523,7 +8574,7 @@ function screenCourses() {
               </button>
               <button type="button" class="cpick-info${open ? ' open' : ''}" onclick="toggleCourseExpand('${c.id}')"
                       aria-expanded="${open}" aria-label="What ${c.name} covers on the MCAT">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               </button>
             </div>
             ${open ? `<div class="course-topics-panel">${courseTopicsBreakdown(c.id)}</div>` : ''}`;
@@ -8531,7 +8582,7 @@ function screenCourses() {
         `;}).join('')}
       </div>
       <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 32px;flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
-        <p id="course-counter" style="text-align:center;font-size: var(--fs-13);color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:0.03em;${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
+        <p id="course-counter" style="text-align:center;font-size: var(--fs-13);color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:var(--track-caps);${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
         <button class="btn btn-primary" style="flex-shrink:0;" onclick="finishCourses()">Calculate my coverage →</button>
       </div>
     </div>`;
@@ -8788,7 +8839,7 @@ function screenReveal() {
             </svg>
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
               <div class="disp" id="cov-num" data-count="${cov}" style="font-size: var(--fs-32);font-weight:800;color:var(--ink);line-height:1;">${cov}%</div>
-              <div style="font-size: var(--fs-11);color:var(--faint);margin-top:4px;letter-spacing:0.07em;text-transform:uppercase;">covered</div>
+              <div style="font-size: var(--fs-11);color:var(--faint);margin-top:4px;letter-spacing:var(--track-caps);text-transform:uppercase;">covered</div>
             </div>
           </div>
           <div style="flex:1;min-width:0;">
@@ -8848,13 +8899,13 @@ function screenQuestion() {
   return `
     <div class="screen">
       <button class="exit-btn" onclick="exitSession()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         Exit
       </button>
       <div class="q-meta">
         <span class="q-count">${S.quickLog ? (S.quickLog.repin ? 'Re-pin' : 'Quick check') : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
         <div style="display:flex;gap:8px;align-items:center;">
-          <span style="font-size: var(--fs-11);font-weight:600;background:rgba(255,255,255,0.07);color:var(--muted);padding:4px 8px;border-radius: var(--r-ctl);letter-spacing:0.04em;">MCAT-style</span>
+          <span style="font-size: var(--fs-11);font-weight:600;background:rgba(255,255,255,0.07);color:var(--muted);padding:4px 8px;border-radius: var(--r-ctl);letter-spacing:var(--track-caps);">MCAT-style</span>
           <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicObj.disp : ''}</span>
         </div>
       </div>
@@ -8878,20 +8929,20 @@ function screenQuestion() {
       </div>
 
       ${answered ? `
-        <div id="q-reveal" class="reveal-banner ${S.answered === q.ans ? 'ok' : 'no'}"><span class="rb-badge">${S.answered === q.ans ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F08060" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'}</span><span>${S.answered === q.ans ? 'Correct' : 'Not quite'}</span></div>
+        <div id="q-reveal" class="reveal-banner ${S.answered === q.ans ? 'ok' : 'no'}"><span class="rb-badge">${S.answered === q.ans ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F08060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'}</span><span>${S.answered === q.ans ? 'Correct' : 'Not quite'}</span></div>
         <div class="explanation${S.answered !== q.ans ? ' wrong' : ''}">${q.exp}</div>
         ${TOPIC_SKILL[q.topic] ? `
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
-          <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Skill trained</div>
+          <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">Skill trained</div>
           <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.5;margin:0;">${TOPIC_SKILL[q.topic]}</p>
         </div>` : ''}
         ${(q.twist || TWISTS[q.id]) ? `
         <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.28);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
-          <div style="font-size: var(--fs-11);font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">The MCAT Twist</div>
+          <div style="font-size: var(--fs-11);font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">The MCAT Twist</div>
           <p style="font-size: var(--fs-13);color:var(--violet-soft);line-height:1.55;margin:0;">${q.twist || TWISTS[q.id]}</p>
         </div>` : ''}
         <details class="report-q">
-          <summary><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>Report a problem with this question</summary>
+          <summary><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>Report a problem with this question</summary>
           <div class="report-reasons">
             <button type="button" onclick="reportQuestion('${q.id}', 'Wrong answer', this)">Wrong answer</button>
             <button type="button" onclick="reportQuestion('${q.id}', 'Typo or error', this)">Typo or error</button>
@@ -8929,7 +8980,7 @@ function getRetentionHTML(sessionAnswers) {
 
   return `
     <div style="margin-bottom:20px;">
-      <div style="font-size: var(--fs-11);font-weight:600;color:var(--faint);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;">Your retention</div>
+      <div style="font-size: var(--fs-11);font-weight:600;color:var(--faint);letter-spacing:var(--track-caps);text-transform:uppercase;margin-bottom:12px;">Your retention</div>
       ${rows.map(({ topic, pct, total }) => {
         const color = pct >= 70 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--muted)';
         return `
@@ -9071,7 +9122,7 @@ function screenComplete() {
 
   const scoreBanner = pct === 100
     ? `<div style="text-align:center;padding:12px 0 24px;">
-        <div style="font-size: var(--fs-32);font-weight:800;color:var(--ink);line-height:1.15;margin-bottom:12px;letter-spacing:-0.5px;">${scoreHeadline}</div>
+        <div style="font-size: var(--fs-32);font-weight:800;color:var(--ink);line-height:1.15;margin-bottom:12px;letter-spacing:-0.02em;">${scoreHeadline}</div>
         <p style="font-size: var(--fs-15);color:var(--green-bright);line-height:1.55;margin:0;">${scoreNote}</p>
        </div>`
     : `<h2>${scoreHeadline}</h2>

@@ -76,12 +76,43 @@ export function scan(src) {
     if (!ok) add('box-shadow', `${v.slice(0, 60)} near line ${locate(rest, m[0])}`);
   }
 
+  // 5. Inline <svg> is exempt from the colour rule because a stylesheet cannot
+  //    reach a presentation attribute — but only for values the palette already
+  //    names, so a stray #3FA in an icon is still a finding.
+  const palette = new Set([...root.matchAll(/#[0-9A-Fa-f]{3,8}\b/g)].map(m => m[0].toUpperCase()));
+  for (const svg of src.matchAll(/<svg[\s\S]*?<\/svg>/g)) {
+    for (const c of svg[0].matchAll(/#[0-9A-Fa-f]{3,8}\b/g)) {
+      if (!palette.has(c[0].toUpperCase()))
+        add('svg-colour', `${c[0]} near line ${locate(src, svg[0])}`);
+    }
+  }
+
+  // 6. Icons are one stroke width on one grid, at three optical sizes.
+  for (const svg of src.matchAll(/<svg\b[^>]*viewBox="0 0 24 24"[^>]*>/g)) {
+    const tag = svg[0];
+    const sw = /stroke-width="([0-9.]+)"/.exec(tag);
+    if (sw && sw[1] !== '2') add('icon-stroke', `${sw[1]} near line ${locate(src, tag)}`);
+    const w = /\bwidth="(\d+)"/.exec(tag);
+    if (w && !['13','16','20','24'].includes(w[1])) add('icon-size', `${w[1]}px near line ${locate(src, tag)}`);
+  }
+
+  // 7. Every uppercase run speaks at one width.
+  for (const m of rest.matchAll(/letter-spacing:\s*([^;"'}\n]+)/g)) {
+    const v = m[1].trim();
+    if (/^-/.test(v) || v === 'var(--track-caps)' || v === 'normal') continue;
+    add('tracking', `${v} near line ${locate(rest, m[0])}`);
+  }
+
   return out;
 }
 
 // ── The self-test: a lock that cannot fail is not a lock ─────────────────────
 const VIOLATIONS = [
   ['a raw hex colour',   s => s.replace('<div id="app">', '<div id="app" style="color:#3A9;">')],
+  ['a stray icon colour', s => s.replace('<svg ', '<svg stroke="#3FA9C1" ')],
+  ['an off-grid icon',   s => s.replace('<svg width="16"', '<svg width="18"')],
+  ['a heavy icon stroke', s => s.replace('stroke-width="2"', 'stroke-width="2.4"')],
+  ['a one-off tracking', s => s.replace('<div id="app">', '<div id="app" style="letter-spacing:0.06em;">')],
   ['an off-scale size',  s => s.replace('<div id="app">', '<div id="app" style="font-size:18px;">')],
   ['an off-scale radius',s => s.replace('<div id="app">', '<div id="app" style="border-radius:5px;">')],
   ['an untokened shadow',s => s.replace('<div id="app">', '<div id="app" style="box-shadow:0 2px 9px rgba(0,0,0,0.4);">')],
@@ -93,7 +124,7 @@ const ok = (n, c, x = '') => { console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? ' 
 
 const found = scan(src);
 const byRule = found.reduce((a, f) => ((a[f.rule] = a[f.rule] || []).push(f.detail), a), {});
-for (const rule of ['hex', 'font-size', 'border-radius', 'box-shadow']) {
+for (const rule of ['hex', 'font-size', 'border-radius', 'box-shadow', 'svg-colour', 'icon-stroke', 'icon-size', 'tracking']) {
   const list = byRule[rule] || [];
   ok(`no off-system ${rule}`, list.length === 0,
      list.length ? `${list.length}: ` + list.slice(0, 6).join('; ') : '');
@@ -109,7 +140,7 @@ for (const [name, inject] of VIOLATIONS) {
 // The token block itself must still define everything the rules refer to.
 console.log('');
 const { root } = regions(src);
-for (const t of [...FONT_STEPS, ...RADII, ...SHADOWS, '--ease', '--dur', '--focus'])
+for (const t of [...FONT_STEPS, ...RADII, ...SHADOWS, '--ease', '--dur', '--focus', '--track-caps', '--press'])
   ok(`:root defines ${t}`, root.includes(t + ':'));
 
 // Spacing: the scale exists and is what the sweep snaps to.
