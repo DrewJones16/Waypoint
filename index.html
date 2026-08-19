@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Waypoint — Start MCAT prep early with the classes you're already taking</title>
 <meta name="description" content="Your college coursework is already MCAT prep. Waypoint maps it onto the exam so you get ahead years early — and shows you how the test bends what your professor taught.">
 <!-- Open Graph / social preview -->
@@ -95,10 +95,17 @@
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* Phones. iOS Safari zooms the whole page into any focused field whose text
+     is under 16px — and leaves it zoomed. Inputs get 16 regardless of what the
+     type scale says; !important because each field carries its size inline. */
+  input, textarea, select { font-size: max(var(--fs-15), 16px) !important; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     background: var(--bg);
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -108,6 +115,7 @@
     width: 100%;
     max-width: 430px;
     min-height: 100vh;
+    min-height: 100dvh;
     background: var(--bg);
     display: flex;
     flex-direction: column;
@@ -146,6 +154,7 @@
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border-top: 1px solid rgba(255,255,255,0.07);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     z-index: 30;
   }
   .tab-item {
@@ -167,7 +176,7 @@
   .tab-item.active { color: var(--green); }
   .tab-item:hover { color: var(--muted); }
   .tab-item.active:hover { color: var(--green); }
-  #app.has-tabbar .screen { padding-bottom: 96px; }
+  #app.has-tabbar .screen { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
   /* Screen container */
   .screen {
@@ -176,6 +185,7 @@
     flex-direction: column;
     padding: 32px 24px 48px;
     min-height: calc(100vh - 3px);
+    min-height: calc(100dvh - 3px);
   }
 
   /* Typography */
@@ -8504,7 +8514,7 @@ function screenCoursesSimple(sections) {
         <button onclick="S._pickerMode='full'; render();" class="link-btn full" style="margin-top:var(--s-2);">Already finished some courses? Add them &rarr;</button>
       </div>
 
-      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 32px;flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
+      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 calc(32px + env(safe-area-inset-bottom, 0px));flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
         <p id="simple-counter" style="text-align:center;font-size: var(--fs-13);color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:var(--track-caps);${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
         <button id="simple-cta" class="btn btn-primary" ${S.courses.size ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
       </div>
@@ -8583,7 +8593,7 @@ function screenCourses() {
           }).join('')}
         `;}).join('')}
       </div>
-      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 32px;flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
+      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 calc(32px + env(safe-area-inset-bottom, 0px));flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
         <p id="course-counter" style="text-align:center;font-size: var(--fs-13);color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:var(--track-caps);${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
         <button class="btn btn-primary" style="flex-shrink:0;" onclick="finishCourses()">Calculate my coverage →</button>
       </div>
@@ -8727,7 +8737,7 @@ function screenConfirmCourses() {
           <button onclick="syllabusAddAnother()" class="link-btn full" style="margin-top:var(--s-4);">Turn a syllabus into an MCAT plan →</button>` : ''}
       </div>
 
-      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 32px;flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
+      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 calc(32px + env(safe-area-inset-bottom, 0px));flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
         <button class="btn btn-primary" onclick="revealCourses()">Looks right →</button>
       </div>
     </div>`;
