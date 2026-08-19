@@ -1190,7 +1190,7 @@
     <h2 style="font-size: var(--fs-20);font-weight:700;color:var(--ink);margin:0 0 12px;">What Waypoint does</h2>
     <p style="margin-bottom:24px;">Track your MCAT coverage as you finish courses, drill MCAT-style questions on the topics you're currently learning, and see the "MCAT twist" on every concept — how the exam reframes what you learned in class. It's built for the two years before dedicated prep, so that by the time you open a question bank junior year, a big chunk of it already feels familiar.</p>
 
-    <p style="font-size: var(--fs-15);color:var(--faint);margin-bottom:8px;">Open Waypoint to see your own MCAT coverage — free, in about two minutes. (The interactive tracker needs JavaScript enabled.)</p>
+    <p style="font-size: var(--fs-15);color:var(--faint);margin-bottom:8px;">Open Waypoint to see your own MCAT coverage — free. (The interactive tracker needs JavaScript enabled.)</p>
     <p style="font-size: var(--fs-13);color:var(--faint);">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
   </div></div>
 
@@ -8003,8 +8003,14 @@ function screenLanding() {
            is still worth making, but it argues against advice the visitor has
            already accepted from their advisor, so it belongs on About, one tap
            away, where it is better written. -->
-      <h1 style="font-size: var(--fs-32);font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:var(--ink);margin-bottom:12px;">Find out how much of the MCAT you've already covered.</h1>
-      <p style="font-size: var(--fs-17);color:var(--muted);line-height:1.55;margin-bottom:24px;letter-spacing:-0.01em;">Your classes have been building it all along. Waypoint shows you where you stand — in about two minutes.</p>
+      <h1 style="font-size: var(--fs-32);font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:var(--ink);margin-bottom:12px;"><!--
+        Two sentences, and the turn between them is the whole line. Balanced
+        purely by length it breaks as "you're going. This" — the second
+        sentence starting at the tail of a line, which reads as a typo. Each
+        sentence is its own inline-block, so the break lands where the thought
+        does and each half still wraps on its own at any width.
+   --><span style="display:inline-block;">You know where you're going.</span> <span style="display:inline-block;">This is where you are.</span></h1>
+      <p style="font-size: var(--fs-17);color:var(--muted);line-height:1.55;margin-bottom:24px;letter-spacing:-0.01em;">Waypoint maps the classes you've taken onto the real MCAT.</p>
 
       <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius: var(--r-card);padding:16px 16px 16px;margin-bottom:32px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:12px;">
