@@ -2,6 +2,8 @@
   "name": "waypoint",
   "version": "1.0.0",
   "scripts": {
-    "start": "npx serve . -p 3000 --no-clipboard"
+    "start": "npx serve . -p 3000 --no-clipboard",
+    "check": "node validate.mjs && node design-lock.mjs",
+    "lock": "node design-lock.mjs"
   }
 }
