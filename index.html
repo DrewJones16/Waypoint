@@ -10096,15 +10096,29 @@ function playFirstReveal() {
 
   if (!screen || reducedMotion()) { animateCoverageRing(); return; }
 
+  // A leftover from an interrupted beat would cover the whole app, so never
+  // stack two.
+  const stale = document.getElementById('reveal-beat');
+  if (stale) stale.remove();
+
+  // Fixed to the viewport, not to the screen. The Route runs about 2000px, and
+  // an overlay filling it centres its own text around y=1000 — below the fold,
+  // which is where "Mapping your route…" has been on every first reveal so far.
+  // It cannot simply become position:fixed in place either: .screen ends its
+  // fade-up on transform:translateY(0) with fill-mode both, and an element with
+  // a transform is the containing block for its fixed children. So the overlay
+  // lives on <body> and borrows the app column's width — full-bleed on a phone,
+  // the column alone on a desktop, exactly the area it covered before.
+  const col = (document.getElementById('app') || document.body).getBoundingClientRect();
   const beat = document.createElement('div');
   beat.id = 'reveal-beat';
-  beat.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;z-index:5;background:var(--bg);';
+  beat.style.cssText = 'position:fixed;top:0;bottom:0;left:' + Math.round(col.left) + 'px;' +
+    'width:' + Math.round(col.width) + 'px;display:flex;align-items:center;justify-content:center;' +
+    'gap:12px;z-index:40;background:var(--bg);';
   beat.innerHTML = '<span class="pulse-dot" style="width:8px;height:8px;margin:0;"></span>' +
                    '<span style="font-size: var(--fs-15);color:var(--muted);font-weight:600;">Mapping your route…</span>';
-  screen.style.position = 'relative';
   screen.style.visibility = 'hidden';
-  screen.appendChild(beat);
-  beat.style.visibility = 'visible';
+  document.body.appendChild(beat);
 
   if (subhead) { subhead.style.opacity = '0'; subhead.style.transition = 'opacity 420ms ease-out'; }
 
