@@ -5286,8 +5286,8 @@ function mapHTML(mini, highlightTopics = new Set()) {
       ? `<span style="display:inline-block;width:5px;height:5px;background:var(--green);border-radius: var(--r-pill);vertical-align:middle;margin-left:4px;"></span>` : '';
 
     let bg, bdr, nc, dc;
-    if (covered) { bg='rgba(29,158,117,0.12)'; bdr='rgba(29,158,117,0.35)'; nc='var(--green-bright)'; dc='var(--green-bright)'; }
-    else         { bg='var(--surface)'; bdr='rgba(255,255,255,0.07)'; nc='var(--faint)'; dc='var(--faint)'; }
+    if (covered) { bg='rgba(29,158,117,0.15)'; bdr='transparent'; nc='var(--ink)'; dc='var(--green-bright)'; }
+    else         { bg='rgba(255,255,255,0.03)'; bdr='transparent'; nc='var(--faint)'; dc='var(--faint)'; }
 
     return `<div style="background:${bg};border:1px solid ${bdr};border-radius: var(--r-ctl);padding:${pad};flex:1;min-width:${mw};max-width:100%;overflow:hidden;">
       <div style="font-size:${fs};color:${nc};font-weight: 600;line-height:1.25;overflow-wrap:break-word;word-break:break-word;">${t.name}${dot}</div>
@@ -5319,19 +5319,21 @@ const TILE_ROW = 'display:flex;flex-wrap:wrap;gap:4px;';
 function coveredTileHTML(t, live, open) {
   const inProgress = S.courseStatus[t.course] === 'in-progress';
   const statusIcon = inProgress ? `<span class="pulse-dot" style="width:5px;height:5px;margin-right:4px;"></span>` : '✓ ';
-  let status = `<div style="font-size: var(--fs-11);color:var(--green-bright);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${t.disp}</div>`;
+  let status = `<div style="font-size: var(--fs-11);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${t.disp}</div>`;
   const f = live ? topicFreshness(t.id) : null;
   if (f && f.state !== 'fresh') {
     const m = FRESH_META[f.state];
     status = `<div style="font-size: var(--fs-11);color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.word}</div>`;
   }
   const inner = `
-          <div style="font-size: var(--fs-11);color:var(--green-bright);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
+          <div style="font-size: var(--fs-11);color:var(--ink);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
             ${status}
-            <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);flex-shrink:0;margin-left:4px;">${wLabel(t)}</div>
+            <div style="font-size: var(--fs-11);font-weight:700;color:var(--green-bright);flex-shrink:0;margin-left:4px;">${wLabel(t)}</div>
           </div>`;
-  const box = `background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);${TILE_BOX}`;
+  // Fill, not outline: earned ground is solid. The border slot stays (transparent)
+  // so covered and locked tiles keep identical box metrics.
+  const box = `background:rgba(29,158,117,0.15);border:1px solid transparent;${TILE_BOX}`;
   if (!f) return `<div style="${box}">${inner}</div>`;
   return `<button onclick="toggleFresh('${t.id}')" aria-expanded="${open === t.id}" title="${f.why.replace(/"/g, '&quot;')}"
           style="${box}text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;${open === t.id ? 'box-shadow:0 0 0 1px var(--line-2);' : ''}">${inner}</button>`;
@@ -5345,7 +5347,7 @@ function wLabel(t, plus) { return t.w === 0 ? 'skill' : (plus ? '+' : '') + t.w 
 // Locked / addable — tap to add the course that unlocks it.
 function lockedTileHTML(t) {
   const cName = (COURSES.find(c => c.id === t.course) || {}).name || 'a course';
-  return `<button onclick="go('courses')" title="Add ${cName} to unlock ${wLabel(t, true)}" style="background:var(--surface);border:1px dashed rgba(255,255,255,0.15);${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
+  return `<button onclick="go('courses')" title="Add ${cName} to unlock ${wLabel(t, true)}" style="background:rgba(255,255,255,0.03);border:1px solid transparent;${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
         <div style="font-size: var(--fs-11);color:var(--muted);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
           <div style="font-size: var(--fs-11);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${t.disp}</div>
@@ -5357,8 +5359,8 @@ function lockedTileHTML(t) {
 // CARS — ongoing, not course-gated, and so never on the timeline: it belongs to
 // no semester the student ever registered for.
 function carsTileHTML(t) {
-  return `<div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);${TILE_BOX}">
-          <div style="font-size: var(--fs-11);color:var(--amber);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
+  return `<div style="background:rgba(245,158,11,0.09);border:1px solid transparent;${TILE_BOX}">
+          <div style="font-size: var(--fs-11);color:var(--ink);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
             <div style="font-size: var(--fs-11);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-style:italic;">ongoing</div>
             <div style="font-size: var(--fs-11);font-weight:700;color:var(--amber);flex-shrink:0;margin-left:4px;">${wLabel(t)}</div>
