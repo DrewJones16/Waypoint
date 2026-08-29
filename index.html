@@ -8053,12 +8053,12 @@ function screenAbout() {
       ${para(`So Waypoint is the tool I wished existed.`)}
       ${para(`It maps the classes you're already taking onto the MCAT, so you can see honestly how much of the exam your coursework already covers. It shows you how the MCAT will bend what your professor is teaching — because the exam tests the <em style="color:var(--violet-soft);">consequence</em>, not just the definition — and it lets you practice that gap a few minutes at a time, on the exact topics you're in right now.`)}
       ${para(`It's not a cram tool, and it's not trying to replace the big question banks you'll use junior year. It's for the two years <em style="color:var(--muted);">before</em> that — the stretch where you're motivated but everyone tells you there's nothing to do yet. The goal is simple: by the time you open a prep book, a good chunk of it already feels familiar, and you never had to do a panic death-march to get there. Mostly, I want the whole thing to feel a little less scary and a little more in your control.`)}
-      ${para(`A few honest things, because trust matters to me. I'm a student, not a company. I build this between classes, EMT shifts, and my work as an RBT — it's a side project, not a startup trying to sell you anything. The coverage numbers come from the real AAMC exam weighting and a standard premed course sequence, and I say so plainly inside the app; they're a typical course load, not a survey of students. It's free, there's no account, and there's nothing to buy.`)}
+      ${para(`A few honest things, because trust matters to me. I'm a student, not a company. I build this between classes, EMT shifts, and my work as an RBT — it's a side project, not a startup trying to sell you anything. The coverage numbers come from the real AAMC exam weighting and a standard premed course sequence, and I say so plainly inside the app; they're a typical course load, not a survey of students. It's free and there's nothing to buy. You don't need an account to use any of it — adding your email is optional, and all it does is let your route follow you from your laptop to your phone.`)}
       ${para(`I just needed this to exist. I hope it helps.`)}
 
       <p style="font-size: var(--fs-15);color:var(--green-bright);font-weight:600;margin-top:4px;">— Drew</p>
 
-      <div style="margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);font-size: var(--fs-13);color:var(--faint);line-height:1.6;">Free · no account · a premed side project. Built with care between shifts.</div>
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);font-size: var(--fs-13);color:var(--faint);line-height:1.6;">Free · no sign-up needed · a premed side project. Built with care between shifts.</div>
     </div>`;
 }
 
@@ -8124,7 +8124,9 @@ function screenSettings() {
       <div class="section-divider"></div>
 
       <p class="label" style="margin-bottom:8px;">Your data</p>
-      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Your route lives in this browser. A backup file is how you carry it — to a new phone, a new laptop, or back after a browser cleanup.</p>
+      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">${authSession()
+        ? 'Your route syncs to your account and is stored in this browser too. A backup file is the copy you keep yourself — useful before a browser cleanup, or to move a route onto an account.'
+        : 'Your route lives in this browser only. A backup file is how you carry it — to a new phone, a new laptop, or back after a browser cleanup. Adding an email above syncs it instead.'}</p>
 
       <div id="backup-status" role="status" style="display:none;font-size: var(--fs-13);line-height:1.5;border:1px solid transparent;border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:12px;"></div>
 
@@ -8764,6 +8766,19 @@ function screenConfirmCourses() {
 // A junior or senior at the same number means something different: their route
 // is mostly behind them, so a low figure usually means there is more transcript
 // to enter, and saying so is more useful than telling them they are early.
+const YEAR_ORDER = { freshman: 0, sophomore: 1, junior: 2, senior: 3 };
+
+// Ground covered is not a statement about who the student is. Reads "" whenever
+// the band matches their year, or when we have no year to compare against.
+function aheadOfYear(bandIndex) {
+  const yi = YEAR_ORDER[S.year];
+  if (yi === undefined) return '';
+  const ahead = bandIndex - yi;
+  if (ahead === 1) return ', a year ahead of where you are';
+  if (ahead >= 2)  return `, ${ahead} years ahead of where you are`;
+  return '';
+}
+
 function territoryLine(cov) {
   const early = !DONE_FIRST_YEARS.includes(S.year);
 
@@ -8777,9 +8792,9 @@ function territoryLine(cov) {
       ? `${cov}% covered — freshman territory, and the sequence is just getting started.`
       : `${cov}% covered so far — there's likely more on your transcript to add.`;
   }
-  if (cov <= 33) return `${cov}% covered — sophomore territory.`;
-  if (cov <= 66) return `${cov}% covered — junior-year ground.`;
-  return `${cov}% covered — senior-year territory.`;
+  if (cov <= 33) return `${cov}% covered — sophomore territory${aheadOfYear(1)}.`;
+  if (cov <= 66) return `${cov}% covered — junior-year ground${aheadOfYear(2)}.`;
+  return `${cov}% covered — senior-year territory${aheadOfYear(3)}.`;
 }
 
 function screenReveal() {
