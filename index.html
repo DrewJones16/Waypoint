@@ -8850,7 +8850,7 @@ function screenReveal() {
             <svg width="112" height="112" viewBox="0 0 112 112" style="transform:rotate(-90deg);position:absolute;inset:0;">
               <circle cx="56" cy="56" r="${ringR}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="9"/>
               <circle cx="56" cy="56" r="${ringR}" fill="none" stroke="#1D9E75" stroke-width="9"
-                stroke-dasharray="${ringCirc}" stroke-dashoffset="${ringCirc}"
+                stroke-dasharray="${ringCirc}" stroke-dashoffset="${ringOffset}" data-empty="${ringCirc}"
                 stroke-linecap="round"
                 style="transition:stroke-dashoffset 1.4s cubic-bezier(0.2,0.8,0.4,1);filter:drop-shadow(0 0 7px rgba(29,158,117,0.55));"
                 data-target="${ringOffset}"/>
@@ -10077,17 +10077,37 @@ function reducedMotion() {
   return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 }
 
-function animateCoverageRing() {
-  const ring = document.querySelector('[data-target]');
-  if (ring) requestAnimationFrame(() => setTimeout(() => {
-    ring.style.strokeDashoffset = ring.dataset.target;
-  }, 80));
+// Remembers which screen and value the ring last animated for. render() runs on
+// every state change, so without this the count-up replayed on each one and the
+// student's coverage flashed 0% under a headline still reading the real number.
+let ringAnimKey = null;
 
-  const cn = document.getElementById('cov-num');
+// The entrance for the coverage ring. The markup already paints the true value,
+// so this only ever ADDS an animation — skipping it leaves the number correct.
+// `force` is for the first-reveal beat, which always plays.
+function animateCoverageRing(force) {
+  const ring = document.querySelector('[data-target]');
+  const cn   = document.getElementById('cov-num');
+  if (!ring && !cn) { ringAnimKey = null; return; }
+
+  const key = S.screen + ':' + (cn ? cn.dataset.count : (ring.dataset.target || ''));
+  if (!force && key === ringAnimKey) return;   // same screen, same number — leave it alone
+  ringAnimKey = key;
+  if (reducedMotion()) return;                 // markup is already at the final value
+
+  if (ring) {
+    const empty = ring.dataset.empty || ring.getAttribute('stroke-dasharray');
+    ring.style.transition = 'none';
+    ring.style.strokeDashoffset = empty;
+    requestAnimationFrame(() => {
+      ring.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(0.2,0.8,0.4,1)';
+      requestAnimationFrame(() => { ring.style.strokeDashoffset = ring.dataset.target; });
+    });
+  }
+
   if (!cn) return;
   const target = parseInt(cn.dataset.count, 10) || 0;
   if (target <= 0) return;
-  if (reducedMotion()) { cn.textContent = target + '%'; return; }
 
   cn.textContent = '0%';
   let t0 = null;
@@ -10112,7 +10132,7 @@ function playFirstReveal() {
   const screen = document.querySelector('#app > .screen');
   const subhead = document.getElementById('reveal-subhead');
 
-  if (!screen || reducedMotion()) { animateCoverageRing(); return; }
+  if (!screen || reducedMotion()) { animateCoverageRing(true); return; }
 
   // A leftover from an interrupted beat would cover the whole app, so never
   // stack two.
@@ -10143,7 +10163,7 @@ function playFirstReveal() {
   setTimeout(() => {
     beat.remove();
     screen.style.visibility = '';
-    animateCoverageRing();
+    animateCoverageRing(true);
     // After the number has landed, not with it — the figure is the event and the
     // sentence is what it means.
     if (subhead) setTimeout(() => { subhead.style.opacity = '1'; }, 700);
