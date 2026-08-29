@@ -9632,8 +9632,8 @@ function setReminder(btn) {
     `DTEND:${fmtLocal(end)}`,
     'RRULE:FREQ=DAILY',
     'SUMMARY:Waypoint — Daily MCAT Practice',
-    'DESCRIPTION:5 questions a day keeps the panic away.\\nOpen Waypoint and keep your streak going.\\nhttps://drewjones16.github.io/Waypoint/',
-    'URL:https://drewjones16.github.io/Waypoint/',
+    'DESCRIPTION:5 questions a day keeps the panic away.\\nOpen Waypoint and keep your streak going.\\nhttps://waypointmcat.com/',
+    'URL:https://waypointmcat.com/',
     'BEGIN:VALARM',
     'TRIGGER:-PT0M',
     'ACTION:DISPLAY',
@@ -9681,6 +9681,113 @@ function tok(name) {
     TOKENS[name] = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
   return TOKENS[name];
+}
+
+// ── SHARE DELIVERY ────────────────────────────────────────────────────────────
+// One place where a rendered card actually leaves the app. Every path here is
+// guarded, because the old version could strand the button on "Preparing…"
+// forever: navigator.share() can hang without ever settling when the OS sheet
+// can't be presented, and a non-AbortError rejection used to fall through with
+// no message at all. The rules now: the button always comes back, the student
+// always learns what happened, and a failed share still leaves them with a link.
+const SHARE_URL = 'https://waypointmcat.com';
+
+// navigator.share() that cannot hang. A real OS share sheet takes focus away
+// from the page within a moment; if focus never moves and the promise is still
+// pending, the sheet never opened and never will — that is the case that used
+// to leave the button reading "Preparing…" forever. Once the sheet HAS opened,
+// we hand off and stop waiting, so a student who sits on the sheet still gets
+// their button back. Resolves:
+//   'handed-off' | 'shared' | 'cancelled'  → done, run no fallback
+//   'unavailable' | 'failed'               → fall through to the next rung
+function shareOrTimeout(payload, graceMs = 1500) {
+  return new Promise(resolve => {
+    let settled = false;
+    const cleanup = () => {
+      window.removeEventListener('blur', onLeave);
+      document.removeEventListener('visibilitychange', onLeave);
+      clearTimeout(timer);
+    };
+    const done = v => { if (!settled) { settled = true; cleanup(); resolve(v); } };
+    function onLeave() { if (document.visibilityState === 'hidden' || !document.hasFocus()) done('handed-off'); }
+    window.addEventListener('blur', onLeave);
+    document.addEventListener('visibilitychange', onLeave);
+    const timer = setTimeout(() => done('unavailable'), graceMs);
+    Promise.resolve()
+      .then(() => navigator.share(payload))
+      .then(() => done('shared'))
+      .catch(e => done(e && e.name === 'AbortError' ? 'cancelled' : 'failed'));
+  });
+}
+
+// Saves the PNG to the student's device. Returns false if the browser blocked it.
+function saveShareImage(blob, filename) {
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return true;
+  } catch (e) {
+    console.warn('[Waypoint] share download blocked:', e);
+    return false;
+  }
+}
+
+async function copyShareLink() {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(SHARE_URL);
+      return true;
+    }
+  } catch (e) { /* clipboard denied — fall through */ }
+  return false;
+}
+
+// canvas.toBlob, promisified, and never left pending.
+function canvasBlob(canvas, ms = 8000) {
+  return new Promise(resolve => {
+    let settled = false;
+    const done = b => { if (!settled) { settled = true; resolve(b); } };
+    const timer = setTimeout(() => done(null), ms);
+    try {
+      canvas.toBlob(b => { clearTimeout(timer); done(b); }, 'image/png');
+    } catch (e) { clearTimeout(timer); done(null); }
+  });
+}
+
+// The whole delivery ladder: OS sheet with the image, OS sheet with text+link,
+// then save-to-device, then copy-the-link. Something always happens, and the
+// student is always told which.
+async function deliverShare({ canvas, filename, title, text }) {
+  const blob = await canvasBlob(canvas);
+  if (!blob) {
+    const copied = await copyShareLink();
+    showToast(copied ? "Couldn't build the image — link copied instead."
+                     : "Couldn't build the image. Try again in a moment.");
+    return;
+  }
+  const file = new File([blob], filename, { type: 'image/png' });
+
+  const DONE = { 'handed-off': 1, shared: 1, cancelled: 1 };
+  let sheetIsDead = false;
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    const r = await shareOrTimeout({ files: [file], title, text });
+    if (DONE[r]) return;
+    sheetIsDead = (r === 'unavailable');
+  }
+  if (navigator.share && !sheetIsDead) {
+    const r = await shareOrTimeout({ title, text, url: SHARE_URL });
+    if (DONE[r]) return;
+  }
+  if (saveShareImage(blob, filename)) {
+    showToast('Image saved — attach it to your post.');
+    return;
+  }
+  const copied = await copyShareLink();
+  showToast(copied ? "Sharing isn't available here — link copied instead."
+                   : "Sharing isn't available in this browser. Visit waypointmcat.com");
 }
 
 async function shareCoverageCard(variant = 'coverage', btn) {
@@ -9818,49 +9925,21 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   ctx.font = '500 26px "Inter", sans-serif';
   ctx.fillText('Track your own MCAT coverage → waypointmcat.com', W / 2, H - 60);
 
-  canvas.toBlob(async (blob) => {
-    if (!blob) { restoreBtn(); return; }
-    const filename = isStreak ? 'waypoint-streak.png' : 'waypoint-progress.png';
-    const file = new File([blob], filename, { type: 'image/png' });
-    const shareText = isStreak
-      ? `I'm on a ${streak}-day Waypoint streak — tracking my MCAT coverage.`
-      : `I've covered ${cov}% of the MCAT — tracked with Waypoint.`;
-    const shareUrl = 'https://drewjones16.github.io/Waypoint';
-
-    // 1) Best case: hand the image straight to the OS share sheet (iOS/Android, some desktop browsers)
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'My Waypoint progress', text: shareText });
-        restoreBtn();
-        return;
-      } catch (e) {
-        if (e.name === 'AbortError') { restoreBtn(); return; } // user backed out of the sheet — done, no fallback
-      }
-    }
-
-    // 2) Most desktop browsers support the share sheet for text+link even without file support
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'My Waypoint progress', text: shareText, url: shareUrl });
-        restoreBtn();
-        return;
-      } catch (e) {
-        if (e.name === 'AbortError') { restoreBtn(); return; }
-      }
-    }
-
-    // 3) Last resort (Web Share API unsupported): save the image and let them know where it went
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    showToast('Image saved — attach it to your post!');
+  try {
+    await deliverShare({
+      canvas,
+      filename: isStreak ? 'waypoint-streak.png' : 'waypoint-progress.png',
+      title: 'My Waypoint progress',
+      text: isStreak
+        ? `I'm on a ${streak}-day Waypoint streak — tracking my MCAT coverage.`
+        : `I've covered ${cov}% of the MCAT — tracked with Waypoint.`,
+    });
+  } catch (e) {
+    console.error('[Waypoint] share failed:', e);
+    showToast("Couldn't share that just now — try again in a moment.");
+  } finally {
     restoreBtn();
-  }, 'image/png');
+  }
 }
 
 // ── SHAREABLE TWIST CARD ────────────────────────────────────────────────────────
@@ -9964,27 +10043,19 @@ async function shareTwistCard(btn) {
   ctx.font = '500 26px "Inter", sans-serif';
   ctx.fillText('See the twist on every topic → waypointmcat.com', W / 2, H - 64);
 
-  canvas.toBlob(async (blob) => {
-    if (!blob) { restoreBtn(); return; }
-    const file = new File([blob], 'waypoint-twist.png', { type: 'image/png' });
-    const shareText = 'The MCAT tests your classes differently than your professor does. Waypoint maps the gap.';
-    const shareUrl = 'https://waypointmcat.com';
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'The MCAT Twist', text: shareText }); restoreBtn(); return; }
-      catch (e) { if (e.name === 'AbortError') { restoreBtn(); return; } }
-    }
-    if (navigator.share) {
-      try { await navigator.share({ title: 'The MCAT Twist', text: shareText, url: shareUrl }); restoreBtn(); return; }
-      catch (e) { if (e.name === 'AbortError') { restoreBtn(); return; } }
-    }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'waypoint-twist.png';
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    showToast('Image saved — attach it to your post!');
+  try {
+    await deliverShare({
+      canvas,
+      filename: 'waypoint-twist.png',
+      title: 'The MCAT Twist',
+      text: 'The MCAT tests your classes differently than your professor does. Waypoint maps the gap.',
+    });
+  } catch (e) {
+    console.error('[Waypoint] twist share failed:', e);
+    showToast("Couldn't share that just now — try again in a moment.");
+  } finally {
     restoreBtn();
-  }, 'image/png');
+  }
 }
 
 // ── REPORT A QUESTION ─────────────────────────────────────────────────────────
