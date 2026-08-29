@@ -6225,7 +6225,7 @@ function screenPace() {
         </button>`;
       }).join('')}
 
-      <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin-top:16px;">Picking one starts 5 questions on it right away.</p>
+      <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin-top:16px;">Picking one starts a short session on it right away.</p>
     </div>`;
 }
 
@@ -6298,12 +6298,12 @@ function briefAction() {
   const weak = weakestTopic();
   if (weak && weak.accuracy < 0.7) {
     return { topic: weak.topic, subId: null,
-             text: `Five questions on ${weak.topic.name}. You're at ${Math.round(weak.accuracy * 100)}% there — it's the fastest point you can pick up this week.` };
+             text: `${sessionSize(weak.topic.id, null)} questions on ${weak.topic.name}. You're at ${Math.round(weak.accuracy * 100)}% there — it's the fastest point you can pick up this week.` };
   }
   const wk = thisWeekUnits()[0];
   if (wk) {
     return { topic: wk.topic, subId: wk.subId,
-             text: `Five questions on ${wk.subLabel}. It's what ${wk.courseName} is covering now, so it's the cheapest it will ever be to learn.` };
+             text: `${sessionSize(wk.topic.id, wk.subId)} questions on ${wk.subLabel}. It's what ${wk.courseName} is covering now, so it's the cheapest it will ever be to learn.` };
   }
   const onRoute = TOPICS.filter(t => t.course && S.courses.has(t.course))
                         .sort((a, b) => b.w - a.w);
@@ -6313,8 +6313,8 @@ function briefAction() {
     // single block, at 0% of the exam" is not a sentence to show anyone.
     return { topic: t, subId: null,
              text: t.w === 0
-               ? `Five questions on ${t.name}. Research reasoning shows up across all three science sections.`
-               : `Five questions on ${t.name}. At ${t.w}% of the exam, it's the biggest single block on your route.` };
+               ? `${sessionSize(t.id, null)} questions on ${t.name}. Research reasoning shows up across all three science sections.`
+               : `${sessionSize(t.id, null)} questions on ${t.name}. At ${t.w}% of the exam, it's the biggest single block on your route.` };
   }
   return null;
 }
@@ -7828,7 +7828,7 @@ function todayPick(skip = null) {
   const mt = midtermPlan();
   if (mt && !mt.past && mt.days <= 14 && mt.today && !skipped(mt.today.topicId)) {
     return { label: 'Before your exam', accent: 'var(--amber)',
-             title: `5 questions on ${mt.today.label}`,
+             title: (() => { const n = sessionSize(mt.today.topicId, mt.today.subId); return `${n} question${n !== 1 ? 's' : ''} on ${mt.today.label}`; })(),
              reason: mt.days === 0 ? `Your ${mt.courseName} exam is today.`
                    : mt.days === 1 ? `Your ${mt.courseName} exam is tomorrow.`
                    : `Your ${mt.courseName} exam is in ${mt.days} days.`,
@@ -7843,7 +7843,7 @@ function todayPick(skip = null) {
     // has X this week" is checkable against the paper on their desk; "your
     // class is covering it now" is our inference either way.
     return { label: 'This week in class', accent: 'var(--violet)',
-             title: `5 questions on ${wk.subLabel}`,
+             title: (() => { const n = sessionSize(wk.topic.id, wk.subId); return `${n} question${n !== 1 ? 's' : ''} on ${wk.subLabel}`; })(),
              reason: wk.syllabusLabel
                ? `Your syllabus has <strong style="color:var(--ink-2);">${esc(wk.syllabusLabel)}</strong> this week.`
                : `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
@@ -7881,7 +7881,7 @@ function todayPick(skip = null) {
                  : d.reason === 'in-progress' ? `You're taking it in class right now.`
                  : (t.w === 0 ? 'A skill tested across the exam.' : `${t.w}% of the exam.`);
     return { label: 'Do this now', accent: 'var(--green)',
-             title: `5 questions on ${t.name}`, reason,
+             title: (() => { const n = sessionSize(t.id, null); return `${n} question${n !== 1 ? 's' : ''} on ${t.name}`; })(), reason,
              onclick: `startQuickLog('${t.id}', null)`,
              run: () => startQuickLog(t.id, null) };
   }
@@ -9212,7 +9212,7 @@ function screenQuickLog() {
       <button class="topic-pick-btn" onclick="startQuickLog('${t.id}', '${sub.id}')">
         <span style="flex:1;text-align:left;">
           <span class="tp-name">${sub.label}</span>
-          <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${count} question${count !== 1 ? 's' : ''}</span>
+          <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${sessionSize(t.id, sub.id)} question${sessionSize(t.id, sub.id) !== 1 ? 's' : ''}</span>
         </span>
         <span class="tp-arrow">→</span>
       </button>`).join('');
@@ -9223,7 +9223,7 @@ function screenQuickLog() {
       <button class="topic-pick-btn"${subs.length ? ' style="border-color:rgba(255,255,255,0.05);opacity:0.7;"' : ''} onclick="startQuickLog('${t.id}', null)">
         <span style="flex:1;text-align:left;">
           <span class="tp-name"${subs.length ? ' style="color:var(--faint);"' : ''}>All of ${t.name}</span>
-          <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${topicQs.length} question${topicQs.length !== 1 ? 's' : ''}</span>
+          <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${sessionSize(t.id, null)} question${sessionSize(t.id, null) !== 1 ? 's' : ''}</span>
         </span>
         <span class="tp-arrow"${subs.length ? ' style="color:var(--faint);"' : ''}>→</span>
       </button>`;
@@ -9452,7 +9452,26 @@ function startSession() {
   go('question');
 }
 
-// "Syllabus Sync" quick-log — 3 questions on a topic (optionally filtered to a subtopic)
+// How long a daily session is. Every number the UI promises comes from here or
+// from sessionSize() below, so a card can never advertise a count the session
+// does not deliver.
+const DAILY_COUNT = 5;
+
+// The number of questions a session will really contain. Mirrors the pool
+// selection in startQuickLog() exactly — subtopic fallback included — so
+// "5 questions on Physiology" is a promise the next screen keeps, and a topic
+// with a thinner bank honestly says 2.
+function sessionSize(topicId, subtopicId, want) {
+  const allPool = QUESTIONS.filter(q => q.topic === topicId);
+  let pool = allPool;
+  if (subtopicId) {
+    const filtered = allPool.filter(q => (q.subtopic || SUBTOPIC_TAGS[q.id]) === subtopicId);
+    pool = filtered.length >= 3 ? filtered : allPool;
+  }
+  return Math.min(want || DAILY_COUNT, pool.length);
+}
+
+// "Syllabus Sync" quick-log — DAILY_COUNT questions on a topic (optionally filtered to a subtopic)
 // `opts` carries anything the question screen has to know before its FIRST paint:
 // {count} for a longer session, {repin} for the state a re-pin came from. Flags
 // set by the caller after this returns arrive one render too late.
@@ -9481,7 +9500,7 @@ function startQuickLog(topicId, subtopicId, leadQId, opts) {
     const lead = allPool.find(q => q.id === leadQId);
     if (lead) pool = [lead, ...pool.filter(q => q.id !== leadQId)];
   }
-  S.session  = pool.slice(0, Math.min(o.count || 3, pool.length));
+  S.session  = pool.slice(0, Math.min(o.count || DAILY_COUNT, pool.length));
   S.idx      = 0;
   S.answers  = [];
   S.answered = null;
