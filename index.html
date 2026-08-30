@@ -1566,6 +1566,7 @@ const TWISTS = {
   'th15': 'Your professor tests the definition of electrolytic vs. galvanic cell. The MCAT gives an industrial electroplating process and asks which electrode has oxidation occurring and why an external power source is required — connecting the need for external voltage to non-spontaneity.',
   'th16': 'Your professor tests rate law determination from doubling experiments. The MCAT gives a table of initial rate data and asks for the overall reaction order and rate constant — synthesizing the rate law from experimental data, not from memory.',
   'th17': 'Your professor tests the half-life formula. The MCAT gives a nuclear medicine context (e.g., a ⁹⁹ᵐTc scan) and asks how much radioactivity remains after 3 half-lives — applying half-life decay to a clinical dosing or imaging decision.',
+  'th19': 'Your professor tests ΔG = ΔG° + RT ln Q as a formula to plug into. The MCAT gives a metabolic step with a positive ΔG°′ and tells you the product is rapidly consumed downstream, then asks which direction the reaction actually runs in the cell — reasoning from the reaction quotient to real flux rather than reading the sign of ΔG°′.',
   // ─ Organic Chemistry ─
   'og01': 'Your professor tests functional group identification and pKa ranges. The MCAT gives a drug molecule\'s structure and asks whether it\'s more or less acidic than acetic acid based on resonance stabilization of the conjugate base — reasoning from structure to acidity without a table.',
   'og02': 'Your professor tests that SN2 is fastest with primary substrates. The MCAT gives a synthesis problem with a strong nucleophile and a tertiary substrate and asks why SN2 fails — reasoning from steric hindrance to predict the actual product and propose an alternative route.',
@@ -1818,7 +1819,7 @@ const SUBTOPIC_TAGS = {
   // Thermodynamics
   'th05':'enthalpy',   'th11':'enthalpy',  'th14':'enthalpy',
   'th02':'entropy',    'th07':'entropy',   'th09':'entropy',   'th10':'entropy', 'th17':'entropy',
-  'th01':'gibbs',      'th13':'gibbs',
+  'th01':'gibbs',      'th13':'gibbs',     'th19':'gibbs',
   'th04':'equilibrium','th06':'equilibrium','th08':'equilibrium','th12':'equilibrium','th15':'equilibrium','th16':'equilibrium','th03':'equilibrium',
   // Atomic Structure
   'c07':'quantum',     'c37':'quantum',    'c40':'quantum',    'c44':'quantum',
@@ -4417,6 +4418,16 @@ const QUESTIONS = [
           'Impossible to determine without knowing the final equilibrium temperature'],
     ans:1,
     exp:'In an insulated calorimeter, heat lost by the metal equals heat gained by the water in magnitude: q = mcΔT for each. Heat capacity (the mc product, not c alone) for the metal = 100 g × 0.45 J/(g·°C) = 45 J/°C; for the water = 200 g × 4.18 J/(g·°C) = 836 J/°C. Since |q| is the same for both and ΔT = q/(mc), the object with the smaller mc — the metal — undergoes a much larger temperature swing. This is why water resists temperature change (used as a coolant and thermal buffer) while metals heat and cool quickly: a small heat capacity means a given quantity of heat produces a large ΔT. Skill trained: Content knowledge — calorimetry and the distinction between specific heat capacity (c) and heat capacity (mc).'
+  },
+  {
+    id:'th19', topic:'thermo',
+    stem:'In glycolysis, the isomerization of dihydroxyacetone phosphate to glyceraldehyde-3-phosphate has ΔG°′ = +7.5 kJ/mol, yet the reaction runs forward continuously in a working muscle cell. Which statement best explains this?',
+    opts:['The enzyme triose phosphate isomerase lowers ΔG°′ enough to reverse its sign',
+          'Downstream enzymes consume glyceraldehyde-3-phosphate as fast as it forms, holding Q well below K so that ΔG = ΔG°′ + RT ln Q is negative',
+          'Muscle contraction raises cellular temperature until the −TΔS term makes ΔG negative',
+          'The positive ΔG°′ means the reaction is at equilibrium, so no net direction exists'],
+    ans:1,
+    exp:'ΔG°′ describes the standard state (all species at 1 M, pH 7) — not the conditions inside a cell. The quantity that determines direction under real conditions is ΔG = ΔG°′ + RT ln Q, where Q is the actual product/reactant ratio. Glyceraldehyde-3-phosphate is pulled away immediately by the next enzyme (GAPDH), so [product] stays low, Q << K, ln Q is strongly negative, and ΔG becomes negative even though ΔG°′ is positive. This "pull" by product removal is how cells drive thermodynamically unfavorable standard-state steps forward. Choice A is the classic trap: enzymes lower activation energy and speed both directions equally, but they cannot change ΔG°′, ΔH, ΔS, or K. Choice C fails because a few degrees of muscle warming cannot flip the sign here, and cells do not regulate flux by heating themselves. Choice D confuses sign with equilibrium: at equilibrium ΔG = 0, not ΔG°′ = 0. Skill trained: Content knowledge — distinguishing ΔG from ΔG°′ and using the reaction quotient Q to predict direction under cellular conditions.'
   },
   // ── Sociology — additional batch ────────────────────────────────────────────
   {
