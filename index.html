@@ -1696,6 +1696,7 @@ const TWISTS = {
   'n15': 'Your professor tests that myelin increases conduction velocity. The MCAT gives a multiple sclerosis patient with slowed nerve conduction and asks which type of conduction (saltatory vs. continuous) is lost and how this affects signal timing.',
   'n16': 'Your professor tests that L-DOPA is the treatment for Parkinson\'s. The MCAT gives a patient on levodopa and asks why carbidopa is co-administered — applying the pharmacology of peripheral DOPA decarboxylase inhibition to explain the clinical rationale.',
   'n17': 'Your professor tests that Broca\'s area controls speech production. The MCAT gives a patient with non-fluent, effortful speech but intact comprehension and asks to localize the lesion — distinguishing Broca\'s from Wernicke\'s aphasia from symptom pattern.',
+  'n18': 'Your professor tests spatial vs. temporal summation as a vocabulary pair. The MCAT gives a recording of postsynaptic potentials with a specific timing/location pattern and asks you to identify which type of summation is occurring — reading the phenomenon off a described or graphed trace rather than a definition.',
   // ─ CARS ─
   'cars01': 'Your professor tests reading comprehension by asking what the passage says. The MCAT asks you to identify what "gestalt shift" implies about the reasoning process behind scientific paradigm change — an inference about the author\'s implicit claim, not a retrieval of explicit content.',
   'cars02': 'Your professor tests whether you identified the pessimist argument. The MCAT asks which new evidence would most weaken it — requiring you to understand the argument\'s logical structure and identify what would undercut its central premise, not just its conclusion.',
@@ -1811,7 +1812,7 @@ const SUBTOPIC_TAGS = {
   'p13':'muscle',
   // Neuroscience
   'n03':'action-potential','n09':'action-potential','n11':'action-potential','n12':'action-potential','n13':'action-potential','n15':'action-potential',
-  'n06':'synaptic',        'n10':'synaptic',         'n16':'synaptic',
+  'n06':'synaptic',        'n10':'synaptic',         'n16':'synaptic',        'n18':'synaptic',
   'n01':'ans',             'n02':'ans',               'n14':'ans',
   'n04':'brain',           'n05':'brain',             'n07':'brain',  'n08':'brain','n17':'brain',
   // Thermodynamics
@@ -2954,6 +2955,16 @@ const QUESTIONS = [
     ans:1,
     exp:'During fasting, oxaloacetate (OAA) is diverted toward gluconeogenesis, reducing the TCA cycle\'s capacity to accept acetyl-CoA from beta-oxidation. Acetyl-CoA accumulates in the mitochondrial matrix → ketogenesis: acetoacetate, β-hydroxybutyrate, and acetone. Ketogenesis is entirely mitochondrial (not cytoplasmic). Ketone bodies are water-soluble and exported in the blood — they are not stored. After 3–4 days of fasting, the brain adapts to use β-hydroxybutyrate as its primary fuel (~60% of energy needs), sparing glucose for obligate glycolyzers (RBCs, renal medulla). Notably, the liver cannot oxidize its own ketone bodies — it lacks succinyl-CoA:acetoacetate CoA transferase (thiophorase). Skill trained: Content knowledge — ketone body metabolism and fasting physiology.'
   },
+  {
+    id:'bc15', topic:'biochem',
+    stem:'Glycine (no ionizable side chain) has pKa1 = 2.34 for its α-carboxyl group and pKa2 = 9.60 for its α-amino group. What is glycine\'s isoelectric point (pI), and why?',
+    opts:['pI = 2.34, the pKa of the more acidic group sets the pI',
+          'pI = 5.97, the average of the two pKa values flanking the neutral zwitterion form',
+          'pI = 9.60, the pKa of the more basic group sets the pI',
+          'pI = 11.94, the sum of both pKa values'],
+    ans:1,
+    exp:'The isoelectric point is the pH at which a molecule carries no net charge. For an amino acid with no ionizable side chain, glycine exists as three species across the pH range: fully protonated (+1, below pKa1), the neutral zwitterion (net charge 0, between pKa1 and pKa2), and fully deprotonated (−1, above pKa2). The zwitterion form dominates at the pH midway between the two pKa values that flank it, so pI = (pKa1 + pKa2)/2 = (2.34 + 9.60)/2 = 5.97. For amino acids with an ionizable side chain (e.g., aspartate, lysine, histidine), the same rule applies but uses the two pKa values that flank the neutral (zero-charge) species, which may include the side-chain pKa rather than one of the backbone pKa values. Skill trained: Quantitative reasoning — calculating isoelectric point from pKa values.'
+  },
   // ── Gen Chem II — additional ──────────────────────────────────────────────────
   {
     id:'th06', topic:'thermo',
@@ -3792,6 +3803,23 @@ const QUESTIONS = [
     ans:1,
     exp:'At the half-equivalence point, exactly half the original weak acid (HA) has been converted to conjugate base (A⁻), so [HA] = [A⁻]. Henderson-Hasselbalch: pH = pKa + log([A⁻]/[HA]) = pKa + log(1) = pKa + 0 = pKa = 4.74. Three key uses of this landmark: (1) reading the titration curve — the pH at half the equivalence volume equals the pKa directly, allowing experimental pKa measurement; (2) at this point the buffer is maximally effective (equal HA and A⁻ concentrations soak up added acid or base equally well); (3) it lies at exactly half the volume of NaOH required to reach the equivalence point. Confusing "half the pKa" (option A) is a classic MCAT trap — pKa is not a linear pH value, it is a log of an equilibrium constant. Skill trained: Content knowledge — titration landmarks and Henderson-Hasselbalch equation.'
   },
+  {
+    id:'c56', topic:'acid-base',
+    stem:'Two buffer solutions are each prepared at a pH equal to the pKa of their weak acid. Buffer 1 contains 0.05 M weak acid and 0.05 M conjugate base. Buffer 2 contains 0.50 M weak acid and 0.50 M conjugate base. A small, equal amount of strong acid is added to each. Which buffer better resists a pH change, and why?',
+    opts:['Buffer 1, because lower concentrations equilibrate faster and neutralize added acid more quickly',
+          'Buffer 2, because it holds ten times more moles of conjugate base to absorb the added H⁺ before the [A⁻]/[HA] ratio — and thus the pH — shifts appreciably',
+          'Neither — both buffers have identical capacity because Henderson-Hasselbalch shows pH depends only on the ratio of the pair, and that ratio is the same in each',
+          'Buffer 1, because a more dilute buffer has a larger reserve of unreacted solvent water to dilute the incoming acid'],
+    ans:1,
+    exp:'Henderson-Hasselbalch (pH = pKa + log[A⁻]/[HA]) correctly predicts that both buffers start at the same pH, since [A⁻]/[HA] = 1 in each — but that equation describes pH, not capacity. Buffer capacity — how much added acid or base a buffer can absorb before the pH shifts substantially — depends on the absolute concentrations of the conjugate pair, not their ratio. Buffer 2 has ten times more moles of HA and A⁻ available, so the same small addition of strong acid changes its [A⁻]/[HA] ratio only slightly, while in the dilute Buffer 1 the identical addition consumes a much larger fraction of the available A⁻, shifting the ratio (and pH) more. This pH-versus-capacity distinction is a favorite MCAT conceptual trap: two buffers can share an identical pH and pKa yet differ enormously in how much perturbation they can withstand. Skill trained: Content knowledge — buffer capacity versus buffer pH (Henderson-Hasselbalch).'
+  },
+  {
+    id:'c57', topic:'acid-base',
+    stem:'A weak base has Kb = 1.0×10⁻⁴ at 25°C. What is the pKa of its conjugate acid?',
+    opts:['4.00','10.00','1.0×10⁻¹⁰','18.00'],
+    ans:1,
+    exp:'For any conjugate acid-base pair in water at 25°C, Ka × Kb = Kw = 1.0×10⁻¹⁴, which on the p-scale becomes pKa + pKb = 14. Here pKb = −log(1.0×10⁻⁴) = 4.00, so pKa = 14.00 − 4.00 = 10.00. Equivalently, Ka(conjugate acid) = Kw/Kb = (1.0×10⁻¹⁴)/(1.0×10⁻⁴) = 1.0×10⁻¹⁰, and pKa = −log(1.0×10⁻¹⁰) = 10.00. Option A (4.00) mistakes the base\'s own pKb for its conjugate acid\'s pKa — a classic mix-up when a problem gives Kb but asks about the acid side of the pair. Option C (1.0×10⁻¹⁰) is the correct Ka value but reported without converting to the p-scale, forgetting that "pKa" always means −log(Ka), not Ka itself. Option D (18.00) comes from adding rather than subtracting from 14. Skill trained: Content knowledge — Ka/Kb relationship for conjugate pairs (Ka·Kb = Kw, pKa + pKb = 14).'
+  },
   // ── General Chemistry I — fourth additional batch (Bonding) ──────────────────
   {
     id:'c30', topic:'bonding',
@@ -3866,6 +3894,16 @@ const QUESTIONS = [
           'CO₂ has resonance structures while SO₂ does not, eliminating CO₂\'s dipole'],
     ans:1,
     exp:'Molecular polarity depends on both bond polarity and geometry. In CO₂ (linear, 180°), the two C=O bond dipoles point in exactly opposite directions and cancel — net dipole = 0. In SO₂, the sulfur has a lone pair, giving it a bent geometry (~119°). The two S=O dipoles point in the same general direction and do not cancel, yielding a net dipole moment. This is a critical MCAT concept: identical or similar bonds + different geometry = different polarity. Other examples: BF₃ (trigonal planar, nonpolar) vs. NF₃ (trigonal pyramidal, polar); CCl₄ (tetrahedral, nonpolar) vs. CHCl₃ (asymmetric, polar). Skill trained: Content knowledge — molecular geometry, VSEPR, and molecular polarity.'
+  },
+  {
+    id:'c_bond02', topic:'bonding',
+    stem:'In ethylene (H₂C=CH₂), each carbon atom is best described as having which type of hybridization, and what geometry results around each carbon?',
+    opts:['sp³ hybridization; tetrahedral geometry',
+          'sp² hybridization; trigonal planar geometry',
+          'sp hybridization; linear geometry',
+          'sp³d hybridization; trigonal bipyramidal geometry'],
+    ans:1,
+    exp:'Each carbon in ethylene has three regions of electron density (two C–H sigma bonds and one sigma bond to the other carbon), giving sp² hybridization and trigonal planar geometry with ~120° bond angles. The unhybridized p orbital left on each carbon overlaps side-to-side with its neighbor to form the pi bond of the C=C double bond — this sideways overlap prevents free rotation around the double bond (unlike single bonds). For comparison: 4 electron domains give sp³ hybridization and tetrahedral geometry (e.g., methane); 2 domains give sp hybridization and linear geometry (e.g., CO₂, acetylene); 5 domains give sp³d and trigonal bipyramidal geometry (e.g., PCl₅). Skill trained: Content knowledge — orbital hybridization and molecular geometry.'
   },
   // ── General Chemistry I — fifth additional batch (Atomic Structure) ──────────
   {
@@ -3947,6 +3985,16 @@ const QUESTIONS = [
           'The same atomic radius'],
     ans:1,
     exp:'Group number (for main-group elements) corresponds directly to the number of valence electrons (electrons in the outermost shell), which determine an element\'s chemical bonding behavior — how many bonds it forms, what ions it tends to make, and its reactivity. For example, all Group 1 elements (Li, Na, K...) have 1 valence electron and tend to form +1 cations; all Group 17 elements (halogens) have 7 valence electrons and tend to form −1 anions or share one electron in covalent bonds. Atomic mass and total electron count vary widely within a group — only the valence electron count (and resulting chemical behavior) is conserved.'
+  },
+  {
+    id:'c55', topic:'atomic',
+    stem:'Naturally occurring chlorine consists of two isotopes: ³⁵Cl (mass 34.969 amu, 75.77% abundance) and ³⁷Cl (mass 36.966 amu, 24.23% abundance). The atomic mass of chlorine listed on the periodic table (35.45 amu) is best explained as:',
+    opts:['A simple average of the two isotopic masses, (34.969 + 36.966)/2',
+          'A weighted average of the isotopic masses, using each isotope\'s fractional abundance',
+          'The mass of the single most common isotope, ³⁵Cl',
+          'The mass of the least common isotope, since it determines reactivity'],
+    ans:1,
+    exp:'The periodic table lists a weighted average: (0.7577 × 34.969) + (0.2423 × 36.966) ≈ 26.50 + 8.96 = 35.45 amu. Because ³⁵Cl is roughly three times more abundant than ³⁷Cl, the weighted average sits much closer to 35 than to the simple (unweighted) midpoint of 35.97 — a common wrong answer that ignores abundance entirely. This is why chlorine\'s atomic mass (35.45) is not a whole number even though every individual chlorine atom has a whole-number mass number: the periodic table value reflects a population of atoms, not any single atom. The same logic applies to any element with multiple stable isotopes (e.g., Cu, Br, Cu-63/Cu-65). Skill trained: Content knowledge — isotopic abundance and weighted-average atomic mass calculations.'
   },
   // ── General Chemistry I — sixth additional batch (Stoichiometry) ─────────────
   {
@@ -4063,6 +4111,13 @@ const QUESTIONS = [
           'An unusually high mutation rate in the island population'],
     ans:1,
     exp:'The founder effect is a form of genetic drift in which a small founding population, by chance, carries an unrepresentative sample of the source population\'s allele frequencies. Drift has a disproportionately large effect in small populations, so chance sampling at founding can permanently shift allele frequencies in the new population. Natural selection would require evidence that the allele confers a fitness advantage in the new environment (not stated). Gene flow requires ongoing migration, which contradicts "isolated island." A changed mutation rate wouldn\'t explain an elevated frequency present from the moment of founding.'
+  },
+  {
+    id:'b47', topic:'genetics',
+    stem:'A recessive autosomal disorder affects 1 in 10,000 newborns in a population at Hardy-Weinberg equilibrium. Approximately what fraction of the population are unaffected carriers of the disease allele?',
+    opts:['1/100','1/50','1/25','1/5'],
+    ans:1,
+    exp:'q² = 1/10,000 (frequency of affected homozygotes, aa), so q = √(1/10,000) = 1/100 = 0.01. Since p + q = 1, p = 0.99. Carrier frequency = 2pq = 2(0.99)(0.01) ≈ 0.0198, which is closest to 1/50. Note this is roughly double q itself — a useful shortcut: when q is small, 2pq ≈ 2q, so carriers vastly outnumber affected individuals. Skill trained: Content knowledge — applying the Hardy-Weinberg equation (p² + 2pq + q² = 1) to move from disease incidence to carrier frequency, a calculation distinct from simply naming the equilibrium\'s assumptions.'
   },
   // ── Statistics — additional batch 2 ────────────────────────────────────────
   {
@@ -4272,6 +4327,16 @@ const QUESTIONS = [
     ans:1,
     exp:'Broca\'s area (inferior frontal gyrus, usually left hemisphere) is essential for speech production. Damage causes Broca\'s (expressive) aphasia: speech is halting, effortful, and telegraphic, but comprehension is largely preserved — exactly the pattern described. Wernicke\'s area (posterior superior temporal gyrus) processes language comprehension; damage causes fluent but nonsensical speech with poor comprehension (Wernicke\'s aphasia). The right primary motor cortex controls the left side of the body (motor symptoms, not language). The primary visual cortex processes visual input (not language). The double dissociation between Broca\'s and Wernicke\'s aphasias is a classic MCAT question: production deficit + intact comprehension → Broca\'s; intact fluency + comprehension deficit → Wernicke\'s. Skill trained: Content knowledge — language areas and aphasia.'
   },
+  {
+    id:'n18', topic:'neuro',
+    stem:'A single presynaptic neuron fires several action potentials in rapid succession, releasing neurotransmitter each time onto the same postsynaptic cell. Each resulting EPSP is individually subthreshold, but because they arrive close enough together that one EPSP has not yet decayed before the next begins, their depolarizations add together and the postsynaptic neuron reaches threshold. This phenomenon is best described as:',
+    opts:['Spatial summation, since the postsynaptic neuron is integrating input from multiple synapses',
+          'Temporal summation, since successive EPSPs from the same synapse overlap in time and add together',
+          'Long-term potentiation, a lasting increase in synaptic strength from repeated use',
+          'Presynaptic inhibition, which reduces neurotransmitter release from the axon terminal'],
+    ans:1,
+    exp:'Temporal summation occurs when a single presynaptic neuron fires repeatedly fast enough that successive postsynaptic potentials overlap in time and add together at the axon hillock, even though each one alone is subthreshold. Spatial summation instead involves near-simultaneous EPSPs (or EPSPs and IPSPs) arriving from multiple different presynaptic neurons at different locations on the postsynaptic cell, which sum based on their spatial arrangement rather than timing. Long-term potentiation is a distinct, longer-lasting increase in synaptic efficacy produced by sustained high-frequency stimulation (relevant to learning and memory, not single-trial integration). Presynaptic inhibition would decrease neurotransmitter release and EPSP size — the opposite of what drives the neuron to threshold here. Skill trained: Content knowledge — synaptic integration (temporal vs. spatial summation of postsynaptic potentials).'
+  },
   // ── Thermodynamics / Gen Chem II — additional batch ────────────────────────
   {
     id:'th11', topic:'thermo',
@@ -4342,6 +4407,16 @@ const QUESTIONS = [
           '2.67 g — 80 g divided by 30 days'],
     ans:2,
     exp:'30 days / 10 days per half-life = 3 half-lives. Each half-life halves the remaining amount: 80 g → 40 g → 20 g → 10 g. For first-order processes (all radioactive decay; many drug elimination processes), the half-life formula is t½ = 0.693/k, and the amount remaining is N = N₀ × (½)^(t/t½). When time is an integer multiple of t½, repeated halving is fastest. For non-integer multiples, use N = N₀e^(−kt). The key MCAT insight: first-order half-life is CONSTANT — independent of the initial amount. This contrasts with second-order kinetics, where half-life increases as concentration falls. Content knowledge: chemical kinetics and radioactive decay.'
+  },
+  {
+    id:'th18', topic:'thermo',
+    stem:'A 100 g block of metal (specific heat = 0.45 J/(g·°C)) at 90°C is dropped into 200 g of water (specific heat = 4.18 J/(g·°C)) at 20°C inside an insulated calorimeter. Compared to the water, the metal\'s temperature change as the system reaches thermal equilibrium will be:',
+    opts:['Much smaller than the water\'s, because metal has a higher specific heat capacity',
+          'Much larger than the water\'s, because the metal\'s heat capacity (mc) is far smaller than the water\'s',
+          'Identical to the water\'s, since heat lost by the metal equals heat gained by the water',
+          'Impossible to determine without knowing the final equilibrium temperature'],
+    ans:1,
+    exp:'In an insulated calorimeter, heat lost by the metal equals heat gained by the water in magnitude: q = mcΔT for each. Heat capacity (the mc product, not c alone) for the metal = 100 g × 0.45 J/(g·°C) = 45 J/°C; for the water = 200 g × 4.18 J/(g·°C) = 836 J/°C. Since |q| is the same for both and ΔT = q/(mc), the object with the smaller mc — the metal — undergoes a much larger temperature swing. This is why water resists temperature change (used as a coolant and thermal buffer) while metals heat and cool quickly: a small heat capacity means a given quantity of heat produces a large ΔT. Skill trained: Content knowledge — calorimetry and the distinction between specific heat capacity (c) and heat capacity (mc).'
   },
   // ── Sociology — additional batch ────────────────────────────────────────────
   {
