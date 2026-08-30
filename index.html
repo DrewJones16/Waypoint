@@ -9196,6 +9196,50 @@ function acctPromptDismiss(surface) {
   render();
 }
 
+// ── What the session changed ─────────────────────────────────────────────────
+// The score is about the last five minutes; this is the one number the practice
+// actually moved. Same freshness functions the Route uses, so the figures here
+// and the figures one tap later cannot disagree — there is no second definition
+// of held and no stored counter.
+//
+// It says nothing rather than inventing a change. A session that re-answered
+// ground the student had already covered today moved no standing, and a line
+// claiming otherwise would be the kind of thing this screen is here to fix.
+const COUNT_WORD = ['no', 'one', 'two', 'three', 'four', 'five'];
+
+function sessionStandingHTML() {
+  const before = S._standingBefore;
+  if (!before || !before.length) return '';
+  const after = freshnessSummary();
+  if (!after.total) return '';
+
+  const line = t => `<p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 20px;">${t}</p>`;
+
+  // A first session usually moves no count at all — every topic in a class the
+  // student is sitting in already reads fresh — so the true change is that
+  // there is a record where there was none.
+  if (S._firstSession) return line(`That's your first topic verified — the record starts here.`);
+
+  const wasHeld = new Set(before.filter(f => f.state === 'fresh').map(f => f.tid));
+  const gained  = after.fresh.filter(f => !wasHeld.has(f.tid));
+  if (gained.length) {
+    const n = gained.length;
+    return line(`Holding <strong style="color:var(--ink);">${after.fresh.length} of ${after.total}</strong> topics — up ${COUNT_WORD[n] || n} from when you started.`);
+  }
+
+  // Nothing crossed into held, but a topic the student was already holding had
+  // its clock reset — that is a real change and worth saying. A topic already
+  // practised earlier today had no clock to reset, so it does not count.
+  const practised = todayTopics();
+  const refreshed = before.filter(f => practised.has(f.tid) && f.state === 'fresh' && f.days !== null && f.days >= 1)
+                          .sort((a, b) => b.days - a.days)[0];
+  if (refreshed) {
+    const t = TOPICS.find(x => x.id === refreshed.tid);
+    if (t) return line(`<strong style="color:var(--ink);">${t.name}</strong> is fresh again.`);
+  }
+  return '';
+}
+
 function screenComplete() {
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
@@ -9259,6 +9303,7 @@ function screenComplete() {
       ${scoreBanner}
 
       ${closingLine}
+      ${sessionStandingHTML()}
 
       <div class="today-note">
         <span class="today-dot"></span>practiced today
@@ -9541,6 +9586,11 @@ function startSession() {
   S.answers  = [];
   S.answered = null;
   S.quickLog = null;
+  // What the student was holding walking in. Captured here because
+  // markTopicsSeen() runs before the completion screen paints, so by then the
+  // only record of the old state is this one. Transient, like _firstReveal —
+  // save() writes named wp_ keys and never sees it.
+  S._standingBefore = freshnessSummary().states.map(f => ({ tid: f.tid, state: f.state, days: f.days }));
   if (!S.session.length) {
     alert('No questions available yet. Please select at least one course first.');
     go('courses');
@@ -9692,7 +9742,9 @@ function next() {
     save();
     if (window.plausible) plausible('session_complete');
     if (S._firstSession && window.plausible) plausible('first_session_complete');
-    S._firstSession = false;
+    // Not cleared here: the completion screen has to know it is reporting on a
+    // first session, and both this flag and the standing snapshot are rewritten
+    // by the next startSession(). Neither is persisted, so a reload ends them.
     go('complete');
   } else {
     render();
