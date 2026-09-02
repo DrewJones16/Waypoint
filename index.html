@@ -8090,6 +8090,12 @@ function screenBrief() {
       ${todayCardHTML()}
 
       <button class="link-btn full" onclick="go('quicklog')">Practice a specific topic →</button>
+      <!-- The syllabus offer moved to the foot of the check screen last sprint,
+           and the check screen is one a simple-picker student never sees — which
+           left the word "syllabus" nowhere on the Route or on Home. Same entry,
+           same words, shown only while there is a class left to map, so it goes
+           away by itself once there is nothing to offer. -->
+      ${unmappedCourses().length ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan →</button>` : ''}
       <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
     </div>`;
 }
