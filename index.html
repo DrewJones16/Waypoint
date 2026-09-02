@@ -6380,18 +6380,22 @@ function weakestTopic(minAttempts = 3) {
 
 // The single next action. Prefers shoring up a genuine weak spot, then a topic
 // from a class in progress, then the heaviest topic on the route.
-function briefAction() {
+// `skip` is the same exclusion the keep-going path passes to todayPick(): the
+// topics already answered today. A student who has just finished a session must
+// not be handed the identical card back, so every branch here can be stepped over.
+function briefAction(skip = null) {
+  const skipped = tid => !!(skip && skip.has(tid));
   const weak = weakestTopic();
-  if (weak && weak.accuracy < 0.7) {
+  if (weak && weak.accuracy < 0.7 && !skipped(weak.topic.id)) {
     return { topic: weak.topic, subId: null,
              text: `${sessionSize(weak.topic.id, null)} questions on ${weak.topic.name}. You're at ${Math.round(weak.accuracy * 100)}% there — it's the fastest point you can pick up this week.` };
   }
-  const wk = thisWeekUnits()[0];
+  const wk = thisWeekUnits().find(u => !skipped(u.topic.id));
   if (wk) {
     return { topic: wk.topic, subId: wk.subId,
              text: `${sessionSize(wk.topic.id, wk.subId)} questions on ${wk.subLabel}. It's what ${wk.courseName} is covering now, so it's the cheapest it will ever be to learn.` };
   }
-  const onRoute = TOPICS.filter(t => t.course && S.courses.has(t.course))
+  const onRoute = TOPICS.filter(t => t.course && S.courses.has(t.course) && !skipped(t.id))
                         .sort((a, b) => b.w - a.w);
   if (onRoute.length) {
     const t = onRoute[0];
@@ -6408,7 +6412,7 @@ function briefAction() {
 // Numbers come from snapshots, not inference: each brief records coverage and
 // lifetime totals, so the following week's deltas are exact rather than derived
 // from sessionHistory (which only keeps the last 7 sessions).
-function buildBrief(now = new Date()) {
+function buildBrief(now = new Date(), skip = null) {
   const weekStart = weekStartISO(now);
   const prior = S.briefs.filter(b => b && b.weekStart && b.weekStart < weekStart).slice(-1)[0] || null;
   const cov = coverage(S.courses, true);
@@ -6435,7 +6439,7 @@ function buildBrief(now = new Date()) {
     totalAnswered: S.totalAnswered,
     lifetimeCorrect: lifetimeCorrect(),
     weakest: weakestTopic(),
-    action: briefAction(),
+    action: briefAction(skip),
     quiet: answered === 0,
     hasPrior: !!prior,
   };
@@ -6501,7 +6505,9 @@ function card(accent, kicker, title, body, cta, opts) {
 
 function briefCardHTML() {
   if (!shouldShowBrief()) return '';
-  const b = buildBrief();
+  // Same exclusion the keep-going path uses: a student who has just finished a
+  // session is not handed that session back as this week's one thing.
+  const b = buildBrief(new Date(), practicedToday() ? topicsSeenToday() : null);
   const stat = (v, label) => `
     <div style="flex:1;min-width:0;">
       <div class="disp" style="font-size: var(--fs-20);font-weight:700;color:var(--ink);line-height:1;">${v}</div>
@@ -6541,10 +6547,15 @@ function briefCardHTML() {
         <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">This week, do this one thing</div>
         <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 12px;">${b.action.text}</p>` : ''}`;
 
+  // No action left can mean two different things. A student with no route needs
+  // a course; a student who just practised everything worth practising today
+  // needs acknowledging, not another demand.
   const cta = b.action
     ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;"
                onclick="briefActionStart('${b.action.topic.id}', ${b.action.subId ? `'${b.action.subId}'` : 'null'})">Start →</button>`
-    : `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="go('courses')">Add a course to your route</button>`;
+    : S.courses.size === 0
+      ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="go('courses')">Add a course to your route</button>`
+      : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">That's today's ground covered. Come back tomorrow and the week keeps building.</p>`;
 
   return card('var(--green)', 'Your week', headline, body, cta,
               { tint: 'var(--green-bright)', titleSize: 'var(--fs-17)', gap: 22, aside: dismiss });
@@ -7988,6 +7999,31 @@ function practicedToday() {
   return S.lastDate === new Date().toDateString();
 }
 
+// Today's work is done: the slot becomes the reward rather than another demand.
+// The Twist is the best thing Waypoint has to say, so it earns the space here
+// instead of competing with the CTA it used to sit above. On a day the twist
+// bank has nothing for this route, the acknowledgement still stands on its own —
+// an empty card, or the card they just finished, is the worse answer.
+function doneForTodayHTML() {
+  if (!practicedToday() || S.courses.size === 0) return '';
+  const kicker = `Done for today${S.streak > 1 ? ` · ${S.streak} days` : ''}`;
+  // The link sits outside the card: the reward is the card, this is the aside.
+  const keepGoingLink = `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going — another 5 →</button>`;
+
+  const d = getDailyTwist();
+  if (d) {
+    const { cls, exam } = splitTwist(d.text);
+    const twistBody = `
+          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 0 8px;"><strong style="color:var(--ink-2);">In class:</strong> ${cls}</p>
+          ${exam ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;"><strong style="color:var(--violet);">On the MCAT:</strong> ${exam}</p>` : ''}`;
+    return card('var(--violet)', kicker, `${d.topic ? d.topic.name : 'Your'} — the MCAT twist`,
+                twistBody, '', { titleSize: 'var(--fs-17)' }) + keepGoingLink;
+  }
+  return card('var(--violet)', kicker, 'That\'s today\'s ground covered.',
+              `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;">Come back tomorrow and the week keeps building.</p>`,
+              '', { titleSize: 'var(--fs-17)' }) + keepGoingLink;
+}
+
 function todayCardHTML() {
   // The weekly read owns the slot on Sunday and Monday — still one card, one action.
   const brief = briefCardHTML();
@@ -7996,19 +8032,8 @@ function todayCardHTML() {
   // Today's work is done: the slot becomes the reward rather than another demand.
   // The Twist is the best thing Waypoint has to say, so it earns the space here
   // instead of competing with the CTA it used to sit above.
-  if (practicedToday() && S.courses.size > 0) {
-    const d = getDailyTwist();
-    if (d) {
-      const { cls, exam } = splitTwist(d.text);
-      const twistBody = `
-          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 0 8px;"><strong style="color:var(--ink-2);">In class:</strong> ${cls}</p>
-          ${exam ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;"><strong style="color:var(--violet);">On the MCAT:</strong> ${exam}</p>` : ''}`;
-      // The link sits outside the card: the reward is the card, this is the aside.
-      return card('var(--violet)', `Done for today${S.streak > 1 ? ` · ${S.streak} days` : ''}`,
-                  `${d.topic ? d.topic.name : 'Your'} — the MCAT twist`, twistBody, '', { titleSize: 'var(--fs-17)' })
-        + `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going — another 5 →</button>`;
-    }
-  }
+  const done = doneForTodayHTML();
+  if (done) return done;
 
   const cta = (label, onclick) =>
     `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="${onclick}">${label}</button>`;
@@ -8021,7 +8046,10 @@ function todayCardHTML() {
                 cta('Choose my courses →', "go('courses')"), { tint: 'var(--green-bright)' });
   }
 
-  const p = todayPick();
+  // Reached only when the brief owns no slot and today's work is not yet done,
+  // but the exclusion is passed regardless: it costs nothing and closes the
+  // gap for good.
+  const p = todayPick(practicedToday() ? topicsSeenToday() : null);
   if (!p) {
     return card('var(--green)', 'Do this now', 'A session from what you know',
                 reason('Drawn from the courses on your route.', 'var(--faint)'),
@@ -9196,6 +9224,50 @@ function acctPromptDismiss(surface) {
   render();
 }
 
+// ── What the session changed ─────────────────────────────────────────────────
+// The score is about the last five minutes; this is the one number the practice
+// actually moved. Same freshness functions the Route uses, so the figures here
+// and the figures one tap later cannot disagree — there is no second definition
+// of held and no stored counter.
+//
+// It says nothing rather than inventing a change. A session that re-answered
+// ground the student had already covered today moved no standing, and a line
+// claiming otherwise would be the kind of thing this screen is here to fix.
+const COUNT_WORD = ['no', 'one', 'two', 'three', 'four', 'five'];
+
+function sessionStandingHTML() {
+  const before = S._standingBefore;
+  if (!before || !before.length) return '';
+  const after = freshnessSummary();
+  if (!after.total) return '';
+
+  const line = t => `<p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 20px;">${t}</p>`;
+
+  // A first session usually moves no count at all — every topic in a class the
+  // student is sitting in already reads fresh — so the true change is that
+  // there is a record where there was none.
+  if (S._firstSession) return line(`That's your first topic verified — the record starts here.`);
+
+  const wasHeld = new Set(before.filter(f => f.state === 'fresh').map(f => f.tid));
+  const gained  = after.fresh.filter(f => !wasHeld.has(f.tid));
+  if (gained.length) {
+    const n = gained.length;
+    return line(`Holding <strong style="color:var(--ink);">${after.fresh.length} of ${after.total}</strong> topics — up ${COUNT_WORD[n] || n} from when you started.`);
+  }
+
+  // Nothing crossed into held, but a topic the student was already holding had
+  // its clock reset — that is a real change and worth saying. A topic already
+  // practised earlier today had no clock to reset, so it does not count.
+  const practised = todayTopics();
+  const refreshed = before.filter(f => practised.has(f.tid) && f.state === 'fresh' && f.days !== null && f.days >= 1)
+                          .sort((a, b) => b.days - a.days)[0];
+  if (refreshed) {
+    const t = TOPICS.find(x => x.id === refreshed.tid);
+    if (t) return line(`<strong style="color:var(--ink);">${t.name}</strong> is fresh again.`);
+  }
+  return '';
+}
+
 function screenComplete() {
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
@@ -9259,6 +9331,7 @@ function screenComplete() {
       ${scoreBanner}
 
       ${closingLine}
+      ${sessionStandingHTML()}
 
       <div class="today-note">
         <span class="today-dot"></span>practiced today
@@ -9541,6 +9614,11 @@ function startSession() {
   S.answers  = [];
   S.answered = null;
   S.quickLog = null;
+  // What the student was holding walking in. Captured here because
+  // markTopicsSeen() runs before the completion screen paints, so by then the
+  // only record of the old state is this one. Transient, like _firstReveal —
+  // save() writes named wp_ keys and never sees it.
+  S._standingBefore = freshnessSummary().states.map(f => ({ tid: f.tid, state: f.state, days: f.days }));
   if (!S.session.length) {
     alert('No questions available yet. Please select at least one course first.');
     go('courses');
@@ -9692,7 +9770,9 @@ function next() {
     save();
     if (window.plausible) plausible('session_complete');
     if (S._firstSession && window.plausible) plausible('first_session_complete');
-    S._firstSession = false;
+    // Not cleared here: the completion screen has to know it is reporting on a
+    // first session, and both this flag and the standing snapshot are rewritten
+    // by the next startSession(). Neither is persisted, so a reload ends them.
     go('complete');
   } else {
     render();
