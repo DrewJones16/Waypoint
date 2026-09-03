@@ -6868,7 +6868,7 @@ function screenMidterm() {
         if (!live.length) return '';
         return `
       <div class="section-divider"></div>
-      <p class="label" style="margin-bottom:8px;">Your syllabus</p>
+      <p class="label" id="syllabus-section" style="margin-bottom:8px;">Your syllabus</p>
       <p class="p-note">Waypoint paces your classes from a typical schedule. Give it the real one and it maps your actual weeks onto MCAT topics instead.</p>
       ${live.map(c => `
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius: var(--r-ctl);padding:12px 12px;margin-bottom:8px;">
@@ -7389,6 +7389,21 @@ function sylLooksPartial(weeks) {
 }
 
 // In-progress classes still waiting for a syllabus.
+// Every class the student is in right now — the set a syllabus can describe.
+function liveCourses() {
+  return COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
+}
+
+// Replacing a schedule a professor changed is not the same job as mapping a new
+// one, and the chooser is deliberately no good at it: its mapped rows are inert
+// so a stray tap cannot spend one of five parses. The exam screen's "Your
+// syllabus" block is the surface built for it, so that is where this lands.
+function openSyllabusManage() {
+  startMidtermSetup();
+  const el = document.getElementById('syllabus-section');
+  if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+}
+
 function unmappedCourses() {
   return COURSES.filter(c => S.courses.has(c.id)
                           && S.courseStatus[c.id] === 'in-progress'
@@ -8095,7 +8110,9 @@ function screenBrief() {
            left the word "syllabus" nowhere on the Route or on Home. Same entry,
            same words, shown only while there is a class left to map, so it goes
            away by itself once there is nothing to offer. -->
-      ${unmappedCourses().length ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan →</button>` : ''}
+      ${liveCourses().length ? (unmappedCourses().length
+        ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan →</button>`
+        : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus →</button>`) : ''}
       <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
     </div>`;
 }
