@@ -7394,6 +7394,24 @@ function liveCourses() {
   return COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
 }
 
+// Marking a class "Taking" is the step every syllabus offer hangs off, and the
+// only screen that can do it sat behind the full course picker — twelve rows of
+// re-selection to change one field. Home sends them straight to it instead.
+function openCourseStatus() {
+  S._statusFrom = 'brief';
+  go('confirm');
+}
+
+// Both ways out of the check screen. Arriving from Home means the offer they
+// just unlocked is on Home, so that is where "Looks right" belongs; every other
+// arrival is still the end of the picker, and still ends on the reveal.
+function leaveCourseStatus() {
+  const from = S._statusFrom;
+  S._statusFrom = null;
+  if (from === 'brief') { go('brief'); return; }
+  revealCourses();
+}
+
 // Replacing a schedule a professor changed is not the same job as mapping a new
 // one, and the chooser is deliberately no good at it: its mapped rows are inert
 // so a stray tap cannot spend one of five parses. The exam screen's "Your
@@ -8110,9 +8128,13 @@ function screenBrief() {
            left the word "syllabus" nowhere on the Route or on Home. Same entry,
            same words, shown only while there is a class left to map, so it goes
            away by itself once there is nothing to offer. -->
-      ${liveCourses().length ? (unmappedCourses().length
-        ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan →</button>`
-        : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus →</button>`) : ''}
+      ${liveCourses().length
+        ? (unmappedCourses().length
+          ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan →</button>`
+          : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus →</button>`)
+        : (S.courses.size
+          ? `<button class="link-btn full quiet" onclick="openCourseStatus()">Starting a new term? Mark what you're taking →</button>`
+          : '')}
       <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
     </div>`;
 }
@@ -8809,10 +8831,19 @@ function ccPaint() {
   });
   const terms = document.getElementById('cc-terms');
   if (terms) terms.innerHTML = ccTermsHTML();
+  // Marking a class "Taking" is exactly what makes this offer apply, so leaving
+  // it until the next full render would hide it at the moment it becomes true.
+  const syl = document.getElementById('cc-syllabus');
+  if (syl) syl.innerHTML = ccSyllabusOfferHTML();
 }
 
 function ccList() {
   return COURSES.filter(c => S.courses.has(c.id));
+}
+
+function ccSyllabusOfferHTML() {
+  if (!unmappedCourses().length) return '';
+  return `<button onclick="syllabusAddAnother()" class="link-btn full" style="margin-top:var(--s-4);">Turn a syllabus into an MCAT plan →</button>`;
 }
 
 function ccStatusButtonsHTML(id) {
@@ -8850,12 +8881,12 @@ function screenConfirmCourses() {
   const list = ccList();
   // Nothing to confirm is nothing to show. Reachable by a stale S.screen or by
   // deselecting everything on the way here.
-  if (!list.length) { revealCourses(); return ''; }
+  if (!list.length) { leaveCourseStatus(); return ''; }
   const doneFirst = !!S._doneFirst;
 
   return `
     <div class="screen">
-      <button onclick="go('courses')" class="back-btn quiet">
+      <button onclick="${S._statusFrom === 'brief' ? 'leaveCourseStatus()' : "go('courses')"}" class="back-btn quiet">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Back
       </button>
@@ -8878,12 +8909,11 @@ function screenConfirmCourses() {
              The picker's rows are one tap now, so it moves here, where the
              student has just finished saying which classes they're in — one
              line for the whole set rather than a link under every row. -->
-        ${unmappedCourses().length ? `
-          <button onclick="syllabusAddAnother()" class="link-btn full" style="margin-top:var(--s-4);">Turn a syllabus into an MCAT plan →</button>` : ''}
+        <div id="cc-syllabus">${ccSyllabusOfferHTML()}</div>
       </div>
 
       <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 calc(32px + env(safe-area-inset-bottom, 0px));flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
-        <button class="btn btn-primary" onclick="revealCourses()">Looks right →</button>
+        <button class="btn btn-primary" onclick="leaveCourseStatus()">Looks right →</button>
       </div>
     </div>`;
 }
@@ -9536,6 +9566,10 @@ function go(screen) {
   trackScreen(screen);
   if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
   if (screen !== 'confirm') S._termPage = 0;      // the grid always opens on the recent terms
+  // Set by openCourseStatus() immediately before go('confirm'), so this guard
+  // never sees it on the way in — only on the way out, where a stale value would
+  // send a later visit's Back button somewhere the student never came from.
+  if (screen !== 'confirm') S._statusFrom = null;
   // The first reveal keeps its own order for as long as the student is on it —
   // through the account ask, through a re-render — and ends when they leave.
   if (screen !== 'reveal') { S._firstReveal = false; S._revealAnimated = false; }
