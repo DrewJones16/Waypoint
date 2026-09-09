@@ -7461,6 +7461,36 @@ function removeSyllabus(courseId) {
   showToast('Syllabus removed. Back to the typical pacing.');
 }
 
+// A week with nothing mapped to it is really two different weeks, and the old
+// copy called both of them the same thing.
+//
+// One is a week the course itself has no new material in — an exam, a review
+// session, spring break, course evaluation. Saying so is a fact about the
+// syllabus, and the syllabus is right there in the label.
+//
+// The other is a week Waypoint could not place. The only honest thing to say
+// about that one is that Waypoint could not place it. "No MCAT content this
+// week" said the opposite: it told a student that whatever their professor is
+// teaching is absent from the exam. A real Organic Chemistry I syllabus got that
+// verdict on functional groups, hybridization, IR, NMR and mass spectrometry —
+// all five of which the MCAT tests. Waypoint knew nothing of the kind; it had
+// two units for the whole course and nowhere else to put them.
+//
+// The split is drawn from the label's own words, which is imprecise at the
+// edges — "Review of Chapter 5" reads here as a week with no new material. That
+// costs a slightly loose description. Neither branch makes a claim about what
+// the exam tests, which is the property that has to hold.
+const NO_NEW_MATERIAL = /\b(exam|midterm|final|test|quiz|review|recap|catch[- ]?up|break|holiday|recess|no class(?:es)?|cancell?ed|evaluation|reading day|study day)\b/i;
+const IS_EXAM_WEEK    = /\b(exam|midterm|final|test|quiz)\b/i;
+
+function weekGapHTML(w) {
+  const label = w.label || '';
+  const text = !NO_NEW_MATERIAL.test(label) ? 'Not mapped to a topic yet — tap to add.'
+             : IS_EXAM_WEEK.test(label)     ? 'Exam week — no new material'
+             :                                'No new content this week.';
+  return `<span style="font-size: var(--fs-11);color:var(--faint);font-style:italic;">${text}</span>`;
+}
+
 // Why this row is being asked about. Derived rather than sent: the two cases
 // the model can be unsure in are distinguishable from the mapping itself, and
 // the contract stays one field wide. The label is already the loudest thing in
@@ -7489,7 +7519,7 @@ function sylWeekRowHTML(w, i, units, reason) {
         ${reason ? sylReasonHTML(w) : ''}
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
           ${chips}
-          ${w.unitIds.length ? '' : `<span style="font-size: var(--fs-11);color:var(--faint);font-style:italic;">No MCAT content this week</span>`}
+          ${w.unitIds.length ? '' : weekGapHTML(w)}
           <button onclick="sylOpenPicker(${i})" aria-expanded="${open}" style="background:none;border:1px dashed rgba(255,255,255,0.18);border-radius: var(--r-ctl);min-height:32px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent;">${open ? 'Done' : (w.unitIds.length ? 'Change' : 'Add')}</button>
         </div>
         ${open ? `
