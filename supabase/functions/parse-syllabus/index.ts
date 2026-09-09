@@ -40,6 +40,12 @@ const EFFORT = 'medium';
 
 const DAILY_LIMIT = 5;
 
+// Said whenever the server cannot reach the model at all — the key is missing,
+// or the key is there and the API rejects it. From where the student sits those
+// are one thing: their syllabus was never read, and nothing they change about it
+// will help. Defined once so the two paths that say it cannot drift apart.
+const NOT_CONFIGURED = 'Syllabus parsing isn\'t configured yet. Waypoint will keep using the typical pacing.';
+
 // Weeks outside this range aren't a term. A syllabus that yields week 47 is a
 // misparse, and one week per row is the shape every real syllabus takes.
 const MIN_WEEK = 1, MAX_WEEK = 20;
@@ -302,7 +308,7 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!apiKey) {
     console.error('[parse-syllabus] ANTHROPIC_API_KEY is not set');
-    return fail('Syllabus parsing isn\'t configured yet. Waypoint will keep using the typical pacing.', 503, origin);
+    return fail(NOT_CONFIGURED, 503, origin);
   }
 
   // ── Who is this? ────────────────────────────────────────────────────────────
@@ -469,9 +475,14 @@ Deno.serve(async (req) => {
 
   let message;
   const failures: string[] = [];
+  const statuses: Array<number | null> = [];
   for (const attempt of attempts) {
     try { message = await attempt.run(); break; }
-    catch (e) { failures.push(`${attempt.why}=${errorLabel(e)}`); }
+    catch (e) {
+      failures.push(`${attempt.why}=${errorLabel(e)}`);
+      const status = (e as { status?: unknown })?.status;
+      statuses.push(typeof status === 'number' ? status : null);
+    }
   }
 
   if (!message) {
@@ -481,6 +492,14 @@ Deno.serve(async (req) => {
     // starts from scratch.
     console.error(`[parse-syllabus] model call failed: ${failures.join(' | ')}`);
     await refund();
+    // Every attempt sends the same key, so a key the API refuses fails all three
+    // the same way. That is this server's problem, and telling the student their
+    // syllabus couldn't be read sends them off to re-crop a file that was never
+    // opened. Only when every attempt agrees: a lone 401 beside a 500 is an
+    // ambiguous story, and the general sentence is the honest one for it.
+    const allRejected = statuses.length === failures.length
+                     && statuses.every(s => s === 401 || s === 403);
+    if (allRejected) return fail(NOT_CONFIGURED, 503, origin);
     return fail('Couldn\'t read that just now. Waypoint will keep using the typical pacing.', 502, origin);
   }
   if (failures.length) {
