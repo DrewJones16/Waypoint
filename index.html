@@ -9213,6 +9213,14 @@ function screenSources() {
         <div style="display:flex;justify-content:space-between;padding-top:12px;font-size: var(--fs-13);color:var(--ink-2);"><span>Total</span><strong style="color:var(--green-bright);">${total}%</strong></div>
       </div>
 
+      ${h('The topic map')}
+      ${p(`The weights say what a course is worth. The topic map says what it covers — and it comes from the same place. AAMC publishes the exam's ${CONTENT_MAP.length} content categories, the topics under each, and, beside every topic, the undergraduate disciplines that teach it.`)}
+      ${p(`Waypoint's unit lists are derived from those discipline tags. A course can be mapped to a topic when AAMC tags that topic with the course's discipline — not when Waypoint judged the two to be related. ${AAMC_UNITS.length} topics across ${CONTENT_MAP.length} categories, transcribed rather than summarised.`)}
+      ${p(`<strong style="color:var(--ink-2);">What's ours:</strong> AAMC tags a discipline, not a semester. So both halves of a two-semester sequence get the whole discipline — Organic Chemistry I and II reach the same topics, and your syllabus decides which half you actually cover. Schools split sequences differently, and guessing your school's split would be a guess presented as a fact.`)}
+      ${p(`<strong style="color:var(--ink-2);">What's missing:</strong> content category 10A is truncated in the source we read, so sociology's list is short by an unknown amount. The tags used are the ones printed beside each topic; AAMC also tags individual subtopics, which this doesn't capture — that's why no unit is named for nomenclature. Statistics has no AAMC discipline tag at all, so its units remain Waypoint's own.`)}
+      ${p(`Many units have no practice questions behind them yet. Those can be mapped in a syllabus and no drill is offered for them — a topic being on the exam and Waypoint being able to quiz you on it are two different things, and the app shouldn't blur them.`)}
+      ${p(`Source: ${A(AAMC_OUTLINE, 'AAMC, "What\'s on the MCAT Exam?"')} — the content outline and its per-section downloads.`)}
+
       ${h('Course requirements')}
       ${p(`Waypoint's Required / Recommended / MCAT-tested tags describe the common pattern across medical schools, not any one school's rules. AAMC's own framing: requirements vary school to school, and some have moved to competency-based admissions with no specific course list. Check your target schools directly.`)}
       ${p(`Source: ${A(AAMC_MSAR, 'AAMC MSAR')} — its Premed Course Requirements chart lists required and recommended coursework school by school, updated annually.`)}
