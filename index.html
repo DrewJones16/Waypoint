@@ -1715,6 +1715,315 @@ const TWISTS = {
 // ── SYLLABUS SYNC: subtopic definitions per MCAT topic ───────────────────────
 // Each entry: { id, label } — shown in the subtopic picker after a topic is chosen.
 // "All of [topic]" is always appended automatically.
+// ── AAMC content map ──────────────────────────────────────────────────────────
+//
+// The 31 content categories of the MCAT, with the topics AAMC lists under each
+// and the undergraduate disciplines AAMC tags them with. This is reference
+// data: it is what makes "we know what's on the exam" true at the topic level
+// rather than only at the weight level.
+//
+// Why it exists: the unit taxonomy before this was invented from intuition
+// about what courses teach. Organic Chemistry I had two units in the whole app,
+// so a real syllabus covering functional groups and spectroscopy had nowhere to
+// put them — and the screen said so in words that read as a claim about the
+// exam. AAMC publishes the map; Waypoint should derive from it, the same way
+// the weights already do.
+//
+// Discipline tags are AAMC's own, printed beside each topic:
+//   BIO two-semester intro biology · BC first-semester biochemistry
+//   GC  two-semester general chemistry · OC two-semester organic chemistry
+//   PHY two-semester intro physics · PSY intro psychology · SOC intro sociology
+// A topic can carry several, or none. They are transcribed, never inferred: a
+// tag Waypoint guessed would be a course sent to the wrong material.
+//
+// Retrieved 2026-09-11 from AAMC's published outline:
+//   students-residents.aamc.org/prepare-mcat-exam/whats-mcat-exam-pdf-outline
+//   and the per-section downloads linked from that page.
+//
+// Known gaps, recorded rather than filled:
+//   - 10A is truncated. The source text ran out partway through its list, after
+//     Social Class, and the standalone page could not be read. Topics may be
+//     missing. Sociology's unit list is short by an unknown amount.
+//   - Tags here are the ones printed beside each TOPIC. AAMC also tags some
+//     individual subtopics, which this does not capture — nomenclature is the
+//     one that shows: it lives under each functional-group family as a
+//     subtopic, so no unit is named for it. CARS has no content categories.
+const CONTENT_MAP = [
+  { code:'1A', concept:1, section:'bb',
+    title:"Structure and function of proteins and their constituent amino acids",
+    topics:[
+      ["Amino Acids", 'BC OC'],
+      ["Protein Structure", 'BIO BC OC'],
+      ["Nonenzymatic Protein Function", 'BIO BC'],
+      ["Enzyme Structure and Function", 'BIO BC'],
+      ["Control of Enzyme Activity", 'BIO BC'],
+    ] },
+  { code:'1B', concept:1, section:'bb',
+    title:"Transmission of genetic information from the gene to the protein",
+    topics:[
+      ["Nucleic Acid Structure and Function", 'BIO BC'],
+      ["DNA Replication", 'BIO'],
+      ["Repair of DNA", 'BIO'],
+      ["Genetic Code", 'BIO'],
+      ["Transcription", 'BIO'],
+      ["Translation", 'BIO'],
+      ["Eukaryotic Chromosome Organization", 'BIO'],
+      ["Control of Gene Expression in Prokaryotes", 'BIO'],
+      ["Control of Gene Expression in Eukaryotes", 'BIO'],
+      ["Recombinant DNA and Biotechnology", 'BIO'],
+    ] },
+  { code:'1C', concept:1, section:'bb',
+    title:"Transmission of heritable information from generation to generation and the processes that increase genetic diversity",
+    topics:[
+      ["Evidence That DNA Is Genetic Material", 'BIO'],
+      ["Mendelian Concepts", 'BIO'],
+      ["Meiosis and Other Factors Affecting Genetic Variability", 'BIO'],
+      ["Analytic Methods", 'BIO'],
+      ["Evolution", 'BIO'],
+    ] },
+  { code:'1D', concept:1, section:'bb',
+    title:"Principles of bioenergetics and fuel molecule metabolism",
+    topics:[
+      ["Principles of Bioenergetics", 'BC GC'],
+      ["Carbohydrates", 'BC OC'],
+      ["Glycolysis, Gluconeogenesis, and the Pentose Phosphate Pathway", 'BIO BC'],
+      ["Principles of Metabolic Regulation", 'BC'],
+      ["Citric Acid Cycle", 'BIO BC'],
+      ["Metabolism of Fatty Acids and Proteins", 'BIO BC'],
+      ["Oxidative Phosphorylation", 'BIO BC'],
+      ["Hormonal Regulation and Integration of Metabolism", 'BC'],
+    ] },
+  { code:'2A', concept:2, section:'bb',
+    title:"Assemblies of molecules, cells, and groups of cells within single cellular and multicellular organisms",
+    topics:[
+      ["Plasma Membrane", 'BIO BC'],
+      ["Membrane-Bound Organelles and Defining Characteristics of Eukaryotic Cells", 'BIO'],
+      ["Cytoskeleton", 'BIO'],
+      ["Tissues Formed From Eukaryotic Cells", 'BIO'],
+    ] },
+  { code:'2B', concept:2, section:'bb',
+    title:"The structure, growth, physiology, and genetics of prokaryotes and viruses",
+    topics:[
+      ["Cell Theory", 'BIO'],
+      ["Classification and Structure of Prokaryotic Cells", 'BIO'],
+      ["Growth and Physiology of Prokaryotic Cells", 'BIO'],
+      ["Genetics of Prokaryotic Cells", 'BIO'],
+      ["Virus Structure", 'BIO'],
+      ["Viral Life Cycle", 'BIO'],
+    ] },
+  { code:'2C', concept:2, section:'bb',
+    title:"Processes of cell division, differentiation, and specialization",
+    topics:[
+      ["Mitosis", 'BIO'],
+      ["Biosignaling", 'BC'],
+      ["Reproductive System", 'BIO'],
+      ["Embryogenesis", 'BIO'],
+      ["Mechanisms of Development", 'BIO'],
+    ] },
+  { code:'3A', concept:3, section:'bb',
+    title:"Structure and functions of the nervous and endocrine systems and ways these systems coordinate the organ systems",
+    topics:[
+      ["Nervous System: Structure and Function", 'BIO'],
+      ["Nerve Cell", 'BIO'],
+      ["Electrochemistry", 'GC'],
+      ["Biosignaling", 'BC'],
+      ["Lipids", 'BC OC'],
+      ["Endocrine System: Hormones and Their Sources", 'BIO'],
+      ["Endocrine System: Mechanisms of Hormone Action", 'BIO'],
+    ] },
+  { code:'3B', concept:3, section:'bb',
+    title:"Structure and integrative functions of the main organ systems",
+    topics:[
+      ["Respiratory System", 'BIO'],
+      ["Circulatory System", 'BIO'],
+      ["Lymphatic System", 'BIO'],
+      ["Immune System", 'BIO'],
+      ["Digestive System", 'BIO'],
+      ["Excretory System", 'BIO'],
+      ["Reproductive System", 'BIO'],
+      ["Muscle System", 'BIO'],
+      ["Specialized Cell \u2014 Muscle Cell", 'BIO'],
+      ["Skeletal System", 'BIO'],
+      ["Skin System", 'BIO'],
+    ] },
+  { code:'4A', concept:4, section:'cp',
+    title:"Translational motion, forces, work, energy, and equilibrium in living systems",
+    topics:[
+      ["Translational Motion", 'PHY'],
+      ["Force", 'PHY'],
+      ["Equilibrium", 'PHY'],
+      ["Work", 'PHY'],
+      ["Energy of Point Object Systems", 'PHY'],
+      ["Periodic Motion", 'PHY'],
+    ] },
+  { code:'4B', concept:4, section:'cp',
+    title:"Importance of fluids for the circulation of blood, gas movement, and gas exchange",
+    topics:[
+      ["Fluids", 'PHY'],
+      ["Circulatory System", 'BIO'],
+      ["Gas Phase", 'GC PHY'],
+    ] },
+  { code:'4C', concept:4, section:'cp',
+    title:"Electrochemistry and electrical circuits and their elements",
+    topics:[
+      ["Electrostatics", 'PHY'],
+      ["Circuit Elements", 'PHY'],
+      ["Magnetism", 'PHY'],
+      ["Electrochemistry", 'GC'],
+      ["Specialized Cell \u2014 Nerve Cell", 'BIO'],
+    ] },
+  { code:'4D', concept:4, section:'cp',
+    title:"How light and sound interact with matter",
+    topics:[
+      ["Sound", 'PHY'],
+      ["Light, Electromagnetic Radiation", 'PHY'],
+      ["Molecular Structure and Absorption Spectra", 'OC'],
+      ["Geometrical Optics", 'PHY'],
+    ] },
+  { code:'4E', concept:4, section:'cp',
+    title:"Atoms, nuclear decay, electronic structure, and atomic chemical behavior",
+    topics:[
+      ["Atomic Nucleus", 'PHY GC'],
+      ["Electronic Structure", 'PHY GC'],
+      ["The Periodic Table \u2014 Classification of Elements Into Groups by Electronic Structure", 'GC'],
+      ["The Periodic Table \u2014 Variations of Chemical Properties with Group and Row", 'GC'],
+      ["Stoichiometry", 'GC'],
+    ] },
+  { code:'5A', concept:5, section:'cp',
+    title:"Unique nature of water and its solutions",
+    topics:[
+      ["Acid-Base Equilibria", 'GC BC'],
+      ["Ions in Solutions", 'GC BC'],
+      ["Solubility", 'GC'],
+      ["Titration", 'GC'],
+    ] },
+  { code:'5B', concept:5, section:'cp',
+    title:"Nature of molecules and intermolecular interactions",
+    topics:[
+      ["Covalent Bond", 'GC'],
+      ["Liquid Phase \u2014 Intermolecular Forces", 'GC'],
+    ] },
+  { code:'5C', concept:5, section:'cp',
+    title:"Separation and purification methods",
+    topics:[
+      ["Separations and Purifications", 'OC BC'],
+    ] },
+  { code:'5D', concept:5, section:'cp',
+    title:"Structure, function, and reactivity of biologically relevant molecules",
+    topics:[
+      ["Nucleotides and Nucleic Acids", 'BC BIO'],
+      ["Amino Acids, Peptides, Proteins", 'OC BC'],
+      ["The Three-Dimensional Protein Structure", 'BC'],
+      ["Nonenzymatic Protein Function", 'BC'],
+      ["Lipids", 'BC OC'],
+      ["Carbohydrates", 'OC'],
+      ["Aldehydes and Ketones", 'OC'],
+      ["Alcohols", 'OC'],
+      ["Carboxylic Acids", 'OC'],
+      ["Acid Derivatives (Anhydrides, Amides, Esters)", 'OC'],
+      ["Phenols", 'OC BC'],
+      ["Polycyclic and Heterocyclic Aromatic Compounds", 'OC BC'],
+    ] },
+  { code:'5E', concept:5, section:'cp',
+    title:"Principles of chemical thermodynamics and kinetics",
+    topics:[
+      ["Enzymes", 'BC BIO'],
+      ["Principles of Bioenergetics", 'BC'],
+      ["Energy Changes in Chemical Reactions \u2014 Thermochemistry, Thermodynamics", 'GC PHY'],
+      ["Rate Processes in Chemical Reactions \u2014 Kinetics and Equilibrium", 'GC'],
+    ] },
+  { code:'6A', concept:6, section:'ps',
+    title:"Sensing the environment",
+    topics:[
+      ["Sensory Processing", 'PSY BIO'],
+      ["Vision", 'PSY BIO'],
+      ["Hearing", 'PSY BIO'],
+      ["Other Senses", 'PSY BIO'],
+      ["Perception", 'PSY'],
+    ] },
+  { code:'6B', concept:6, section:'ps',
+    title:"Making sense of the environment",
+    topics:[
+      ["Attention", 'PSY'],
+      ["Cognition", 'PSY'],
+      ["Consciousness", 'PSY'],
+      ["Memory", 'PSY'],
+      ["Language", 'PSY'],
+    ] },
+  { code:'6C', concept:6, section:'ps',
+    title:"Responding to the world",
+    topics:[
+      ["Emotion", 'PSY'],
+      ["Stress", 'PSY'],
+    ] },
+  { code:'7A', concept:7, section:'ps',
+    title:"Individual influences on behavior",
+    topics:[
+      ["Biological Bases of Behavior", 'PSY BIO'],
+      ["Personality", 'PSY'],
+      ["Psychological Disorders", 'PSY'],
+      ["Motivation", 'PSY'],
+      ["Attitudes", 'PSY'],
+    ] },
+  { code:'7B', concept:7, section:'ps',
+    title:"Social processes that influence human behavior",
+    topics:[
+      ["How the Presence of Others Affects Individual Behavior", 'PSY'],
+      ["Group Decision-Making Processes", 'PSY SOC'],
+      ["Normative and Nonnormative Behavior", 'SOC'],
+      ["Socialization", 'PSY SOC'],
+    ] },
+  { code:'7C', concept:7, section:'ps',
+    title:"Attitude and behavior change",
+    topics:[
+      ["Habituation and Dishabituation", 'PSY'],
+      ["Associative Learning", 'PSY'],
+      ["Observational Learning", 'PSY'],
+      ["Theories of Attitude and Behavior Change", 'PSY'],
+    ] },
+  { code:'8A', concept:8, section:'ps',
+    title:"Self-identity",
+    topics:[
+      ["Self-Concept, Self-Identity, and Social Identity", 'PSY SOC'],
+      ["Formation of Identity", 'PSY SOC'],
+    ] },
+  { code:'8B', concept:8, section:'ps',
+    title:"Social thinking",
+    topics:[
+      ["Attributing Behavior to Persons or Situations", 'PSY'],
+      ["Prejudice and Bias", 'PSY SOC'],
+      ["Processes Related to Stereotypes", 'PSY'],
+    ] },
+  { code:'8C', concept:8, section:'ps',
+    title:"Social interactions",
+    topics:[
+      ["Elements of Social Interaction", 'PSY SOC'],
+      ["Self-Presentation and Interacting With Others", 'PSY SOC'],
+      ["Social Behavior", 'PSY'],
+      ["Discrimination", 'PSY SOC'],
+    ] },
+  { code:'9A', concept:9, section:'ps',
+    title:"Understanding social structure",
+    topics:[
+      ["Theoretical Approaches", 'SOC'],
+      ["Social Institutions", 'SOC'],
+      ["Culture", 'PSY SOC'],
+    ] },
+  { code:'9B', concept:9, section:'ps',
+    title:"Demographic characteristics and processes",
+    topics:[
+      ["Demographic Structure of Society", 'PSY SOC'],
+      ["Demographic Shifts and Social Change", 'SOC'],
+    ] },
+  { code:'10A', concept:10, section:'ps', incomplete:true,
+    title:"Social inequality",
+    topics:[
+      ["Spatial Inequality", 'SOC'],
+      ["Social Class", 'SOC'],
+    ] },
+];
+
+
 const SUBTOPICS = {
   'cell-bio':  [{ id:'signaling',   label:'Cell Signaling'      },
                 { id:'membranes',   label:'Membranes & Transport'},
