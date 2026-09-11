@@ -1715,6 +1715,502 @@ const TWISTS = {
 // ── SYLLABUS SYNC: subtopic definitions per MCAT topic ───────────────────────
 // Each entry: { id, label } — shown in the subtopic picker after a topic is chosen.
 // "All of [topic]" is always appended automatically.
+// ── AAMC content map ──────────────────────────────────────────────────────────
+//
+// The 31 content categories of the MCAT, with the topics AAMC lists under each
+// and the undergraduate disciplines AAMC tags them with. This is reference
+// data: it is what makes "we know what's on the exam" true at the topic level
+// rather than only at the weight level.
+//
+// Why it exists: the unit taxonomy before this was invented from intuition
+// about what courses teach. Organic Chemistry I had two units in the whole app,
+// so a real syllabus covering functional groups and spectroscopy had nowhere to
+// put them — and the screen said so in words that read as a claim about the
+// exam. AAMC publishes the map; Waypoint should derive from it, the same way
+// the weights already do.
+//
+// Discipline tags are AAMC's own, printed beside each topic:
+//   BIO two-semester intro biology · BC first-semester biochemistry
+//   GC  two-semester general chemistry · OC two-semester organic chemistry
+//   PHY two-semester intro physics · PSY intro psychology · SOC intro sociology
+// A topic can carry several, or none. They are transcribed, never inferred: a
+// tag Waypoint guessed would be a course sent to the wrong material.
+//
+// Retrieved 2026-09-11 from AAMC's published outline:
+//   students-residents.aamc.org/prepare-mcat-exam/whats-mcat-exam-pdf-outline
+//   and the per-section downloads linked from that page.
+//
+// Verified by independent re-extraction, 2026-09-11: a second pass over the same
+// AAMC sources, done without sight of the first, produced identical names and
+// identical tags for all 148 topics across all 31 categories. That is evidence
+// against transcription error, not proof against a bias both passes share — both
+// were machines reading the same PDFs. It did confirm the two findings that
+// contradicted expectations: Covalent Bond (5B) carries GC and not OC, so
+// hybridization belongs to general chemistry; and Molecular Structure and
+// Absorption Spectra (4D) carries OC, which is what lets a syllabus map IR and
+// NMR to organic chemistry.
+//
+// A topic listed under two categories is one unit here, and reachable by any
+// discipline either listing tags it. AAMC prints Carbohydrates as BC OC in 1D
+// and OC alone in 5D; a student who took biochemistry did cover it. Merging is
+// Waypoint's call — the alternative, two separate units with the same name, is
+// worse to map against.
+//
+// Known gaps, recorded rather than filled:
+//   - 5E and 10A are both truncated. The source text ran out inside the last
+//     topic's subtopic list in each, and the standalone pages are behind a bot
+//     challenge. A further topic may follow in either. Sociology's unit list,
+//     and the general-chemistry end of thermodynamics, are short by an unknown
+//     amount. The second extraction found the 5E gap; the first had missed it,
+//     which is the clearest argument for having done two.
+//   - Tags here are the ones printed beside each TOPIC. AAMC also tags some
+//     individual subtopics, which this does not capture — nomenclature is the
+//     one that shows: it lives under each functional-group family as a
+//     subtopic, so no unit is named for it. CARS has no content categories.
+const CONTENT_MAP = [
+  { code:'1A', concept:1, section:'bb',
+    title:"Structure and function of proteins and their constituent amino acids",
+    topics:[
+      ["Amino Acids", 'BC OC'],
+      ["Protein Structure", 'BIO BC OC'],
+      ["Nonenzymatic Protein Function", 'BIO BC'],
+      ["Enzyme Structure and Function", 'BIO BC'],
+      ["Control of Enzyme Activity", 'BIO BC'],
+    ] },
+  { code:'1B', concept:1, section:'bb',
+    title:"Transmission of genetic information from the gene to the protein",
+    topics:[
+      ["Nucleic Acid Structure and Function", 'BIO BC'],
+      ["DNA Replication", 'BIO'],
+      ["Repair of DNA", 'BIO'],
+      ["Genetic Code", 'BIO'],
+      ["Transcription", 'BIO'],
+      ["Translation", 'BIO'],
+      ["Eukaryotic Chromosome Organization", 'BIO'],
+      ["Control of Gene Expression in Prokaryotes", 'BIO'],
+      ["Control of Gene Expression in Eukaryotes", 'BIO'],
+      ["Recombinant DNA and Biotechnology", 'BIO'],
+    ] },
+  { code:'1C', concept:1, section:'bb',
+    title:"Transmission of heritable information from generation to generation and the processes that increase genetic diversity",
+    topics:[
+      ["Evidence That DNA Is Genetic Material", 'BIO'],
+      ["Mendelian Concepts", 'BIO'],
+      ["Meiosis and Other Factors Affecting Genetic Variability", 'BIO'],
+      ["Analytic Methods", 'BIO'],
+      ["Evolution", 'BIO'],
+    ] },
+  { code:'1D', concept:1, section:'bb',
+    title:"Principles of bioenergetics and fuel molecule metabolism",
+    topics:[
+      ["Principles of Bioenergetics", 'BC GC'],
+      ["Carbohydrates", 'BC OC'],
+      ["Glycolysis, Gluconeogenesis, and the Pentose Phosphate Pathway", 'BIO BC'],
+      ["Principles of Metabolic Regulation", 'BC'],
+      ["Citric Acid Cycle", 'BIO BC'],
+      ["Metabolism of Fatty Acids and Proteins", 'BIO BC'],
+      ["Oxidative Phosphorylation", 'BIO BC'],
+      ["Hormonal Regulation and Integration of Metabolism", 'BC'],
+    ] },
+  { code:'2A', concept:2, section:'bb',
+    title:"Assemblies of molecules, cells, and groups of cells within single cellular and multicellular organisms",
+    topics:[
+      ["Plasma Membrane", 'BIO BC'],
+      ["Membrane-Bound Organelles and Defining Characteristics of Eukaryotic Cells", 'BIO'],
+      ["Cytoskeleton", 'BIO'],
+      ["Tissues Formed From Eukaryotic Cells", 'BIO'],
+    ] },
+  { code:'2B', concept:2, section:'bb',
+    title:"The structure, growth, physiology, and genetics of prokaryotes and viruses",
+    topics:[
+      ["Cell Theory", 'BIO'],
+      ["Classification and Structure of Prokaryotic Cells", 'BIO'],
+      ["Growth and Physiology of Prokaryotic Cells", 'BIO'],
+      ["Genetics of Prokaryotic Cells", 'BIO'],
+      ["Virus Structure", 'BIO'],
+      ["Viral Life Cycle", 'BIO'],
+    ] },
+  { code:'2C', concept:2, section:'bb',
+    title:"Processes of cell division, differentiation, and specialization",
+    topics:[
+      ["Mitosis", 'BIO'],
+      ["Biosignaling", 'BC'],
+      ["Reproductive System", 'BIO'],
+      ["Embryogenesis", 'BIO'],
+      ["Mechanisms of Development", 'BIO'],
+    ] },
+  { code:'3A', concept:3, section:'bb',
+    title:"Structure and functions of the nervous and endocrine systems and ways these systems coordinate the organ systems",
+    topics:[
+      ["Nervous System: Structure and Function", 'BIO'],
+      ["Nerve Cell", 'BIO'],
+      ["Electrochemistry", 'GC'],
+      ["Biosignaling", 'BC'],
+      ["Lipids", 'BC OC'],
+      ["Endocrine System: Hormones and Their Sources", 'BIO'],
+      ["Endocrine System: Mechanisms of Hormone Action", 'BIO'],
+    ] },
+  { code:'3B', concept:3, section:'bb',
+    title:"Structure and integrative functions of the main organ systems",
+    topics:[
+      ["Respiratory System", 'BIO'],
+      ["Circulatory System", 'BIO'],
+      ["Lymphatic System", 'BIO'],
+      ["Immune System", 'BIO'],
+      ["Digestive System", 'BIO'],
+      ["Excretory System", 'BIO'],
+      ["Reproductive System", 'BIO'],
+      ["Muscle System", 'BIO'],
+      ["Specialized Cell \u2014 Muscle Cell", 'BIO'],
+      ["Skeletal System", 'BIO'],
+      ["Skin System", 'BIO'],
+    ] },
+  { code:'4A', concept:4, section:'cp',
+    title:"Translational motion, forces, work, energy, and equilibrium in living systems",
+    topics:[
+      ["Translational Motion", 'PHY'],
+      ["Force", 'PHY'],
+      ["Equilibrium", 'PHY'],
+      ["Work", 'PHY'],
+      ["Energy of Point Object Systems", 'PHY'],
+      ["Periodic Motion", 'PHY'],
+    ] },
+  { code:'4B', concept:4, section:'cp',
+    title:"Importance of fluids for the circulation of blood, gas movement, and gas exchange",
+    topics:[
+      ["Fluids", 'PHY'],
+      ["Circulatory System", 'BIO'],
+      ["Gas Phase", 'GC PHY'],
+    ] },
+  { code:'4C', concept:4, section:'cp',
+    title:"Electrochemistry and electrical circuits and their elements",
+    topics:[
+      ["Electrostatics", 'PHY'],
+      ["Circuit Elements", 'PHY'],
+      ["Magnetism", 'PHY'],
+      ["Electrochemistry", 'GC'],
+      ["Specialized Cell \u2014 Nerve Cell", 'BIO'],
+    ] },
+  { code:'4D', concept:4, section:'cp',
+    title:"How light and sound interact with matter",
+    topics:[
+      ["Sound", 'PHY'],
+      ["Light, Electromagnetic Radiation", 'PHY'],
+      ["Molecular Structure and Absorption Spectra", 'OC'],
+      ["Geometrical Optics", 'PHY'],
+    ] },
+  { code:'4E', concept:4, section:'cp',
+    title:"Atoms, nuclear decay, electronic structure, and atomic chemical behavior",
+    topics:[
+      ["Atomic Nucleus", 'PHY GC'],
+      ["Electronic Structure", 'PHY GC'],
+      ["The Periodic Table \u2014 Classification of Elements Into Groups by Electronic Structure", 'GC'],
+      ["The Periodic Table \u2014 Variations of Chemical Properties with Group and Row", 'GC'],
+      ["Stoichiometry", 'GC'],
+    ] },
+  { code:'5A', concept:5, section:'cp',
+    title:"Unique nature of water and its solutions",
+    topics:[
+      ["Acid-Base Equilibria", 'GC BC'],
+      ["Ions in Solutions", 'GC BC'],
+      ["Solubility", 'GC'],
+      ["Titration", 'GC'],
+    ] },
+  { code:'5B', concept:5, section:'cp',
+    title:"Nature of molecules and intermolecular interactions",
+    topics:[
+      ["Covalent Bond", 'GC'],
+      ["Liquid Phase \u2014 Intermolecular Forces", 'GC'],
+    ] },
+  { code:'5C', concept:5, section:'cp',
+    title:"Separation and purification methods",
+    topics:[
+      ["Separations and Purifications", 'OC BC'],
+    ] },
+  { code:'5D', concept:5, section:'cp',
+    title:"Structure, function, and reactivity of biologically relevant molecules",
+    topics:[
+      ["Nucleotides and Nucleic Acids", 'BC BIO'],
+      ["Amino Acids, Peptides, Proteins", 'OC BC'],
+      ["The Three-Dimensional Protein Structure", 'BC'],
+      ["Nonenzymatic Protein Function", 'BC'],
+      ["Lipids", 'BC OC'],
+      ["Carbohydrates", 'OC'],
+      ["Aldehydes and Ketones", 'OC'],
+      ["Alcohols", 'OC'],
+      ["Carboxylic Acids", 'OC'],
+      ["Acid Derivatives (Anhydrides, Amides, Esters)", 'OC'],
+      ["Phenols", 'OC BC'],
+      ["Polycyclic and Heterocyclic Aromatic Compounds", 'OC BC'],
+    ] },
+  { code:'5E', concept:5, section:'cp', incomplete:true,
+    title:"Principles of chemical thermodynamics and kinetics",
+    topics:[
+      ["Enzymes", 'BC BIO'],
+      ["Principles of Bioenergetics", 'BC'],
+      ["Energy Changes in Chemical Reactions \u2014 Thermochemistry, Thermodynamics", 'GC PHY'],
+      ["Rate Processes in Chemical Reactions \u2014 Kinetics and Equilibrium", 'GC'],
+    ] },
+  { code:'6A', concept:6, section:'ps',
+    title:"Sensing the environment",
+    topics:[
+      ["Sensory Processing", 'PSY BIO'],
+      ["Vision", 'PSY BIO'],
+      ["Hearing", 'PSY BIO'],
+      ["Other Senses", 'PSY BIO'],
+      ["Perception", 'PSY'],
+    ] },
+  { code:'6B', concept:6, section:'ps',
+    title:"Making sense of the environment",
+    topics:[
+      ["Attention", 'PSY'],
+      ["Cognition", 'PSY'],
+      ["Consciousness", 'PSY'],
+      ["Memory", 'PSY'],
+      ["Language", 'PSY'],
+    ] },
+  { code:'6C', concept:6, section:'ps',
+    title:"Responding to the world",
+    topics:[
+      ["Emotion", 'PSY'],
+      ["Stress", 'PSY'],
+    ] },
+  { code:'7A', concept:7, section:'ps',
+    title:"Individual influences on behavior",
+    topics:[
+      ["Biological Bases of Behavior", 'PSY BIO'],
+      ["Personality", 'PSY'],
+      ["Psychological Disorders", 'PSY'],
+      ["Motivation", 'PSY'],
+      ["Attitudes", 'PSY'],
+    ] },
+  { code:'7B', concept:7, section:'ps',
+    title:"Social processes that influence human behavior",
+    topics:[
+      ["How the Presence of Others Affects Individual Behavior", 'PSY'],
+      ["Group Decision-Making Processes", 'PSY SOC'],
+      ["Normative and Nonnormative Behavior", 'SOC'],
+      ["Socialization", 'PSY SOC'],
+    ] },
+  { code:'7C', concept:7, section:'ps',
+    title:"Attitude and behavior change",
+    topics:[
+      ["Habituation and Dishabituation", 'PSY'],
+      ["Associative Learning", 'PSY'],
+      ["Observational Learning", 'PSY'],
+      ["Theories of Attitude and Behavior Change", 'PSY'],
+    ] },
+  { code:'8A', concept:8, section:'ps',
+    title:"Self-identity",
+    topics:[
+      ["Self-Concept, Self-Identity, and Social Identity", 'PSY SOC'],
+      ["Formation of Identity", 'PSY SOC'],
+    ] },
+  { code:'8B', concept:8, section:'ps',
+    title:"Social thinking",
+    topics:[
+      ["Attributing Behavior to Persons or Situations", 'PSY'],
+      ["Prejudice and Bias", 'PSY SOC'],
+      ["Processes Related to Stereotypes", 'PSY'],
+    ] },
+  { code:'8C', concept:8, section:'ps',
+    title:"Social interactions",
+    topics:[
+      ["Elements of Social Interaction", 'PSY SOC'],
+      ["Self-Presentation and Interacting With Others", 'PSY SOC'],
+      ["Social Behavior", 'PSY'],
+      ["Discrimination", 'PSY SOC'],
+    ] },
+  { code:'9A', concept:9, section:'ps',
+    title:"Understanding social structure",
+    topics:[
+      ["Theoretical Approaches", 'SOC'],
+      ["Social Institutions", 'SOC'],
+      ["Culture", 'PSY SOC'],
+    ] },
+  { code:'9B', concept:9, section:'ps',
+    title:"Demographic characteristics and processes",
+    topics:[
+      ["Demographic Structure of Society", 'PSY SOC'],
+      ["Demographic Shifts and Social Change", 'SOC'],
+    ] },
+  { code:'10A', concept:10, section:'ps', incomplete:true,
+    title:"Social inequality",
+    topics:[
+      ["Spatial Inequality", 'SOC'],
+      ["Social Class", 'SOC'],
+    ] },
+];
+
+
+// Every AAMC topic as a Waypoint unit: the bucket it lives in, the id it is
+// stored under, and the disciplines that can reach it.
+//
+// `topic` is which of Waypoint's weighted topics the unit hangs off — it decides
+// which questions a drill can serve and which topic freshness is recorded
+// against. `disc` is AAMC's, and decides which courses can map to it.
+//
+// Ids reuse an existing subtopic id wherever a current unit corresponds to an
+// AAMC topic (41 of them do), so stored syllabi, question tags and topicLastSeen
+// keep resolving. The rest are new and have no questions behind them yet: they
+// can be mapped in a syllabus, and no drill is offered for them.
+//
+// Both halves of a two-semester sequence reach the whole discipline. AAMC tags
+// the discipline, not the semester, and schools split sequences differently —
+// this student's Orgo I teaches spectroscopy where plenty teach it in Orgo II.
+// The syllabus resolves which half a given student actually covers. That
+// judgment is Waypoint's; the tags underneath it are AAMC's.
+const AAMC_UNITS = [
+  { name:"Amino Acids", topic:'orgo', sub:'amino-acids', disc:'BC OC', codes:'1A' },
+  { name:"Protein Structure", topic:'mol-bio', sub:'protein-structure', disc:'BIO BC OC', codes:'1A' },
+  { name:"Nonenzymatic Protein Function", topic:'mol-bio', sub:'nonenzymatic-protein-function', disc:'BIO BC', codes:'1A 5D' },
+  { name:"Enzyme Structure and Function", topic:'mol-bio', sub:'enzyme-structure-and-function', disc:'BIO BC', codes:'1A' },
+  { name:"Control of Enzyme Activity", topic:'mol-bio', sub:'control-of-enzyme-activity', disc:'BIO BC', codes:'1A' },
+  { name:"Nucleic Acid Structure and Function", topic:'mol-bio', sub:'nucleic-acid-structure-and-functio', disc:'BIO BC', codes:'1B' },
+  { name:"DNA Replication", topic:'mol-bio', sub:'replication', disc:'BIO', codes:'1B' },
+  { name:"Repair of DNA", topic:'mol-bio', sub:'repair-of-dna', disc:'BIO', codes:'1B' },
+  { name:"Genetic Code", topic:'mol-bio', sub:'genetic-code', disc:'BIO', codes:'1B' },
+  { name:"Transcription", topic:'mol-bio', sub:'transcription', disc:'BIO', codes:'1B' },
+  { name:"Translation", topic:'mol-bio', sub:'translation', disc:'BIO', codes:'1B' },
+  { name:"Eukaryotic Chromosome Organization", topic:'mol-bio', sub:'eukaryotic-chromosome-organization', disc:'BIO', codes:'1B' },
+  { name:"Control of Gene Expression in Prokaryotes", topic:'mol-bio', sub:'gene-regulation', disc:'BIO', codes:'1B' },
+  { name:"Control of Gene Expression in Eukaryotes", topic:'mol-bio', sub:'control-of-gene-expression-in-euka', disc:'BIO', codes:'1B' },
+  { name:"Recombinant DNA and Biotechnology", topic:'mol-bio', sub:'recombinant-dna-and-biotechnology', disc:'BIO', codes:'1B' },
+  { name:"Evidence That DNA Is Genetic Material", topic:'genetics', sub:'evidence-that-dna-is-genetic-mater', disc:'BIO', codes:'1C' },
+  { name:"Mendelian Concepts", topic:'genetics', sub:'mendelian', disc:'BIO', codes:'1C' },
+  { name:"Meiosis and Other Factors Affecting Genetic Variability", topic:'genetics', sub:'linkage', disc:'BIO', codes:'1C' },
+  { name:"Analytic Methods", topic:'genetics', sub:'analytic-methods', disc:'BIO', codes:'1C' },
+  { name:"Evolution", topic:'genetics', sub:'evolution', disc:'BIO', codes:'1C' },
+  { name:"Principles of Bioenergetics", topic:'thermo', sub:'principles-of-bioenergetics', disc:'BC GC', codes:'1D 5E' },
+  { name:"Carbohydrates", topic:'orgo', sub:'carbohydrates', disc:'BC OC', codes:'1D 5D' },
+  { name:"Glycolysis, Gluconeogenesis, and the Pentose Phosphate Pathway", topic:'cell-bio', sub:'glycolysis-gluconeogenesis-and-the', disc:'BIO BC', codes:'1D' },
+  { name:"Principles of Metabolic Regulation", topic:'biochem', sub:'metabolism', disc:'BC', codes:'1D' },
+  { name:"Citric Acid Cycle", topic:'cell-bio', sub:'citric-acid-cycle', disc:'BIO BC', codes:'1D' },
+  { name:"Metabolism of Fatty Acids and Proteins", topic:'cell-bio', sub:'metabolism-of-fatty-acids-and-prot', disc:'BIO BC', codes:'1D' },
+  { name:"Oxidative Phosphorylation", topic:'cell-bio', sub:'oxidative-phosphorylation', disc:'BIO BC', codes:'1D' },
+  { name:"Hormonal Regulation and Integration of Metabolism", topic:'biochem', sub:'hormonal-regulation-and-integratio', disc:'BC', codes:'1D' },
+  { name:"Plasma Membrane", topic:'cell-bio', sub:'membranes', disc:'BIO BC', codes:'2A' },
+  { name:"Membrane-Bound Organelles and Defining Characteristics of Eukaryotic Cells", topic:'cell-bio', sub:'organelles', disc:'BIO', codes:'2A' },
+  { name:"Cytoskeleton", topic:'cell-bio', sub:'cytoskeleton', disc:'BIO', codes:'2A' },
+  { name:"Tissues Formed From Eukaryotic Cells", topic:'cell-bio', sub:'tissues-formed-from-eukaryotic-cel', disc:'BIO', codes:'2A' },
+  { name:"Cell Theory", topic:'cell-bio', sub:'cell-theory', disc:'BIO', codes:'2B' },
+  { name:"Classification and Structure of Prokaryotic Cells", topic:'cell-bio', sub:'classification-and-structure-of-pr', disc:'BIO', codes:'2B' },
+  { name:"Growth and Physiology of Prokaryotic Cells", topic:'cell-bio', sub:'growth-and-physiology-of-prokaryot', disc:'BIO', codes:'2B' },
+  { name:"Genetics of Prokaryotic Cells", topic:'cell-bio', sub:'genetics-of-prokaryotic-cells', disc:'BIO', codes:'2B' },
+  { name:"Virus Structure", topic:'cell-bio', sub:'virus-structure', disc:'BIO', codes:'2B' },
+  { name:"Viral Life Cycle", topic:'cell-bio', sub:'viral-life-cycle', disc:'BIO', codes:'2B' },
+  { name:"Mitosis", topic:'cell-bio', sub:'cell-cycle', disc:'BIO', codes:'2C' },
+  { name:"Biosignaling", topic:'biochem', sub:'biosignaling', disc:'BC', codes:'2C 3A' },
+  { name:"Reproductive System", topic:'physio', sub:'reproductive-system', disc:'BIO', codes:'2C 3B' },
+  { name:"Embryogenesis", topic:'physio', sub:'embryogenesis', disc:'BIO', codes:'2C' },
+  { name:"Mechanisms of Development", topic:'physio', sub:'mechanisms-of-development', disc:'BIO', codes:'2C' },
+  { name:"Nervous System: Structure and Function", topic:'neuro', sub:'brain', disc:'BIO', codes:'3A' },
+  { name:"Nerve Cell", topic:'neuro', sub:'action-potential', disc:'BIO', codes:'3A' },
+  { name:"Electrochemistry", topic:'thermo', sub:'electrochemistry', disc:'GC', codes:'3A 4C' },
+  { name:"Lipids", topic:'orgo', sub:'lipids', disc:'BC OC', codes:'3A 5D' },
+  { name:"Endocrine System: Hormones and Their Sources", topic:'physio', sub:'renal', disc:'BIO', codes:'3A' },
+  { name:"Endocrine System: Mechanisms of Hormone Action", topic:'physio', sub:'endocrine-system-mechanisms-of-hor', disc:'BIO', codes:'3A' },
+  { name:"Respiratory System", topic:'physio', sub:'respiratory', disc:'BIO', codes:'3B' },
+  { name:"Circulatory System", topic:'physio', sub:'cardiovascular', disc:'BIO', codes:'3B 4B' },
+  { name:"Lymphatic System", topic:'physio', sub:'lymphatic-system', disc:'BIO', codes:'3B' },
+  { name:"Immune System", topic:'physio', sub:'immune-system', disc:'BIO', codes:'3B' },
+  { name:"Digestive System", topic:'physio', sub:'digestive-system', disc:'BIO', codes:'3B' },
+  { name:"Excretory System", topic:'physio', sub:'excretory-system', disc:'BIO', codes:'3B' },
+  { name:"Muscle System", topic:'physio', sub:'muscle', disc:'BIO', codes:'3B' },
+  { name:"Specialized Cell \u2014 Muscle Cell", topic:'physio', sub:'specialized-cell-muscle-cell', disc:'BIO', codes:'3B' },
+  { name:"Skeletal System", topic:'physio', sub:'skeletal-system', disc:'BIO', codes:'3B' },
+  { name:"Skin System", topic:'physio', sub:'skin-system', disc:'BIO', codes:'3B' },
+  { name:"Translational Motion", topic:'physics', sub:'kinematics', disc:'PHY', codes:'4A' },
+  { name:"Force", topic:'physics', sub:'force', disc:'PHY', codes:'4A' },
+  { name:"Equilibrium", topic:'physics', sub:'equilibrium', disc:'PHY', codes:'4A' },
+  { name:"Work", topic:'physics', sub:'work', disc:'PHY', codes:'4A' },
+  { name:"Energy of Point Object Systems", topic:'physics', sub:'energy-of-point-object-systems', disc:'PHY', codes:'4A' },
+  { name:"Periodic Motion", topic:'physics', sub:'periodic-motion', disc:'PHY', codes:'4A' },
+  { name:"Fluids", topic:'physics', sub:'fluids', disc:'PHY', codes:'4B' },
+  { name:"Gas Phase", topic:'stoich', sub:'gas-laws', disc:'GC PHY', codes:'4B' },
+  { name:"Electrostatics", topic:'physics2', sub:'electrostatics', disc:'PHY', codes:'4C' },
+  { name:"Circuit Elements", topic:'physics2', sub:'circuits', disc:'PHY', codes:'4C' },
+  { name:"Magnetism", topic:'physics2', sub:'magnetism', disc:'PHY', codes:'4C' },
+  { name:"Specialized Cell \u2014 Nerve Cell", topic:'neuro', sub:'synaptic', disc:'BIO', codes:'4C' },
+  { name:"Sound", topic:'physics2', sub:'sound', disc:'PHY', codes:'4D' },
+  { name:"Light, Electromagnetic Radiation", topic:'physics2', sub:'light-electromagnetic-radiation', disc:'PHY', codes:'4D' },
+  { name:"Molecular Structure and Absorption Spectra", topic:'orgo', sub:'molecular-structure-and-absorption', disc:'OC', codes:'4D' },
+  { name:"Geometrical Optics", topic:'physics2', sub:'optics', disc:'PHY', codes:'4D' },
+  { name:"Atomic Nucleus", topic:'atomic', sub:'atomic-nucleus', disc:'PHY GC', codes:'4E' },
+  { name:"Electronic Structure", topic:'atomic', sub:'electron-config', disc:'PHY GC', codes:'4E' },
+  { name:"The Periodic Table \u2014 Classification of Elements Into Groups by Electronic Structure", topic:'atomic', sub:'quantum', disc:'GC', codes:'4E' },
+  { name:"The Periodic Table \u2014 Variations of Chemical Properties with Group and Row", topic:'atomic', sub:'periodic-trends', disc:'GC', codes:'4E' },
+  { name:"Stoichiometry", topic:'stoich', sub:'moles', disc:'GC', codes:'4E' },
+  { name:"Acid-Base Equilibria", topic:'acid-base', sub:'ph-buffers', disc:'GC BC', codes:'5A' },
+  { name:"Ions in Solutions", topic:'acid-base', sub:'salts', disc:'GC BC', codes:'5A' },
+  { name:"Solubility", topic:'acid-base', sub:'solubility', disc:'GC', codes:'5A' },
+  { name:"Titration", topic:'acid-base', sub:'titrations', disc:'GC', codes:'5A' },
+  { name:"Covalent Bond", topic:'bonding', sub:'hybridization', disc:'GC', codes:'5B' },
+  { name:"Liquid Phase \u2014 Intermolecular Forces", topic:'bonding', sub:'imf', disc:'GC', codes:'5B' },
+  { name:"Separations and Purifications", topic:'orgo', sub:'separations-and-purifications', disc:'OC BC', codes:'5C' },
+  { name:"Nucleotides and Nucleic Acids", topic:'mol-bio', sub:'nucleotides-and-nucleic-acids', disc:'BC BIO', codes:'5D' },
+  { name:"Amino Acids, Peptides, Proteins", topic:'orgo', sub:'amino-acids-peptides-proteins', disc:'OC BC', codes:'5D' },
+  { name:"The Three-Dimensional Protein Structure", topic:'biochem', sub:'amino-acids', disc:'BC', codes:'5D' },
+  { name:"Aldehydes and Ketones", topic:'orgo', sub:'aldehydes-and-ketones', disc:'OC', codes:'5D' },
+  { name:"Alcohols", topic:'orgo', sub:'alcohols', disc:'OC', codes:'5D' },
+  { name:"Carboxylic Acids", topic:'orgo', sub:'carboxylic-acids', disc:'OC', codes:'5D' },
+  { name:"Acid Derivatives (Anhydrides, Amides, Esters)", topic:'orgo', sub:'acid-derivatives-anhydrides-amides', disc:'OC', codes:'5D' },
+  { name:"Phenols", topic:'orgo', sub:'phenols', disc:'OC BC', codes:'5D' },
+  { name:"Polycyclic and Heterocyclic Aromatic Compounds", topic:'orgo', sub:'polycyclic-and-heterocyclic-aromat', disc:'OC BC', codes:'5D' },
+  { name:"Enzymes", topic:'cell-bio', sub:'enzymes', disc:'BC BIO', codes:'5E' },
+  { name:"Energy Changes in Chemical Reactions \u2014 Thermochemistry, Thermodynamics", topic:'thermo', sub:'enthalpy', disc:'GC PHY', codes:'5E' },
+  { name:"Rate Processes in Chemical Reactions \u2014 Kinetics and Equilibrium", topic:'thermo', sub:'equilibrium', disc:'GC', codes:'5E' },
+  { name:"Sensory Processing", topic:'neuro', sub:'sensory-processing', disc:'PSY BIO', codes:'6A' },
+  { name:"Vision", topic:'neuro', sub:'vision', disc:'PSY BIO', codes:'6A' },
+  { name:"Hearing", topic:'neuro', sub:'hearing', disc:'PSY BIO', codes:'6A' },
+  { name:"Other Senses", topic:'neuro', sub:'other-senses', disc:'PSY BIO', codes:'6A' },
+  { name:"Perception", topic:'psych', sub:'perception', disc:'PSY', codes:'6A' },
+  { name:"Attention", topic:'psych', sub:'attention', disc:'PSY', codes:'6B' },
+  { name:"Cognition", topic:'psych', sub:'cognition', disc:'PSY', codes:'6B' },
+  { name:"Consciousness", topic:'psych', sub:'consciousness', disc:'PSY', codes:'6B' },
+  { name:"Memory", topic:'psych', sub:'memory', disc:'PSY', codes:'6B' },
+  { name:"Language", topic:'psych', sub:'language', disc:'PSY', codes:'6B' },
+  { name:"Emotion", topic:'psych', sub:'emotion', disc:'PSY', codes:'6C' },
+  { name:"Stress", topic:'psych', sub:'stress', disc:'PSY', codes:'6C' },
+  { name:"Biological Bases of Behavior", topic:'neuro', sub:'biological-bases-of-behavior', disc:'PSY BIO', codes:'7A' },
+  { name:"Personality", topic:'psych', sub:'personality', disc:'PSY', codes:'7A' },
+  { name:"Psychological Disorders", topic:'psych', sub:'disorders', disc:'PSY', codes:'7A' },
+  { name:"Motivation", topic:'psych', sub:'motivation', disc:'PSY', codes:'7A' },
+  { name:"Attitudes", topic:'psych', sub:'attitudes', disc:'PSY', codes:'7A' },
+  { name:"How the Presence of Others Affects Individual Behavior", topic:'psych', sub:'how-the-presence-of-others-affects', disc:'PSY', codes:'7B' },
+  { name:"Group Decision-Making Processes", topic:'psych', sub:'group-decision-making-processes', disc:'PSY SOC', codes:'7B' },
+  { name:"Normative and Nonnormative Behavior", topic:'soc', sub:'normative-and-nonnormative-behavio', disc:'SOC', codes:'7B' },
+  { name:"Socialization", topic:'psych', sub:'socialization', disc:'PSY SOC', codes:'7B' },
+  { name:"Habituation and Dishabituation", topic:'psych', sub:'habituation-and-dishabituation', disc:'PSY', codes:'7C' },
+  { name:"Associative Learning", topic:'psych', sub:'learning', disc:'PSY', codes:'7C' },
+  { name:"Observational Learning", topic:'psych', sub:'observational-learning', disc:'PSY', codes:'7C' },
+  { name:"Theories of Attitude and Behavior Change", topic:'psych', sub:'theories-of-attitude-and-behavior', disc:'PSY', codes:'7C' },
+  { name:"Self-Concept, Self-Identity, and Social Identity", topic:'psych', sub:'social', disc:'PSY SOC', codes:'8A' },
+  { name:"Formation of Identity", topic:'psych', sub:'formation-of-identity', disc:'PSY SOC', codes:'8A' },
+  { name:"Attributing Behavior to Persons or Situations", topic:'psych', sub:'attributing-behavior-to-persons-or', disc:'PSY', codes:'8B' },
+  { name:"Prejudice and Bias", topic:'psych', sub:'prejudice-and-bias', disc:'PSY SOC', codes:'8B' },
+  { name:"Processes Related to Stereotypes", topic:'psych', sub:'processes-related-to-stereotypes', disc:'PSY', codes:'8B' },
+  { name:"Elements of Social Interaction", topic:'psych', sub:'elements-of-social-interaction', disc:'PSY SOC', codes:'8C' },
+  { name:"Self-Presentation and Interacting With Others", topic:'psych', sub:'self-presentation-and-interacting', disc:'PSY SOC', codes:'8C' },
+  { name:"Social Behavior", topic:'psych', sub:'social-behavior', disc:'PSY', codes:'8C' },
+  { name:"Discrimination", topic:'psych', sub:'discrimination', disc:'PSY SOC', codes:'8C' },
+  { name:"Theoretical Approaches", topic:'soc', sub:'theoretical-approaches', disc:'SOC', codes:'9A' },
+  { name:"Social Institutions", topic:'soc', sub:'institutions', disc:'SOC', codes:'9A' },
+  { name:"Culture", topic:'soc', sub:'identity', disc:'PSY SOC', codes:'9A' },
+  { name:"Demographic Structure of Society", topic:'soc', sub:'demographic-structure-of-society', disc:'PSY SOC', codes:'9B' },
+  { name:"Demographic Shifts and Social Change", topic:'soc', sub:'demographic-shifts-and-social-chan', disc:'SOC', codes:'9B' },
+  { name:"Spatial Inequality", topic:'soc', sub:'spatial-inequality', disc:'SOC', codes:'10A' },
+  { name:"Social Class", topic:'soc', sub:'stratification', disc:'SOC', codes:'10A' },
+];
+
+// Which AAMC discipline a course is. Statistics has none — AAMC publishes no
+// STATS tag, so there is nothing to derive and its hand-made units stay, named
+// here as the exception they are rather than quietly deriving to nothing.
+const COURSE_DISCIPLINE = { bio1:'BIO', bio2:'BIO', biochem:'BC', gc1:'GC', gc2:'GC',
+                           oc1:'OC', oc2:'OC', ph1:'PHY', ph2:'PHY',
+                           psych:'PSY', soc:'SOC' };
+
+
 const SUBTOPICS = {
   'cell-bio':  [{ id:'signaling',   label:'Cell Signaling'      },
                 { id:'membranes',   label:'Membranes & Transport'},
@@ -6161,8 +6657,12 @@ function effectiveWeek(courseId, base = semesterWeek()) {
 function weekUnit(courseId, ew, topicId, subId, syllabusLabel) {
   const topic = TOPICS.find(t => t.id === topicId);
   if (!topic) return null;
-  // Only offer it if the drill will actually have questions to serve.
-  if (!QUESTIONS.some(q => q.topic === topicId)) return null;
+  // Only offer it if the drill will actually have questions to serve. Checked at
+  // the unit, not the topic: most AAMC-derived units have no questions behind
+  // them yet, and a topic-level check would promise five questions on Alcohols
+  // and then deliver none.
+  if (!QUESTIONS.some(q => q.topic === topicId &&
+                           (q.subtopic || SUBTOPIC_TAGS[q.id]) === subId)) return null;
   const sub = (SUBTOPICS[topicId] || []).find(s => s.id === subId);
   const course = COURSES.find(c => c.id === courseId);
   return { courseId, courseName: course ? course.name : courseId, week: ew,
@@ -6581,18 +7081,48 @@ function daysUntil(dateISO, now = new Date()) {
 
 // Every drillable [topic, subtopic] unit belonging to a course, with how many
 // questions back it and how the student has done on them so far.
+// What a course can be mapped onto. Derived from AAMC's discipline tags rather
+// than from a hand-written list per course — which is the whole point: Orgo I
+// had two units here, so a syllabus covering functional groups and spectroscopy
+// had nowhere to put them.
+//
+// The old version dropped any unit the question bank couldn't serve. That filter
+// has moved to the drill path, where it belongs. A unit with no questions is
+// still a true thing the exam tests and a true thing a week can cover, so it
+// stays mappable; weekUnit() is what declines to offer a drill for it.
 function courseUnits(courseId) {
   const out = [];
+  const add = (topicId, subId, label, code) => {
+    const topic = TOPICS.find(t => t.id === topicId);
+    if (!topic) return;
+    const qs = QUESTIONS.filter(q => q.topic === topicId &&
+                                     (q.subtopic || SUBTOPIC_TAGS[q.id]) === subId);
+    let right = 0, wrong = 0;
+    qs.forEach(q => { const s = S.qStats[q.id]; if (s) { right += s.right; wrong += s.wrong; } });
+    const seen = right + wrong;
+    out.push({ topicId, topic, subId, label, count: qs.length, seen,
+               accuracy: seen ? right / seen : null, code: code || null });
+  };
+  const disc = COURSE_DISCIPLINE[courseId];
+  if (disc) AAMC_UNITS.forEach(u => {
+    if (u.disc.split(' ').indexOf(disc) !== -1) add(u.topic, u.sub, u.name, u.codes.split(' ')[0]);
+  });
+
+  // The question bank is still tagged against the hand-written subtopics, and
+  // most of those are not AAMC topic names — "Reactions & Mechanisms" is not a
+  // line in the outline. Deriving the list from AAMC alone therefore left Organic
+  // Chemistry with thirteen things to map and nothing to practise. So any
+  // hand-written unit that has questions behind it stays on the list, whether or
+  // not AAMC names it. Statistics arrives here too, by having no discipline at
+  // all. Deduplicated: the 41 ids shared with an AAMC topic were added above.
+  const have = new Set(out.map(u => u.topicId + ':' + u.subId));
   TOPICS.filter(t => t.course === courseId).forEach(topic => {
     (SUBTOPICS[topic.id] || []).forEach(sub => {
-      const qs = QUESTIONS.filter(q => q.topic === topic.id &&
-                                       (q.subtopic || SUBTOPIC_TAGS[q.id]) === sub.id);
-      if (!qs.length) return;
-      let right = 0, wrong = 0;
-      qs.forEach(q => { const s = S.qStats[q.id]; if (s) { right += s.right; wrong += s.wrong; } });
-      const seen = right + wrong;
-      out.push({ topicId: topic.id, topic, subId: sub.id, label: sub.label,
-                 count: qs.length, seen, accuracy: seen ? right / seen : null });
+      if (have.has(topic.id + ':' + sub.id)) return;
+      if (!disc || QUESTIONS.some(q => q.topic === topic.id &&
+                                       (q.subtopic || SUBTOPIC_TAGS[q.id]) === sub.id)) {
+        add(topic.id, sub.id, sub.label);
+      }
     });
   });
   return out;
@@ -6914,15 +7444,20 @@ function unitId(topicId, subId) { return topicId + ':' + subId; }
 function unitFromId(id) {
   const [topicId, subId] = String(id || '').split(':');
   const topic = TOPICS.find(t => t.id === topicId);
-  const sub   = topic ? (SUBTOPICS[topicId] || []).find(s => s.id === subId) : null;
-  return (topic && sub) ? { topicId, subId, topic, sub, label: sub.label } : null;
+  if (!topic) return null;
+  const sub = (SUBTOPICS[topicId] || []).find(s => s.id === subId);
+  if (sub) return { topicId, subId, topic, sub, label: sub.label };
+  // An AAMC-derived unit. Checked second so that an id shared with a
+  // hand-written subtopic keeps the meaning it was stored with.
+  const a = AAMC_UNITS.find(u => u.topic === topicId && u.sub === subId);
+  return a ? { topicId, subId, topic, sub: { id: subId, label: a.name }, label: a.name } : null;
 }
 
 // What the model is allowed to choose from. Reuses courseUnits(), which already
 // drops any subtopic the question bank can't serve — offering the student a
 // mapping that can never become a drill would be a promise Waypoint can't keep.
 function syllabusUnits(courseId) {
-  return courseUnits(courseId).map(u => ({ id: unitId(u.topicId, u.subId), label: u.label }));
+  return courseUnits(courseId).map(u => ({ id: unitId(u.topicId, u.subId), label: u.label, code: u.code }));
 }
 
 // The server validates before it answers; this validates again on the way in
@@ -6930,7 +7465,11 @@ function syllabusUnits(courseId) {
 // instead. Returns null when there's nothing salvageable.
 function sanitizeSyllabus(raw, courseId) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  const known = new Set(syllabusUnits(courseId).map(u => u.id));
+  // Anything that still resolves is kept, not only what the course offers today.
+  // A schedule mapped before the taxonomy changed references ids that are no
+  // longer on offer; dropping them would silently empty weeks the student had
+  // already confirmed.
+  const resolves = id => !!unitFromId(id);
   const seen = new Set();
   const weeks = (Array.isArray(raw.weeks) ? raw.weeks : []).map(w => {
     if (!w || typeof w !== 'object') return null;
@@ -6941,7 +7480,7 @@ function sanitizeSyllabus(raw, courseId) {
       week: n,
       label: typeof w.label === 'string' ? w.label.slice(0, 300) : '',
       unitIds: Array.isArray(w.unitIds)
-        ? [...new Set(w.unitIds.filter(id => typeof id === 'string' && known.has(id)))]
+        ? [...new Set(w.unitIds.filter(id => typeof id === 'string' && resolves(id)))]
         : [],
       // Absent means this was saved before per-week confidence existed. Those
       // schedules were already read and accepted by the student, so the honest
@@ -7461,6 +8000,61 @@ function removeSyllabus(courseId) {
   showToast('Syllabus removed. Back to the typical pacing.');
 }
 
+// A week with nothing mapped to it is really two different weeks, and the old
+// copy called both of them the same thing.
+//
+// One is a week the course itself has no new material in — an exam, a review
+// session, spring break, course evaluation. Saying so is a fact about the
+// syllabus, and the syllabus is right there in the label.
+//
+// The other is a week Waypoint could not place. The only honest thing to say
+// about that one is that Waypoint could not place it. "No MCAT content this
+// week" said the opposite: it told a student that whatever their professor is
+// teaching is absent from the exam. A real Organic Chemistry I syllabus got that
+// verdict on functional groups, hybridization, IR, NMR and mass spectrometry —
+// all five of which the MCAT tests. Waypoint knew nothing of the kind; it had
+// two units for the whole course and nowhere else to put them.
+//
+// The split is drawn from the label's own words, which is imprecise at the
+// edges — "Review of Chapter 5" reads here as a week with no new material. That
+// costs a slightly loose description. Neither branch makes a claim about what
+// the exam tests, which is the property that has to hold.
+const NO_NEW_MATERIAL = /\b(exam|midterm|final|test|quiz|review|recap|catch[- ]?up|break|holiday|recess|no class(?:es)?|cancell?ed|evaluation|reading day|study day)\b/i;
+const IS_EXAM_WEEK    = /\b(exam|midterm|final|test|quiz)\b/i;
+
+function weekGapHTML(w) {
+  const label = w.label || '';
+  const text = !NO_NEW_MATERIAL.test(label) ? 'Not mapped to a topic yet — tap to add.'
+             : IS_EXAM_WEEK.test(label)     ? 'Exam week — no new material'
+             :                                'No new content this week.';
+  return `<span style="font-size: var(--fs-11);color:var(--faint);font-style:italic;">${text}</span>`;
+}
+
+// Sixty chips in one heap is not a list anyone can read. AAMC already groups its
+// topics into content categories, so the picker shows that grouping rather than
+// inventing one — and the headings double as provenance: a student scrolling
+// this is reading the exam's own table of contents.
+//
+// Units the question bank still carries under Waypoint's older names have no
+// category, and collect at the end under a heading that says so.
+function unitGroupsHTML(units) {
+  const byCode = new Map(), loose = [];
+  units.forEach(u => {
+    if (!u.code) { loose.push(u); return; }
+    if (!byCode.has(u.code)) byCode.set(u.code, []);
+    byCode.get(u.code).push(u);
+  });
+  const order = CONTENT_MAP.map(c => c.code);
+  const groups = [...byCode.keys()]
+    .sort((a, b) => order.indexOf(a) - order.indexOf(b))
+    .map(code => {
+      const cat = CONTENT_MAP.find(c => c.code === code);
+      return { heading: `${code} · ${cat ? cat.title : ''}`, units: byCode.get(code) };
+    });
+  if (loose.length) groups.push({ heading: 'Also in this course', units: loose });
+  return groups;
+}
+
 // Why this row is being asked about. Derived rather than sent: the two cases
 // the model can be unsure in are distinguishable from the mapping itself, and
 // the contract stays one field wide. The label is already the loudest thing in
@@ -7489,15 +8083,19 @@ function sylWeekRowHTML(w, i, units, reason) {
         ${reason ? sylReasonHTML(w) : ''}
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
           ${chips}
-          ${w.unitIds.length ? '' : `<span style="font-size: var(--fs-11);color:var(--faint);font-style:italic;">No MCAT content this week</span>`}
+          ${w.unitIds.length ? '' : weekGapHTML(w)}
           <button onclick="sylOpenPicker(${i})" aria-expanded="${open}" style="background:none;border:1px dashed rgba(255,255,255,0.18);border-radius: var(--r-ctl);min-height:32px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent;">${open ? 'Done' : (w.unitIds.length ? 'Change' : 'Add')}</button>
         </div>
         ${open ? `
-          <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);display:flex;flex-wrap:wrap;gap:8px;">
-            ${units.map(u => {
-              const on = w.unitIds.indexOf(u.id) !== -1;
-              return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'rgba(167,139,250,0.16)' : 'transparent'};border:1px solid ${on ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.1)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--violet-soft)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
-            }).join('')}
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">
+            ${unitGroupsHTML(units).map(g => `
+              <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);line-height:1.4;margin:12px 0 6px;">${g.heading}</p>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                ${g.units.map(u => {
+                  const on = w.unitIds.indexOf(u.id) !== -1;
+                  return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'rgba(167,139,250,0.16)' : 'transparent'};border:1px solid ${on ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.1)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--violet-soft)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
+                }).join('')}
+              </div>`).join('')}
           </div>` : ''}
       </div>`;
 }
@@ -8633,6 +9231,15 @@ function screenSources() {
         ${sourceWeightRows()}
         <div style="display:flex;justify-content:space-between;padding-top:12px;font-size: var(--fs-13);color:var(--ink-2);"><span>Total</span><strong style="color:var(--green-bright);">${total}%</strong></div>
       </div>
+
+      ${h('The topic map')}
+      ${p(`The weights say what a course is worth. The topic map says what it covers — and it comes from the same place. AAMC publishes the exam's ${CONTENT_MAP.length} content categories, the topics under each, and, beside every topic, the undergraduate disciplines that teach it.`)}
+      ${p(`Waypoint's unit lists are derived from those discipline tags. A course can be mapped to a topic when AAMC tags that topic with the course's discipline — not when Waypoint judged the two to be related. ${AAMC_UNITS.length} topics across ${CONTENT_MAP.length} categories, transcribed rather than summarised.`)}
+      ${p(`<strong style="color:var(--ink-2);">What's ours:</strong> AAMC tags a discipline, not a semester. So both halves of a two-semester sequence get the whole discipline — Organic Chemistry I and II reach the same topics, and your syllabus decides which half you actually cover. Schools split sequences differently, and guessing your school's split would be a guess presented as a fact.`)}
+      ${p(`<strong style="color:var(--ink-2);">How we checked:</strong> the outline was transcribed twice, independently, without the second pass seeing the first. Both produced the same ${AAMC_UNITS.length} topics with the same tags. That rules out a slip in the copying; it doesn't rule out both passes misreading the same thing the same way.`)}
+      ${p(`<strong style="color:var(--ink-2);">What's missing:</strong> content categories 5E and 10A are truncated in the sources we could read, so sociology and part of thermodynamics are short by an unknown amount. The tags used are the ones printed beside each topic; AAMC also tags individual subtopics, which this doesn't capture — that's why no unit is named for nomenclature. Statistics has no AAMC discipline tag at all, so its units remain Waypoint's own.`)}
+      ${p(`Many units have no practice questions behind them yet. Those can be mapped in a syllabus and no drill is offered for them — a topic being on the exam and Waypoint being able to quiz you on it are two different things, and the app shouldn't blur them.`)}
+      ${p(`Source: ${A(AAMC_OUTLINE, 'AAMC, "What\'s on the MCAT Exam?"')} — the content outline and its per-section downloads.`)}
 
       ${h('Course requirements')}
       ${p(`Waypoint's Required / Recommended / MCAT-tested tags describe the common pattern across medical schools, not any one school's rules. AAMC's own framing: requirements vary school to school, and some have moved to competency-based admissions with no specific course list. Check your target schools directly.`)}
