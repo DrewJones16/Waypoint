@@ -1740,10 +1740,29 @@ const TWISTS = {
 //   students-residents.aamc.org/prepare-mcat-exam/whats-mcat-exam-pdf-outline
 //   and the per-section downloads linked from that page.
 //
+// Verified by independent re-extraction, 2026-09-11: a second pass over the same
+// AAMC sources, done without sight of the first, produced identical names and
+// identical tags for all 148 topics across all 31 categories. That is evidence
+// against transcription error, not proof against a bias both passes share — both
+// were machines reading the same PDFs. It did confirm the two findings that
+// contradicted expectations: Covalent Bond (5B) carries GC and not OC, so
+// hybridization belongs to general chemistry; and Molecular Structure and
+// Absorption Spectra (4D) carries OC, which is what lets a syllabus map IR and
+// NMR to organic chemistry.
+//
+// A topic listed under two categories is one unit here, and reachable by any
+// discipline either listing tags it. AAMC prints Carbohydrates as BC OC in 1D
+// and OC alone in 5D; a student who took biochemistry did cover it. Merging is
+// Waypoint's call — the alternative, two separate units with the same name, is
+// worse to map against.
+//
 // Known gaps, recorded rather than filled:
-//   - 10A is truncated. The source text ran out partway through its list, after
-//     Social Class, and the standalone page could not be read. Topics may be
-//     missing. Sociology's unit list is short by an unknown amount.
+//   - 5E and 10A are both truncated. The source text ran out inside the last
+//     topic's subtopic list in each, and the standalone pages are behind a bot
+//     challenge. A further topic may follow in either. Sociology's unit list,
+//     and the general-chemistry end of thermodynamics, are short by an unknown
+//     amount. The second extraction found the 5E gap; the first had missed it,
+//     which is the clearest argument for having done two.
 //   - Tags here are the ones printed beside each TOPIC. AAMC also tags some
 //     individual subtopics, which this does not capture — nomenclature is the
 //     one that shows: it lives under each functional-group family as a
@@ -1924,7 +1943,7 @@ const CONTENT_MAP = [
       ["Phenols", 'OC BC'],
       ["Polycyclic and Heterocyclic Aromatic Compounds", 'OC BC'],
     ] },
-  { code:'5E', concept:5, section:'cp',
+  { code:'5E', concept:5, section:'cp', incomplete:true,
     title:"Principles of chemical thermodynamics and kinetics",
     topics:[
       ["Enzymes", 'BC BIO'],
@@ -9217,7 +9236,8 @@ function screenSources() {
       ${p(`The weights say what a course is worth. The topic map says what it covers — and it comes from the same place. AAMC publishes the exam's ${CONTENT_MAP.length} content categories, the topics under each, and, beside every topic, the undergraduate disciplines that teach it.`)}
       ${p(`Waypoint's unit lists are derived from those discipline tags. A course can be mapped to a topic when AAMC tags that topic with the course's discipline — not when Waypoint judged the two to be related. ${AAMC_UNITS.length} topics across ${CONTENT_MAP.length} categories, transcribed rather than summarised.`)}
       ${p(`<strong style="color:var(--ink-2);">What's ours:</strong> AAMC tags a discipline, not a semester. So both halves of a two-semester sequence get the whole discipline — Organic Chemistry I and II reach the same topics, and your syllabus decides which half you actually cover. Schools split sequences differently, and guessing your school's split would be a guess presented as a fact.`)}
-      ${p(`<strong style="color:var(--ink-2);">What's missing:</strong> content category 10A is truncated in the source we read, so sociology's list is short by an unknown amount. The tags used are the ones printed beside each topic; AAMC also tags individual subtopics, which this doesn't capture — that's why no unit is named for nomenclature. Statistics has no AAMC discipline tag at all, so its units remain Waypoint's own.`)}
+      ${p(`<strong style="color:var(--ink-2);">How we checked:</strong> the outline was transcribed twice, independently, without the second pass seeing the first. Both produced the same ${AAMC_UNITS.length} topics with the same tags. That rules out a slip in the copying; it doesn't rule out both passes misreading the same thing the same way.`)}
+      ${p(`<strong style="color:var(--ink-2);">What's missing:</strong> content categories 5E and 10A are truncated in the sources we could read, so sociology and part of thermodynamics are short by an unknown amount. The tags used are the ones printed beside each topic; AAMC also tags individual subtopics, which this doesn't capture — that's why no unit is named for nomenclature. Statistics has no AAMC discipline tag at all, so its units remain Waypoint's own.`)}
       ${p(`Many units have no practice questions behind them yet. Those can be mapped in a syllabus and no drill is offered for them — a topic being on the exam and Waypoint being able to quiz you on it are two different things, and the app shouldn't blur them.`)}
       ${p(`Source: ${A(AAMC_OUTLINE, 'AAMC, "What\'s on the MCAT Exam?"')} — the content outline and its per-section downloads.`)}
 
