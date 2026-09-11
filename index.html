@@ -7073,7 +7073,7 @@ function daysUntil(dateISO, now = new Date()) {
 // stays mappable; weekUnit() is what declines to offer a drill for it.
 function courseUnits(courseId) {
   const out = [];
-  const add = (topicId, subId, label) => {
+  const add = (topicId, subId, label, code) => {
     const topic = TOPICS.find(t => t.id === topicId);
     if (!topic) return;
     const qs = QUESTIONS.filter(q => q.topic === topicId &&
@@ -7082,10 +7082,12 @@ function courseUnits(courseId) {
     qs.forEach(q => { const s = S.qStats[q.id]; if (s) { right += s.right; wrong += s.wrong; } });
     const seen = right + wrong;
     out.push({ topicId, topic, subId, label, count: qs.length, seen,
-               accuracy: seen ? right / seen : null });
+               accuracy: seen ? right / seen : null, code: code || null });
   };
   const disc = COURSE_DISCIPLINE[courseId];
-  if (disc) AAMC_UNITS.forEach(u => { if (u.disc.split(' ').indexOf(disc) !== -1) add(u.topic, u.sub, u.name); });
+  if (disc) AAMC_UNITS.forEach(u => {
+    if (u.disc.split(' ').indexOf(disc) !== -1) add(u.topic, u.sub, u.name, u.codes.split(' ')[0]);
+  });
 
   // The question bank is still tagged against the hand-written subtopics, and
   // most of those are not AAMC topic names — "Reactions & Mechanisms" is not a
@@ -7436,7 +7438,7 @@ function unitFromId(id) {
 // drops any subtopic the question bank can't serve — offering the student a
 // mapping that can never become a drill would be a promise Waypoint can't keep.
 function syllabusUnits(courseId) {
-  return courseUnits(courseId).map(u => ({ id: unitId(u.topicId, u.subId), label: u.label }));
+  return courseUnits(courseId).map(u => ({ id: unitId(u.topicId, u.subId), label: u.label, code: u.code }));
 }
 
 // The server validates before it answers; this validates again on the way in
@@ -8009,6 +8011,31 @@ function weekGapHTML(w) {
   return `<span style="font-size: var(--fs-11);color:var(--faint);font-style:italic;">${text}</span>`;
 }
 
+// Sixty chips in one heap is not a list anyone can read. AAMC already groups its
+// topics into content categories, so the picker shows that grouping rather than
+// inventing one — and the headings double as provenance: a student scrolling
+// this is reading the exam's own table of contents.
+//
+// Units the question bank still carries under Waypoint's older names have no
+// category, and collect at the end under a heading that says so.
+function unitGroupsHTML(units) {
+  const byCode = new Map(), loose = [];
+  units.forEach(u => {
+    if (!u.code) { loose.push(u); return; }
+    if (!byCode.has(u.code)) byCode.set(u.code, []);
+    byCode.get(u.code).push(u);
+  });
+  const order = CONTENT_MAP.map(c => c.code);
+  const groups = [...byCode.keys()]
+    .sort((a, b) => order.indexOf(a) - order.indexOf(b))
+    .map(code => {
+      const cat = CONTENT_MAP.find(c => c.code === code);
+      return { heading: `${code} · ${cat ? cat.title : ''}`, units: byCode.get(code) };
+    });
+  if (loose.length) groups.push({ heading: 'Also in this course', units: loose });
+  return groups;
+}
+
 // Why this row is being asked about. Derived rather than sent: the two cases
 // the model can be unsure in are distinguishable from the mapping itself, and
 // the contract stays one field wide. The label is already the loudest thing in
@@ -8041,11 +8068,15 @@ function sylWeekRowHTML(w, i, units, reason) {
           <button onclick="sylOpenPicker(${i})" aria-expanded="${open}" style="background:none;border:1px dashed rgba(255,255,255,0.18);border-radius: var(--r-ctl);min-height:32px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent;">${open ? 'Done' : (w.unitIds.length ? 'Change' : 'Add')}</button>
         </div>
         ${open ? `
-          <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);display:flex;flex-wrap:wrap;gap:8px;">
-            ${units.map(u => {
-              const on = w.unitIds.indexOf(u.id) !== -1;
-              return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'rgba(167,139,250,0.16)' : 'transparent'};border:1px solid ${on ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.1)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--violet-soft)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
-            }).join('')}
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">
+            ${unitGroupsHTML(units).map(g => `
+              <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);line-height:1.4;margin:12px 0 6px;">${g.heading}</p>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                ${g.units.map(u => {
+                  const on = w.unitIds.indexOf(u.id) !== -1;
+                  return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'rgba(167,139,250,0.16)' : 'transparent'};border:1px solid ${on ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.1)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--violet-soft)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
+                }).join('')}
+              </div>`).join('')}
           </div>` : ''}
       </div>`;
 }
