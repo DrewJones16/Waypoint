@@ -8011,33 +8011,76 @@ function removeSyllabus(courseId) {
   showToast('Syllabus removed. Back to the typical pacing.');
 }
 
-// A week with nothing mapped to it is really two different weeks, and the old
-// copy called both of them the same thing.
+// A week with nothing mapped to it is really three different weeks, and the copy
+// has to tell them apart without ever claiming something about the exam.
 //
-// One is a week the course itself has no new material in — an exam, a review
-// session, spring break, course evaluation. Saying so is a fact about the
-// syllabus, and the syllabus is right there in the label.
+// The first rule here tested the whole label for exam and holiday words. On a
+// real Organic Chemistry syllabus that reported "Chapter 2 (2) — Jan. 21, 23
+// (Acids and Bases); Jan 19 Holiday" as a week with no new content. That week is
+// three lectures of acid-base chemistry. Saying otherwise is a false statement
+// about the student's own course — the same species of error as telling them
+// spectroscopy isn't on the MCAT, which is where this whole line of work began.
 //
-// The other is a week Waypoint could not place. The only honest thing to say
-// about that one is that Waypoint could not place it. "No MCAT content this
-// week" said the opposite: it told a student that whatever their professor is
-// teaching is absent from the exam. A real Organic Chemistry I syllabus got that
-// verdict on functional groups, hybridization, IR, NMR and mass spectrometry —
-// all five of which the MCAT tests. Waypoint knew nothing of the kind; it had
-// two units for the whole course and nowhere else to put them.
+// An exam, a holiday, a quiz or a review sharing a week with lectures is an
+// annotation on that week, not a replacement for it. So the annotations are
+// stripped first, and the question is what teaching content is left.
+
+const WEEK_ANNOTATION = [
+  // An exam clause runs to the next separator, and the chapters inside it go
+  // with it: "Exam V Apr. 17–21, Chapters A–C" names what the exam covers, not
+  // what the week teaches.
+  /\b(?:exam|midterm|final|quiz|test)\b[^;|•]*/gi,
+  // A holiday takes its own date with it. Left behind, "Jan 19" would read as a
+  // lecture date and make an empty week look like a taught one.
+  /(?:\b[A-Z][a-z]{2,8}\.?\s*\d{1,2}(?:\s*[–—-]\s*\d{1,2})?\s*)?\b(?:holidays?|no class(?:es)?|recess|spring break|fall break|vacation|reading day|study day)\b[^;|•]*/gi,
+  /\b(?:review|course evaluation)\b[^;|•]*/gi,
+];
+
+// What's left has to name something taught: a chapter, a unit, or a topic.
+// Dates alone don't qualify — an exam has dates too.
+const TEACHES = [
+  /\bch(?:apters?|\.)\s*\S/i,
+  /\bspectroscop/i,
+  /\b(?:unit|lecture|topic|module|section)\s*\S/i,
+  /\([A-Za-z][^)]{3,}\)/,          // a parenthesised topic name
+];
+
+function weekTeaches(label) {
+  let rest = String(label || '');
+  WEEK_ANNOTATION.forEach(re => { rest = rest.replace(re, ' '); });
+  return TEACHES.some(re => re.test(rest));
+}
+
+// Course material AAMC genuinely has no topic-level home for. 5D lists the
+// oxygen-containing families — Alcohols, Aldehydes and Ketones, Carboxylic Acids
+// — and no hydrocarbons at all, so alkanes, alkenes and alkynes land nowhere;
+// functional groups as a subject is the organising idea behind 5D rather than an
+// entry in it; and nomenclature is tagged on subtopics, never listed as a topic.
 //
-// The split is drawn from the label's own words, which is imprecise at the
-// edges — "Review of Chapter 5" reads here as a week with no new material. That
-// costs a slightly loose description. Neither branch makes a claim about what
-// the exam tests, which is the property that has to hold.
-const NO_NEW_MATERIAL = /\b(exam|midterm|final|test|quiz|review|recap|catch[- ]?up|break|holiday|recess|no class(?:es)?|cancell?ed|evaluation|reading day|study day)\b/i;
-const IS_EXAM_WEEK    = /\b(exam|midterm|final|test|quiz)\b/i;
+// Deliberately short, and each term checked against CONTENT_MAP before being put
+// here. The tempting additions are the ones to refuse: hybridization has no topic
+// named for it but is squarely inside Covalent Bond (5B), and stereochemistry is
+// carried by 5B's OC subtopic. Saying "AAMC folds this in" about a week the
+// mapper merely failed on would be a new false claim of precisely the kind this
+// task exists to delete.
+const FOLDED_IN = /\b(?:functional groups?|alkanes?|alkenes?|alkynes?|nomenclature)\b/i;
 
 function weekGapHTML(w) {
   const label = w.label || '';
-  const text = !NO_NEW_MATERIAL.test(label) ? 'Not mapped to a topic yet — tap to add.'
-             : IS_EXAM_WEEK.test(label)     ? 'Exam week — no new material'
-             :                                'No new content this week.';
+  let text;
+  if (weekTeaches(label)) {
+    // It teaches something. Whether Waypoint could place it is Waypoint's
+    // problem, and the copy says so rather than dressing it up as an absence.
+    text = FOLDED_IN.test(label)
+      ? 'Foundational course material — AAMC folds this into other topics.'
+      : 'Not mapped to a topic yet — tap to add.';
+  } else if (/\b(?:exam|midterm|final|quiz|test)\b/i.test(label)) {
+    text = 'Exam week — no new material';
+  } else if (label.trim()) {
+    text = 'No new content this week.';
+  } else {
+    text = 'Not mapped to a topic yet — tap to add.';
+  }
   return `<span style="font-size: var(--fs-11);color:var(--faint);font-style:italic;">${text}</span>`;
 }
 
