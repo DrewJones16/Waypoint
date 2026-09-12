@@ -7468,7 +7468,36 @@ function unitFromId(id) {
 // drops any subtopic the question bank can't serve — offering the student a
 // mapping that can never become a drill would be a promise Waypoint can't keep.
 function syllabusUnits(courseId) {
-  return courseUnits(courseId).map(u => ({ id: unitId(u.topicId, u.subId), label: u.label, code: u.code }));
+  // Every unit, not only this course's. The discipline tags say where a topic is
+  // usually taught; the syllabus in front of the student is evidence about what
+  // their professor actually teaches, and evidence beats prior. Gating on the
+  // tags meant a week of acid-base chemistry in an organic course had nothing to
+  // map to, because AAMC files acid-base under general chemistry.
+  //
+  // The tag still does work — it ranks. This course's own topics sort first and
+  // are marked preferred, which is what the model is told to break ties on and
+  // what the picker shows first. Nothing here touches coverage: what a week
+  // points at and what a course is worth are separate questions.
+  const own = new Set(courseUnits(courseId).map(u => unitId(u.topicId, u.subId)));
+  const order = CONTENT_MAP.map(c => c.code);
+  const rank = code => { const i = order.indexOf(code); return i === -1 ? order.length : i; };
+  return allUnits()
+    .map(u => {
+      const id = unitId(u.topicId, u.subId);
+      return { id, label: u.label, code: u.code, preferred: own.has(id) };
+    })
+    .sort((a, b) => (b.preferred - a.preferred) || (rank(a.code) - rank(b.code)));
+}
+
+// Every unit the app knows, deduplicated. Built by unioning the per-course lists
+// so there stays exactly one definition of what a unit is and where it lives.
+function allUnits() {
+  const seen = new Map();
+  COURSES.forEach(c => courseUnits(c.id).forEach(u => {
+    const id = unitId(u.topicId, u.subId);
+    if (!seen.has(id)) seen.set(id, u);
+  }));
+  return [...seen.values()];
 }
 
 // The server validates before it answers; this validates again on the way in
@@ -8092,20 +8121,34 @@ function weekGapHTML(w) {
 // Units the question bank still carries under Waypoint's older names have no
 // category, and collect at the end under a heading that says so.
 function unitGroupsHTML(units) {
-  const byCode = new Map(), loose = [];
-  units.forEach(u => {
-    if (!u.code) { loose.push(u); return; }
-    if (!byCode.has(u.code)) byCode.set(u.code, []);
-    byCode.get(u.code).push(u);
-  });
   const order = CONTENT_MAP.map(c => c.code);
-  const groups = [...byCode.keys()]
-    .sort((a, b) => order.indexOf(a) - order.indexOf(b))
-    .map(code => {
-      const cat = CONTENT_MAP.find(c => c.code === code);
-      return { heading: `${code} · ${cat ? cat.title : ''}`, units: byCode.get(code) };
+  const build = (list, looseHeading) => {
+    const byCode = new Map(), loose = [];
+    list.forEach(u => {
+      if (!u.code) { loose.push(u); return; }
+      if (!byCode.has(u.code)) byCode.set(u.code, []);
+      byCode.get(u.code).push(u);
     });
-  if (loose.length) groups.push({ heading: 'Also in this course', units: loose });
+    const out = [...byCode.keys()]
+      .sort((a, b) => order.indexOf(a) - order.indexOf(b))
+      .map(code => {
+        const cat = CONTENT_MAP.find(c => c.code === code);
+        return { heading: `${code} · ${cat ? cat.title : ''}`, units: byCode.get(code) };
+      });
+    if (loose.length) out.push({ heading: looseHeading, units: loose });
+    return out;
+  };
+  // Every topic on the exam is reachable, because a professor can teach anything
+  // — but this course's own come first, and the rest sit behind a line saying
+  // what they are, so widening the pool doesn't turn the picker into a wall.
+  const own   = units.filter(u => u.preferred !== false);
+  const other = units.filter(u => u.preferred === false);
+  const groups = build(own, 'Also in this course');
+  if (other.length) {
+    groups.push({ heading: 'Elsewhere on the MCAT — if your class covered it', units: [], divider: true });
+    // Not "also in this course": past the divider nothing is.
+    build(other, 'Waypoint\'s own older topics').forEach(g => groups.push(g));
+  }
   return groups;
 }
 
