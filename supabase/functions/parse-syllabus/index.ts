@@ -145,8 +145,30 @@ const SHAPE = `Return a single JSON object and nothing else — no preamble, no 
 
 {"confidence":"high"|"low","termStart":"YYYY-MM-DD"|null,"weeks":[{"week":1,"label":"the syllabus's own words","unitIds":["unit:id"],"confidence":"high"|"low"}]}`;
 
-function buildPrompt(courseName: string, units: Array<{ id: string; label: string }>, pages: number) {
-  const list = units.map(u => `  ${u.id} — ${u.label}`).join('\n');
+function buildPrompt(courseName: string, units: Array<{ id: string; label: string; preferred?: boolean }>, pages: number) {
+  // Two lists, not one. The client used to send only the topics AAMC tags with
+  // this course's discipline, which made the tags a gate: a week teaching
+  // acid-base chemistry in an organic course had nothing to map to, because
+  // AAMC files acid-base under general chemistry. But the tags describe where a
+  // topic is usually taught, and the syllabus in front of us is evidence about
+  // what this professor is actually teaching. Evidence beats prior — so the
+  // whole exam is offered, and the discipline becomes a ranking.
+  const pref = units.filter(u => u.preferred);
+  const rest = units.filter(u => !u.preferred);
+  const fmt = (us: typeof units) => us.map(u => `  ${u.id} — ${u.label}`).join('\n');
+  // Both lists or neither. A client that sends no preferred flags — an older one,
+  // during the window between deploying this and shipping that — must get the
+  // plain single list it has always got, not a two-part prompt with an empty
+  // half. The function is deployed first precisely so that window exists.
+  const list = (pref.length && rest.length)
+    ? `Topics usually taught in this course — prefer these when they fit:
+
+${fmt(pref)}
+
+Everything else the MCAT covers — available when the week's own words match one of them better:
+
+${fmt(rest)}`
+    : fmt(units);
 
   // Photos fail in ways files don't, and the failures look like success from the
   // outside: a cropped table still parses into a schedule, just the wrong one.
@@ -168,12 +190,13 @@ How to read it:
 
 - Work through the weekly schedule in order. One entry per week the syllabus lists, numbered as the syllabus numbers them.
 - Set "label" to the syllabus's own words for that week, copied as closely as the source allows. The student is going to read these labels back and check them against the paper in front of them, so a paraphrase is worse than a clumsy verbatim quote.
-- Choose unit ids by what the week actually covers. A week can map to several units, or to one, or to none.
+- Choose unit ids by what the week actually covers, from either list. The syllabus is the evidence; the lists only say which topics are the usual ones for this course.
+- When a week fits a topic from the first list and a topic from the second equally well, take the first. When the week's own words clearly name something in the second list, take that — a professor who teaches acid-base chemistry in an organic course is teaching acid-base chemistry.
 - Weeks with no course content — exams, review sessions, breaks, holidays, project work, guest lectures — get an empty unitIds array. That is the correct answer for those weeks, not a reason to guess.
-- If a week covers material that has no matching unit in the list above, leave its unitIds empty. Do not stretch an unrelated id to cover it, and do not invent an id.
+- If a week covers material that no unit in either list matches, leave its unitIds empty. Do not stretch an unrelated id to cover it, and do not invent an id. This is now rarer than it was: the lists together are the whole exam, so a real topic with nothing to map to usually means the material is foundational course content the exam builds on rather than tests directly.
 - Set each week's "confidence" to say whether a person needs to check that row. This is the single most useful thing you can tell them, because it decides what they read and what they can skip.
   - "high" when the week's text plainly names its topic and your mapping follows from it, and also when the text plainly says there is no course content — "Midterm exam", "Fall break", "No class". An empty unitIds you are sure about is a high-confidence answer, not a doubt.
-  - "low" when you had to guess: the text is vague or administrative ("Unit 3", "TBD", "Catch-up", "Continued", "Chapter 7" with no subject), it could reasonably map to more than one of the units above, or it looks like real course content that none of the available units covers.
+  - "low" when you had to guess: the text is vague or administrative ("Unit 3", "TBD", "Catch-up", "Continued", "Chapter 7" with no subject), it could reasonably map to more than one unit, or it looks like real course content that nothing in either list covers. Do not mark a week low merely because its best match came from the second list — a confident match there is still confident.
   - When you are genuinely torn, choose "low". Being asked about a week that was already right costs a student two seconds; a wrong mapping they were never shown costs them a semester of practising the wrong topic.
 - Set "termStart" to the date of the first day of instruction in YYYY-MM-DD form if the syllabus states it or it can be read directly off the schedule. Use null if it doesn't.
 - Set "confidence" to "high" when you found a real weekly schedule you could follow. Set it to "low" when the document has no weekly structure to extract — a policy-only syllabus, a reading list, or something that isn't a syllabus at all. In that case return an empty weeks array. An invented schedule is worse to the student than an honest "couldn't find one", because they will trust it.`;
@@ -350,10 +373,11 @@ Deno.serve(async (req) => {
 
   const rawUnits = Array.isArray(body.units) ? body.units : [];
   const units = rawUnits
-    .filter((u): u is { id: string; label: string } =>
+    .filter((u): u is { id: string; label: string; preferred?: boolean } =>
       !!u && typeof u === 'object' &&
       typeof (u as Record<string, unknown>).id === 'string' &&
       typeof (u as Record<string, unknown>).label === 'string')
+    .map(u => ({ id: u.id, label: u.label, preferred: (u as { preferred?: unknown }).preferred === true }))
     .slice(0, MAX_UNITS);
   if (!units.length) return fail('That course has no units to map onto yet.', 400, origin);
 
