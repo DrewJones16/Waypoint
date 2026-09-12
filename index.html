@@ -8137,7 +8137,14 @@ function sylWeekRowHTML(w, i, units, reason) {
         ${reason ? sylReasonHTML(w) : ''}
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
           ${chips}
-          ${w.unitIds.length ? '' : weekGapHTML(w)}
+          ${/* One state per week, one message. An unsure week rendered its
+                uncertainty prompt and a definite classification in the same
+                block — "Couldn't tell which topic this week means" directly
+                above "Exam week — no new material" — so the screen said it did
+                not know and knew about the same week at once. When the mapper is
+                unsure the prompt is the whole message; the Add button already
+                says what to do about it. */''}
+          ${(w.unitIds.length || reason) ? '' : weekGapHTML(w)}
           <button onclick="sylOpenPicker(${i})" aria-expanded="${open}" style="background:none;border:1px dashed rgba(255,255,255,0.18);border-radius: var(--r-ctl);min-height:32px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent;">${open ? 'Done' : (w.unitIds.length ? 'Change' : 'Add')}</button>
         </div>
         ${open ? `
