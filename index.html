@@ -10047,7 +10047,8 @@ function sessionStandingHTML() {
   // A first session usually moves no count at all — every topic in a class the
   // student is sitting in already reads fresh — so the true change is that
   // there is a record where there was none.
-  if (S._firstSession) return line(`That's your first topic verified — the record starts here.`);
+  // Not "verified": four questions start a record, they do not prove anything.
+  if (isFirstEverSession()) return line(`That's the first entry in your record — every session from here adds to it.`);
   // Held counts wait until the Route would show them too (freshnessActive), so
   // this screen and the next one never disagree about whether held exists yet.
   if (!freshnessActive()) return '';
@@ -10072,17 +10073,25 @@ function sessionStandingHTML() {
   return '';
 }
 
+// A student's first questions ever, in subjects they are still learning, are
+// not a performance to grade. First ever = the curated first set, or nothing
+// answered before this session (totalAnswered already includes it), which also
+// covers routes with no curated set.
+function isFirstEverSession() {
+  const total = S.answers.length;
+  return total > 0 && (!!S._firstSession || S.totalAnswered === total);
+}
+
 function screenComplete() {
   const correct = S.answers.filter(a => a.correct).length;
   const total   = S.answers.length;
   const pct     = total > 0 ? Math.round(correct / total * 100) : 0;
 
-  // A student's first questions ever, in subjects they are still learning, are
-  // not a performance to grade — so the first session gets no verdict at any
-  // score, and "Tough session." waits for a student with a record to read it
-  // against. First ever = nothing answered before this session (totalAnswered
-  // already includes it), which also covers routes with no curated first set.
-  const firstEver = S._firstSession || S.totalAnswered === total;
+  // So the first session gets no verdict and no figure at any score: no score
+  // headline, no "1/4" box, no per-topic accuracy. "Tough session." and the
+  // numbers wait for a student with a record to read them against. The
+  // explanations and Twists were on the question screens and are untouched.
+  const firstEver = isFirstEverSession();
 
   let scoreHeadline, scoreNote;
   if (firstEver && total > 0) {
@@ -10118,7 +10127,7 @@ function screenComplete() {
   // actually fixed beats a generic topic read, which beats a spaced-repetition
   // reminder the user has already internalised.
   const topicInsight = getTopicInsight();
-  const retention    = getRetentionHTML(S.answers);
+  const retention    = firstEver ? '' : getRetentionHTML(S.answers);
   const closingLine = fixedCount > 0
     ? `<p style="font-size: var(--fs-13);color:var(--green-bright);line-height:1.55;margin:0 0 20px;">You fixed <strong>${fixedCount} question${fixedCount !== 1 ? 's' : ''}</strong> that had you stumped before.</p>`
     : (topicInsight || retention || (wrong > 0
@@ -10155,7 +10164,9 @@ function screenComplete() {
       <!-- Two boxes, both about the session that just ended. Coverage used to
            sit between them, which said nothing about the last five minutes and
            repeated a number the Route already owns one tap away. -->
-      <div class="stats-row">
+      <!-- Not on a first session: the row is a score and a streak of one, and
+           with the score gone a lone "1 day streak" box is not a stat either. -->
+      ${firstEver ? '' : `<div class="stats-row">
         <div class="stat-box">
           <div class="stat-num">${correct}/${total}</div>
           <div class="stat-lbl">today</div>
@@ -10164,7 +10175,7 @@ function screenComplete() {
           <div class="stat-num">${S.streak}</div>
           <div class="stat-lbl">day streak</div>
         </div>
-      </div>
+      </div>`}
 
       ${acctPromptHTML('complete')}
       ${remindOnceHTML()}
