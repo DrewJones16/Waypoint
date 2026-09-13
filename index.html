@@ -9841,11 +9841,15 @@ function screenReveal() {
       ${claimHTML()}`;
 
   // On a first reveal this button starts the curated set, so it says what it
-  // actually delivers rather than describing practice in general.
+  // actually delivers rather than describing practice in general — a short
+  // first session on that course. It used to say "Verify it", which four
+  // questions cannot do; the results screen stopped claiming it, so does this.
   const curated = first ? firstSessionQuestions() : null;
   const curatedCourse = curated ? COURSES.find(c => c.id === firstSessionCourse()) : null;
   const ctaLabel = curated && curatedCourse
-    ? `Verify it — ${curated.length} questions from your ${curatedCourse.name} →`
+    // The course name and arrow travel as one unit, so a wrap at 375px never
+    // leaves "I →" alone on the second line.
+    ? `Start with ${curated.length} questions from your ${curatedCourse.name.replace(/ /g, '&nbsp;')}&nbsp;→`
     : 'Practice from what you know →';
   // First reveal puts the account ask directly under this button, and with no
   // margin the two touched.
