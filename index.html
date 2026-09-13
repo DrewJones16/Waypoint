@@ -6039,7 +6039,10 @@ function termTimelineHTML(live, open) {
 
   return groups.map(g => {
     const unset = g.term === 'unset';
-    const label = unset ? 'Term not set' : termLabel(g.term);
+    // The untagged pile gets no heading at all. "Term not set" over every finished
+    // course read as something the student had failed to provide, for a field the
+    // app deliberately never asks for. Absence of a term needs no badge.
+    const label = unset ? '' : termLabel(g.term);
     // A term you're still inside hasn't banked its weight yet, and the header says
     // which of the two numbers it is rather than quietly picking one. The untagged
     // pile isn't a term at all, so it gets no total: a single figure over a stack
@@ -6063,7 +6066,7 @@ function termTimelineHTML(live, open) {
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
             <span style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;">
               <span style="font-size: var(--fs-13);font-weight:600;color:var(--ink-2);">${c.name}</span>
-              ${S._whenOpen === c.id ? '' : `<button class="term-chip quiet" style="min-height:32px;font-size: var(--fs-11);padding:0 12px;" onclick="toggleWhen('${c.id}')">Took this in… →</button>`}
+              ${S._whenOpen === c.id ? '' : `<button class="term-chip quiet" style="min-height:24px;font-size: var(--fs-11);font-weight:600;padding:0;border-color:transparent;background:none;color:var(--muted);" onclick="toggleWhen('${c.id}')">Add the term →</button>`}
             </span>
             <span style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${w}%</span>
           </div>
@@ -6075,12 +6078,12 @@ function termTimelineHTML(live, open) {
 
     return `
       <div style="margin-bottom:20px;">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:${unset ? 'var(--faint)' : 'var(--ink-2)'};text-transform:uppercase;letter-spacing:var(--track-caps);">
+        ${unset ? '' : `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
+          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:var(--track-caps);">
             ${g.now ? '<span class="pulse-dot" style="width:5px;height:5px;margin-right:0;"></span>' : ''}${label}
           </div>
           ${worth ? `<div style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${worth}</div>` : ''}
-        </div>
+        </div>`}
         ${unset ? '' : `<p style="font-size: var(--fs-11);color:var(--faint);margin:0 0 8px;line-height:1.45;">${g.courses.map(c => c.name).join(' · ')}</p>`}
         ${body}
         ${open && g.topics.some(t => t.id === open) ? freshDetailHTML(open) : ''}
