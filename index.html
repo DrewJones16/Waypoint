@@ -5991,10 +5991,12 @@ function coveredTileHTML(t, live, open) {
 // skill it is, rather than as a zero that looks like an error or a slight.
 function wLabel(t, plus) { return t.w === 0 ? 'skill' : (plus ? '+' : '') + t.w + '%'; }
 
-// Locked / addable — tap to add the course that unlocks it.
+// Ground still ahead. The tile opens the course list, for a student who left a
+// class off, but it never invites claiming one: the tooltip says what the course
+// will cover when they take it, not what adding it would do to the number.
 function lockedTileHTML(t) {
   const cName = (COURSES.find(c => c.id === t.course) || {}).name || 'a course';
-  return `<button onclick="go('courses')" title="Add ${cName} to unlock ${wLabel(t, true)}" style="background:rgba(255,255,255,0.03);border:1px solid transparent;${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
+  return `<button onclick="go('courses')" title="Covered when you take ${cName}" style="background:rgba(255,255,255,0.03);border:1px solid transparent;${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
         <div style="font-size: var(--fs-11);color:var(--muted);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
           <div style="font-size: var(--fs-11);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${tileCourse(t)}</div>
@@ -6149,7 +6151,7 @@ function sectionedMapHTML() {
   // Under the timeline it is next to the tiles it summarises and out of the
   // first viewport.
   return (timeline ? head('Your semesters') + timeline + standingLineHTML() : '')
-       + (locked   ? `<div class="section-divider"></div>` + head('Still to unlock') + locked : '');
+       + (locked   ? `<div class="section-divider"></div>` + head('Still ahead') + locked : '');
 }
 
 // ── JOURNEY PATH (waypoint map) ────────────────────────────────────────────────
@@ -9733,18 +9735,16 @@ function screenReveal() {
     // Telling that student to "add your courses" would be telling them their
     // class didn't count.
     subhead  = S.courses.size
-      ? 'Those are tested as skills rather than as their own share of questions. Add a science course to see coverage climb.'
+      ? 'Those are tested as skills rather than as their own share of questions. Coverage counts the science courses you\'ve taken or are taking.'
       : 'Add your courses to see your coverage.';
   } else {
     subhead  = territoryLine(cov);
   }
 
-  // Best single course to add next
-  const nextCourse = COURSES
-    .filter(c => !S.courses.has(c.id))
-    .map(c => ({ ...c, gain: TOPICS.filter(t => t.course === c.id).reduce((s, t) => s + t.w, 0) }))
-    .filter(c => c.gain > 0)
-    .sort((a, b) => b.gain - a.gain)[0];
+  // There used to be a "Next to unlock: add Psychology and move your route by
+  // +17%" line here. It asked a student to claim a class they are not taking in
+  // exchange for a bigger number — inventing a transcript with extra steps. The
+  // map's "Still ahead" section already says what is to come.
 
   const milestone = milestoneCopy();
 
@@ -9806,9 +9806,6 @@ function screenReveal() {
   // bottom edge. A section-sized gap puts its heading cleanly below the fold.
   const body = `      ${freshnessLineHTML()}
       <div id="sectioned-map" style="margin-bottom:24px;${first ? 'margin-top:48px;' : ''}"></div>
-
-      ${nextCourse && cov > 0 ? `
-        <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 0 24px;">Next to unlock: add <strong style="color:var(--ink);">${nextCourse.name}</strong> and move your route by <strong style="color:var(--green);">+${nextCourse.gain}%</strong>.</p>` : ''}
 
       ${claimHTML()}`;
 
