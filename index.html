@@ -5982,8 +5982,8 @@ function coveredTileHTML(t, live, open) {
   const statusIcon = inProgress ? `<span class="pulse-dot" style="width:5px;height:5px;margin-right:4px;"></span>` : '✓ ';
   let status = `<div style="font-size: var(--fs-11);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${tileCourse(t)}</div>`;
   const f = live ? topicFreshness(t.id) : null;
-  if (f && f.state !== 'fresh') {
-    const m = FRESH_META[f.state];
+  if (f && heldDisplayState(f) !== 'fresh') {
+    const m = FRESH_META[heldDisplayState(f)];
     status = `<div style="font-size: var(--fs-11);color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.tile || m.word}</div>`;
   }
   const inner = `
@@ -6496,7 +6496,22 @@ function freshnessSummary() {
   const of = st => states.filter(s => s.state === st);
   return { states, total: states.length,
            practiced: states.filter(s => s.days !== null).length,
-           fresh: of('fresh'), fading: of('fading'), faded: of('faded'), unpinned: of('unpinned') };
+           fresh: of('fresh'), fading: of('fading'), faded: of('faded'), unpinned: of('unpinned'),
+           // What the student is SHOWN as held, and what is shown as unchecked.
+           // `fresh` stays the model's answer — a class you are sitting in isn't
+           // fading — but enrollment is not evidence, so a fresh topic with no
+           // practice behind it is displayed as not yet checked, never as held.
+           // Every held count and percentage reads `held`; nothing reads `fresh`
+           // to report holding.
+           held: states.filter(s => s.state === 'fresh' && s.days !== null),
+           unchecked: states.filter(s => s.days === null) };
+}
+
+// The state a topic is displayed in. Identical to the model's state except that
+// a fresh topic nobody has practised reads as "not yet checked" (the unpinned
+// display), so a tile, its detail and the re-pin flow never call it held.
+function heldDisplayState(f) {
+  return f.state === 'fresh' && f.days === null ? 'unpinned' : f.state;
 }
 
 // Signed-out, brand-new, or barely started: there is no holding to report yet,
@@ -6555,16 +6570,18 @@ function freshnessActive() {
 function freshnessLineHTML() {
   if (!freshnessActive()) return '';
   const f = freshnessSummary();
-  const held = f.fresh.length;
+  const held = f.held.length;
   // "all 1 covered topic" — a student whose only course is Gen Chem II has
   // exactly one, so the one-topic route gets its own wording.
   const noun = `covered topic${f.total !== 1 ? 's' : ''}`;
   const head = held !== f.total   ? `Holding ${held} of ${f.total} ${noun}`
              : f.total === 1      ? 'Holding your one covered topic'
              :                      `Holding all ${f.total} ${noun}`;
+  // Unchecked counts every topic with no practice, in a finished class or one
+  // the student is taking now — the same topics the tiles label "to check".
   const parts = [];
-  ['fading','faded','unpinned'].forEach(st => {
-    if (f[st].length) parts.push(`<span style="color:${FRESH_META[st].color};">${f[st].length} ${FRESH_META[st].word}</span>`);
+  [['fading', f.fading], ['faded', f.faded], ['unpinned', f.unchecked]].forEach(([st, list]) => {
+    if (list.length) parts.push(`<span style="color:${FRESH_META[st].color};">${list.length} ${FRESH_META[st].word}</span>`);
   });
   const sep = `<span style="color:var(--dim);"> · </span>`;
   return `
@@ -6595,7 +6612,7 @@ function standingSummary() {
     cov: coverage(S.courses, true),
     practiced: f.practiced,
     total: f.total,
-    heldPct: totalW > 0 ? Math.round(wOf(f.fresh) / totalW * 100) : 0,
+    heldPct: totalW > 0 ? Math.round(wOf(f.held) / totalW * 100) : 0,
   };
 }
 
@@ -6630,7 +6647,7 @@ function repin(tid) {
   S._freshOpen = tid;   // land back on the Route with the new state already open
   // `repin` carries the state we came FROM: by the time the done screen renders,
   // topicLastSeen has been stamped and the topic already reads fresh.
-  startQuickLog(tid, null, null, { count: repinCount(tid), repin: (f && f.state) || 'faded' });
+  startQuickLog(tid, null, null, { count: repinCount(tid), repin: (f && heldDisplayState(f)) || 'faded' });
   if (S.quickLog) S.quickLog.streakEligible = true;
 }
 
@@ -6639,12 +6656,12 @@ function repin(tid) {
 function freshDetailHTML(tid) {
   const f = topicFreshness(tid);
   if (!f) return '';
-  const m = FRESH_META[f.state];
-  // Fresh ground is holding, so it gets no action — nothing to fix is not a
-  // reason to ask for work.
+  const st = heldDisplayState(f);
+  const m = FRESH_META[st];
+  // Held ground gets no action — nothing to fix is not a reason to ask for work.
   const n = repinCount(tid);
-  const action = f.state === 'fresh' ? '' : `
-          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${f.state === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
+  const action = st === 'fresh' ? '' : `
+          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
   return `
         <div style="margin-top:8px;background:rgba(255,255,255,0.03);border:1px solid color-mix(in srgb, ${m.color} 27%, transparent);border-radius: var(--r-ctl);padding:12px 12px;">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
@@ -6714,11 +6731,11 @@ function holdingLine() {
     text = n === 1
       ? `${em(oldest(h.newlyFaded).topic.name)} is now faded — one re-pin session brings it back.`
       : `${em(n + ' topics')} are now faded — one re-pin session brings the oldest back.`;
-  } else if (h.fading.length + h.faded.length + h.unpinned.length === 0) {
+  } else if (h.held.length === h.total) {
     text = h.total === 1 ? `Holding steady on ${em('your one topic')}.`
                          : `Holding steady across ${em('all ' + h.total + ' topics')}.`;
   } else {
-    text = `Still holding ${em(h.fresh.length + ' of ' + h.total)} topic${h.total !== 1 ? 's' : ''} — nothing new started fading.`;
+    text = `Still holding ${em(h.held.length + ' of ' + h.total)} topic${h.total !== 1 ? 's' : ''} — nothing new started fading.`;
   }
   return `<p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin:0 0 12px;">${text}</p>`;
 }
@@ -9394,14 +9411,14 @@ function screenSources() {
       ${p(`Source: ${A(AAMC_MSAR, 'AAMC MSAR')} — its Premed Course Requirements chart lists required and recommended coursework school by school, updated annually.`)}
 
       ${h('Covered vs held')}
-      ${p(`Covered means your coursework has taught it. Held means you have practised it recently enough that Waypoint has evidence you still have it — it counts topics with recent verified practice, nothing more.`)}
+      ${p(`Covered means your coursework has taught it. Held means you have practised it recently enough that Waypoint has evidence you still have it — it counts topics you have actually practised within the fresh window, nothing more. Being enrolled in a class is not evidence: a topic from a class you are taking now, but have never practised here, is shown as not yet checked and is never counted as held.`)}
       ${p(`Held is a share of what you have covered, not a second score, and neither number predicts how you would do on the exam. Waypoint has no basis for that and does not claim it.`)}
 
       ${h('How Waypoint tracks what you\'ve kept')}
       ${p(`From when you last practised a topic and how accurately. Fresh under ${FRESH.freshDays.normal} days, fading to ${FRESH.fadeDays.normal}, faded beyond; answering at ${Math.round(FRESH.strongPct * 100)}% or better over at least ${FRESH.strongMin} questions stretches those to ${FRESH.freshDays.strong} and ${FRESH.fadeDays.strong}.`)}
       ${p(`<strong style="color:var(--ink-2);">Those day counts are Waypoint's judgment, not a published forgetting curve.</strong> A semester is about four months, and a topic untouched since last term deserves a second look.`)}
       ${p(`Waypoint never estimates a retention percentage — you will never see "you have retained 72% of Genetics", because the science does not support a number that precise about one person. Only fresh, fading, faded or not yet checked, with the reason attached.`)}
-      ${p(`None of it appears until you have practised at least ${HELD_MIN_TOPICS} topics across at least ${HELD_MIN_SESSIONS} sessions, and never while everything it would call held is simply a class you are enrolled in. Being in a class is not evidence you hold it; practice is.`)}
+      ${p(`None of it appears until you have practised at least ${HELD_MIN_TOPICS} topics across at least ${HELD_MIN_SESSIONS} sessions, and not while the only topics that read fresh are classes you are taking but have not practised.`)}
 
       <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:32px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
 
@@ -10067,11 +10084,14 @@ function sessionStandingHTML() {
   // this screen and the next one never disagree about whether held exists yet.
   if (!freshnessActive()) return '';
 
-  const wasHeld = new Set(before.filter(f => f.state === 'fresh').map(f => f.tid));
-  const gained  = after.fresh.filter(f => !wasHeld.has(f.tid));
+  // Held on both sides of the session means practised and fresh — the Route's
+  // definition — so a topic in a class the student sits in, now practised for
+  // the first time, is a real gain rather than something already "held".
+  const wasHeld = new Set(before.filter(f => f.state === 'fresh' && f.days !== null).map(f => f.tid));
+  const gained  = after.held.filter(f => !wasHeld.has(f.tid));
   if (gained.length) {
     const n = gained.length;
-    return line(`Holding <strong style="color:var(--ink);">${after.fresh.length} of ${after.total}</strong> topics — up ${COUNT_WORD[n] || n} from when you started.`);
+    return line(`Holding <strong style="color:var(--ink);">${after.held.length} of ${after.total}</strong> topics — up ${COUNT_WORD[n] || n} from when you started.`);
   }
 
   // Nothing crossed into held, but a topic the student was already holding had
