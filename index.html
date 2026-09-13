@@ -6136,7 +6136,12 @@ function sectionedMapHTML() {
   // "Your semesters", not "where you've been": the newest group is the term the
   // student is sitting in right now, and a past-tense heading would misname it.
   if (!timeline) return locked;
-  return (timeline ? head('Your semesters') + timeline : '')
+  // Held closes the covered ground it describes. It used to sit directly under
+  // the coverage headline, a second percentage in the hero; the top of the Route
+  // body is no better for a returning student, whose body starts ~300px down.
+  // Under the timeline it is next to the tiles it summarises and out of the
+  // first viewport.
+  return (timeline ? head('Your semesters') + timeline + standingLineHTML() : '')
        + (locked   ? `<div class="section-divider"></div>` + head('Still to unlock') + locked : '');
 }
 
@@ -6538,7 +6543,8 @@ function standingSummary() {
   };
 }
 
-// One quiet line under the ring. Never a second headline — coverage is the
+// One quiet line in the Route body, under the semesters timeline it summarises.
+// Never in the hero and never a second headline — coverage is the
 // promise the landing page makes, and this is the footnote that keeps it honest.
 function standingLineHTML() {
   // Before there is a record worth describing there is nothing to hold and nothing
@@ -9741,7 +9747,6 @@ function screenReveal() {
 
   const ring = `      ${cov > 0 ? `
         <div style="margin:0 0 20px;">
-          ${standingLineHTML()}
           <button onclick="go('coverage')" class="link-btn">How the Coverage Model works →</button>
         </div>` : ''}`;
 
