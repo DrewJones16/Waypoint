@@ -10023,8 +10023,18 @@ function screenComplete() {
   const total   = S.answers.length;
   const pct     = total > 0 ? Math.round(correct / total * 100) : 0;
 
+  // A student's first questions ever, in subjects they are still learning, are
+  // not a performance to grade — so the first session gets no verdict at any
+  // score, and "Tough session." waits for a student with a record to read it
+  // against. First ever = nothing answered before this session (totalAnswered
+  // already includes it), which also covers routes with no curated first set.
+  const firstEver = S._firstSession || S.totalAnswered === total;
+
   let scoreHeadline, scoreNote;
-  if (pct === 100) {
+  if (firstEver && total > 0) {
+    scoreHeadline = 'First session done.';
+    scoreNote     = 'You\'ve seen how the MCAT asks about what you\'re learning in class. That\'s the whole idea, from here on.';
+  } else if (pct === 100) {
     scoreHeadline = 'Perfect session.';
     scoreNote     = 'The MCAT is just this, repeated. You\'re building the right habits.';
   } else if (pct >= 80) {
@@ -10061,7 +10071,7 @@ function screenComplete() {
         ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 20px;">The ones you missed will come back.</p>`
         : ''));
 
-  const scoreBanner = pct === 100
+  const scoreBanner = pct === 100 && !firstEver
     ? `<div style="text-align:center;padding:12px 0 24px;">
         <div style="font-size: var(--fs-32);font-weight:800;color:var(--ink);line-height:1.15;margin-bottom:12px;letter-spacing:-0.02em;">${scoreHeadline}</div>
         <p style="font-size: var(--fs-15);color:var(--green-bright);line-height:1.55;margin:0;">${scoreNote}</p>
