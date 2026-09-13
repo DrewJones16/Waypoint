@@ -6495,10 +6495,43 @@ function freshnessSummary() {
 // way the standing line already waited for a first session, until there are
 // enough practised topics for it to describe progress rather than a gap. A route
 // with fewer covered topics than that needs only all of them.
+//
+// Held means evidence, and two things are not evidence.
+//
+// One session. A curated four-question first session can touch three topics on
+// its own, which passed the topic rule — a freshman at 1/4 was shown "Holding all
+// 7 covered topics" and "Holding 100% of what you've covered". So the topics must
+// come from at least HELD_MIN_SESSIONS sessions.
+//
+// Enrollment. The model rightly reads a topic in a class the student is sitting
+// in as fresh, practised or not — it isn't fading. But a held figure made up only
+// of those is a number describing a timetable. While nothing counting as held has
+// practice behind it, the layer stays off. What the model computes is unchanged;
+// this only decides whether the student is shown it.
 const HELD_MIN_TOPICS = 3;
+const HELD_MIN_SESSIONS = 2;
+
+// Sessions of practice, from history that already exists. sessionHistory holds
+// full sessions and week drills; an ad-hoc quick log adds to totalAnswered
+// without a history row, so answers outside the recorded rows are at least one
+// more session, and practice on two different dates is two sessions however it
+// was recorded. Capped at 2 — that is all the question needs.
+function practiceSessions() {
+  const rows = S.sessionHistory.length;
+  if (rows >= 2) return 2;
+  const recorded = S.sessionHistory.reduce((n, h) => n + (h.total || 0), 0);
+  const days = new Set(Object.values(S.topicLastSeen)).size;
+  return Math.min(2, Math.max(rows + (S.totalAnswered > recorded ? 1 : 0), days));
+}
+
 function freshnessActive() {
   const f = freshnessSummary();
-  return f.total > 0 && f.practiced >= Math.min(HELD_MIN_TOPICS, f.total);
+  if (!f.total) return false;
+  if (practiceSessions() < HELD_MIN_SESSIONS) return false;
+  if (f.practiced < Math.min(HELD_MIN_TOPICS, f.total)) return false;
+  // Nothing held yet (all fading or faded) is still a record worth showing; held
+  // carried entirely by enrollment is not.
+  return f.fresh.length === 0 || f.fresh.some(s => s.days !== null);
 }
 
 // One line above the map. Fresh carries no colour — the counts that need a
@@ -9352,7 +9385,7 @@ function screenSources() {
       ${p(`From when you last practised a topic and how accurately. Fresh under ${FRESH.freshDays.normal} days, fading to ${FRESH.fadeDays.normal}, faded beyond; answering at ${Math.round(FRESH.strongPct * 100)}% or better over at least ${FRESH.strongMin} questions stretches those to ${FRESH.freshDays.strong} and ${FRESH.fadeDays.strong}.`)}
       ${p(`<strong style="color:var(--ink-2);">Those day counts are Waypoint's judgment, not a published forgetting curve.</strong> A semester is about four months, and a topic untouched since last term deserves a second look.`)}
       ${p(`Waypoint never estimates a retention percentage — you will never see "you have retained 72% of Genetics", because the science does not support a number that precise about one person. Only fresh, fading, faded or not yet checked, with the reason attached.`)}
-      ${p(`None of it appears until you have practised at least ${HELD_MIN_TOPICS} topics. One short session is the start of a record, not enough of one to describe.`)}
+      ${p(`None of it appears until you have practised at least ${HELD_MIN_TOPICS} topics across at least ${HELD_MIN_SESSIONS} sessions, and never while everything it would call held is simply a class you are enrolled in. Being in a class is not evidence you hold it; practice is.`)}
 
       <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:32px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
 
