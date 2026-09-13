@@ -5739,11 +5739,17 @@ function migrateCovMilestones() {
 // marked at once, and the chosen card is held in S._covMilestone until they
 // leave the Route (go() clears it), so a re-render shows the same card rather
 // than the next one down.
+//
+// And a milestone never moves downward. The highest one a student has ever seen
+// is read straight from wp_cov_milestones, and nothing at or below it is shown
+// again — which also covers routes saved before this fix, where "31" was marked
+// seen and "16" was left waiting underneath it.
 function milestoneCopy() {
   if (S._covMilestone === undefined) {
     const cov    = coverage(S.courses, true);
+    const top    = COVERAGE_MILESTONES.reduce((hi, m) => S.covMilestonesShown[m.at] ? m.at : hi, 0);
     const earned = COVERAGE_MILESTONES.filter(m => cov >= m.at);
-    const hit    = earned.filter(m => !S.covMilestonesShown[m.at]);
+    const hit    = earned.filter(m => !S.covMilestonesShown[m.at] && m.at > top);
     S._covMilestone = hit.length ? hit[hit.length - 1].at : null;
     if (hit.length) {
       earned.forEach(m => { S.covMilestonesShown[m.at] = true; });
@@ -5953,7 +5959,7 @@ function coveredTileHTML(t, live, open) {
   const f = live ? topicFreshness(t.id) : null;
   if (f && f.state !== 'fresh') {
     const m = FRESH_META[f.state];
-    status = `<div style="font-size: var(--fs-11);color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.word}</div>`;
+    status = `<div style="font-size: var(--fs-11);color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.tile || m.word}</div>`;
   }
   const inner = `
           <div style="font-size: var(--fs-11);color:var(--ink);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
@@ -6342,6 +6348,10 @@ function showMoreTerms() {
 //   faded    — past that window, and only for a course marked done
 //   unpinned — course done, topic never practiced. Deliberately NOT "faded":
 //              Waypoint can't claim you're losing something it never verified.
+//              Shown to students as "not yet checked": the internal key stays
+//              (analytics and the re-pin flow carry it), but "unpinned" read as
+//              something taken away, on coursework the student had just been
+//              congratulated for.
 //
 // The frame is possession, never loss. Fading is normal, stated plainly, and
 // fixable in one tap.
@@ -6372,7 +6382,9 @@ const FRESH_META = {
   fresh:    { word: 'holding',  color: 'var(--green-bright)', hollow: false },
   fading:   { word: 'fading',   color: 'var(--amber)', hollow: false },
   faded:    { word: 'faded',    color: 'var(--red)', hollow: false },
-  unpinned: { word: 'unpinned', color: 'var(--muted)', hollow: true  },
+  // `tile` is the same idea in the room a 375px map tile has: "not yet checked"
+  // needs 92px and the status slot has 66.
+  unpinned: { word: 'not yet checked', tile: 'to check', color: 'var(--muted)', hollow: true  },
 };
 
 const MONTH_NAMES = ['January','February','March','April','May','June',
@@ -6452,19 +6464,29 @@ function freshnessSummary() {
            fresh: of('fresh'), fading: of('fading'), faded: of('faded'), unpinned: of('unpinned') };
 }
 
-// Signed-out, brand-new, or simply never practiced: there is no holding to
-// report, only a blank record. The layer stays entirely off rather than
-// labelling a route the app has never tested.
+// Signed-out, brand-new, or barely started: there is no holding to report yet,
+// only a record that has just begun. The layer stays entirely off rather than
+// labelling a route the app has barely tested.
+//
+// "Barely" is a few distinct topics, not one session. After a single four-question
+// session the layer used to arrive in full — "Holding 2 of 12 covered topics ·
+// 10 unpinned", a held percentage under the headline, every untouched topic
+// relabelled — which is true and reads as the app taking back the number it had
+// just given. The student did exactly what they were asked. So held waits, the
+// way the standing line already waited for a first session, until there are
+// enough practised topics for it to describe progress rather than a gap. A route
+// with fewer covered topics than that needs only all of them.
+const HELD_MIN_TOPICS = 3;
 function freshnessActive() {
   const f = freshnessSummary();
-  return f.total > 0 && f.practiced > 0;
+  return f.total > 0 && f.practiced >= Math.min(HELD_MIN_TOPICS, f.total);
 }
 
 // One line above the map. Fresh carries no colour — the counts that need a
 // tap are the only ones that get one.
 function freshnessLineHTML() {
+  if (!freshnessActive()) return '';
   const f = freshnessSummary();
-  if (!f.total || !f.practiced) return '';
   const held = f.fresh.length;
   // "all 1 covered topic" — a student whose only course is Gen Chem II has
   // exactly one, so the one-topic route gets its own wording.
@@ -6474,7 +6496,7 @@ function freshnessLineHTML() {
              :                      `Holding all ${f.total} ${noun}`;
   const parts = [];
   ['fading','faded','unpinned'].forEach(st => {
-    if (f[st].length) parts.push(`<span style="color:${FRESH_META[st].color};">${f[st].length} ${st}</span>`);
+    if (f[st].length) parts.push(`<span style="color:${FRESH_META[st].color};">${f[st].length} ${FRESH_META[st].word}</span>`);
   });
   const sep = `<span style="color:var(--dim);"> · </span>`;
   return `
@@ -6512,17 +6534,13 @@ function standingSummary() {
 // One quiet line under the ring. Never a second headline — coverage is the
 // promise the landing page makes, and this is the footnote that keeps it honest.
 function standingLineHTML() {
+  // Before there is a record worth describing there is nothing to hold and nothing
+  // to report, and a line saying so is a line about work not done — on the one
+  // screen whose job is to say what a student has already got. It starts when the
+  // held layer does (freshnessActive), never on its own schedule.
+  if (!freshnessActive()) return '';
   const st = standingSummary();
-  if (!st.total) return '';
-  // Before the first session there is nothing to hold and nothing to report, and
-  // a line saying so is a line about work not done — on the one screen whose job
-  // is to say what a student has already got. It starts once the record starts.
-  if (S.sessionHistory.length === 0) return '';
-  // Practised nothing that counts toward coverage yet — rare after a session, but
-  // a zero here would read as a failure rather than as an empty record.
-  const text = st.practiced === 0
-    ? 'Nothing verified yet — practice is what turns covered into held.'
-    : `Holding <strong style="color:var(--ink-2);">${st.heldPct}%</strong> of what you've covered.`;
+  const text = `Holding <strong style="color:var(--ink-2);">${st.heldPct}%</strong> of what you've covered.`;
   return `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0 0 4px;">${text}</p>`;
 }
 
@@ -6557,7 +6575,7 @@ function freshDetailHTML(tid) {
   // reason to ask for work.
   const n = repinCount(tid);
   const action = f.state === 'fresh' ? '' : `
-          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${f.state === 'unpinned' ? 'Pin it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
+          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${f.state === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
   return `
         <div style="margin-top:8px;background:rgba(255,255,255,0.03);border:1px solid color-mix(in srgb, ${m.color} 27%, transparent);border-radius: var(--r-ctl);padding:12px 12px;">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
@@ -6579,6 +6597,7 @@ function toggleFresh(tid) {
 // has gone longest untouched. Only faded qualifies: fading is still holding, and
 // unpinned has no accuracy to be weakest at.
 function weakestFaded() {
+  if (!freshnessActive()) return null;   // part of the held layer, so it waits with it
   return freshnessSummary().faded
     .map(f => { const t = topicTally(f.tid); return { ...f, pct: t.total ? t.right / t.total : 0 }; })
     .sort((a, b) => (a.pct - b.pct) || (b.days - a.days))[0] || null;
@@ -9290,7 +9309,8 @@ function screenSources() {
       ${h('How Waypoint tracks what you\'ve kept')}
       ${p(`From when you last practised a topic and how accurately. Fresh under ${FRESH.freshDays.normal} days, fading to ${FRESH.fadeDays.normal}, faded beyond; answering at ${Math.round(FRESH.strongPct * 100)}% or better over at least ${FRESH.strongMin} questions stretches those to ${FRESH.freshDays.strong} and ${FRESH.fadeDays.strong}.`)}
       ${p(`<strong style="color:var(--ink-2);">Those day counts are Waypoint's judgment, not a published forgetting curve.</strong> A semester is about four months, and a topic untouched since last term deserves a second look.`)}
-      ${p(`Waypoint never estimates a retention percentage — you will never see "you have retained 72% of Genetics", because the science does not support a number that precise about one person. Only fresh, fading, faded or unpinned, with the reason attached.`)}
+      ${p(`Waypoint never estimates a retention percentage — you will never see "you have retained 72% of Genetics", because the science does not support a number that precise about one person. Only fresh, fading, faded or not yet checked, with the reason attached.`)}
+      ${p(`None of it appears until you have practised at least ${HELD_MIN_TOPICS} topics. One short session is the start of a record, not enough of one to describe.`)}
 
       <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:32px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
 
@@ -9751,7 +9771,7 @@ function screenQuestion() {
         Exit
       </button>
       <div class="q-meta">
-        <span class="q-count">${S.quickLog ? (S.quickLog.repin ? 'Re-pin' : 'Quick check') : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
+        <span class="q-count">${S.quickLog ? (S.quickLog.repin ? (S.quickLog.repin === 'unpinned' ? 'Check' : 'Re-pin') : 'Quick check') : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
         <div style="display:flex;gap:8px;align-items:center;">
           <span style="font-size: var(--fs-11);font-weight:600;background:rgba(255,255,255,0.07);color:var(--muted);padding:4px 8px;border-radius: var(--r-ctl);letter-spacing:var(--track-caps);">MCAT-style</span>
           <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicObj.disp : ''}</span>
@@ -9948,6 +9968,9 @@ function sessionStandingHTML() {
   // student is sitting in already reads fresh — so the true change is that
   // there is a record where there was none.
   if (S._firstSession) return line(`That's your first topic verified — the record starts here.`);
+  // Held counts wait until the Route would show them too (freshnessActive), so
+  // this screen and the next one never disagree about whether held exists yet.
+  if (!freshnessActive()) return '';
 
   const wasHeld = new Set(before.filter(f => f.state === 'fresh').map(f => f.tid));
   const gained  = after.fresh.filter(f => !wasHeld.has(f.tid));
@@ -10141,8 +10164,8 @@ function screenQuickLogDone() {
     const first = ql.repin === 'unpinned';
     return `
     <div class="screen">
-      <p class="label">${first ? 'Pinned' : 'Re-pinned'}</p>
-      <h2 style="margin-bottom:4px;">${topic ? topic.name : 'Topic'} — ${first ? 'pinned' : 'holding again'}.</h2>
+      <p class="label">${first ? 'Checked' : 'Re-pinned'}</p>
+      <h2 style="margin-bottom:4px;">${topic ? topic.name : 'Topic'} — ${first ? 'checked' : 'holding again'}.</h2>
       <p style="font-size: var(--fs-15);margin-bottom:20px;">${correct}/${total} correct. ${first
         ? 'That\'s the first time your route has anything to say about this one.'
         : 'Your route says you\'re holding it, because you just showed that you are.'}</p>
