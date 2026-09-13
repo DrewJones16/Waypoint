@@ -5947,6 +5947,13 @@ const TILE_NAMES = {
   'research':'Research', 'cars':'CARS',
 };
 
+// The course line of a tile shares its row with the weight, which leaves 67px at
+// 375px. "✓ Gen Chem II" needs 73 and was elided to "Gen Che…"; the tile already
+// sits under its course or section, so "Chem II" says the same thing and fits
+// with room for narrower phones. Every other course short-name fits as it is.
+const TILE_COURSE = { gc1: 'Chem I', gc2: 'Chem II' };
+const tileCourse = t => TILE_COURSE[t.course] || t.disp;
+
 // 92px floor, not 72: the state word has to fit beside the weight at 375px.
 // Six and nine topics wrap to the same number of rows three-across as they did
 // four-across, so the map is no taller.
@@ -5959,7 +5966,7 @@ const TILE_ROW = 'display:flex;flex-wrap:wrap;gap:4px;';
 function coveredTileHTML(t, live, open) {
   const inProgress = S.courseStatus[t.course] === 'in-progress';
   const statusIcon = inProgress ? `<span class="pulse-dot" style="width:5px;height:5px;margin-right:4px;"></span>` : '✓ ';
-  let status = `<div style="font-size: var(--fs-11);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${t.disp}</div>`;
+  let status = `<div style="font-size: var(--fs-11);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${tileCourse(t)}</div>`;
   const f = live ? topicFreshness(t.id) : null;
   if (f && f.state !== 'fresh') {
     const m = FRESH_META[f.state];
@@ -5990,7 +5997,7 @@ function lockedTileHTML(t) {
   return `<button onclick="go('courses')" title="Add ${cName} to unlock ${wLabel(t, true)}" style="background:rgba(255,255,255,0.03);border:1px solid transparent;${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
         <div style="font-size: var(--fs-11);color:var(--muted);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-          <div style="font-size: var(--fs-11);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${t.disp}</div>
+          <div style="font-size: var(--fs-11);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${tileCourse(t)}</div>
           <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);flex-shrink:0;margin-left:4px;">${wLabel(t, true)}</div>
         </div>
       </button>`;
@@ -9760,8 +9767,12 @@ function screenReveal() {
            who has waved it away here before. -->
       ${cov > 0 ? acctPromptHTML('reveal') : ''}`;
 
+  // On a first reveal the map is the start of a new section below the top group
+  // (number, button, account ask). With the old 24px it began at y≈746 on an
+  // 800px desktop, so "FALL 2026 · worth 12% when you finish" sat cut off at the
+  // bottom edge. A section-sized gap puts its heading cleanly below the fold.
   const body = `      ${freshnessLineHTML()}
-      <div id="sectioned-map" style="margin-bottom:24px;"></div>
+      <div id="sectioned-map" style="margin-bottom:24px;${first ? 'margin-top:48px;' : ''}"></div>
 
       ${nextCourse && cov > 0 ? `
         <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 0 24px;">Next to unlock: add <strong style="color:var(--ink);">${nextCourse.name}</strong> and move your route by <strong style="color:var(--green);">+${nextCourse.gain}%</strong>.</p>` : ''}
@@ -9775,7 +9786,9 @@ function screenReveal() {
   const ctaLabel = curated && curatedCourse
     ? `Verify it — ${curated.length} questions from your ${curatedCourse.name} →`
     : 'Practice from what you know →';
-  const cta = `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} onclick="startSession()">${ctaLabel}</button>`;
+  // First reveal puts the account ask directly under this button, and with no
+  // margin the two touched.
+  const cta = `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} ${first ? 'style="margin-bottom:16px;"' : ''} onclick="startSession()">${ctaLabel}</button>`;
 
   const tail = `      ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
       <button class="btn btn-ghost" onclick="go('courses')">← Update my courses</button>`;
