@@ -5316,10 +5316,24 @@ function load() {
       }
     }
 
-    // Reset streak if more than 1 day has passed
+    // Reset the streak only after a genuinely missed day: the last practice was
+    // two or more calendar days before today.
+    //
+    // This used to be elapsed time — (now - new Date(lastDate)) > 1.5 days — but
+    // lastDate is a toDateString() day, which parses to local midnight, not the
+    // moment of practice. 1.5 days after midnight is noon the next day, so a
+    // student who practised last night and opened the app after lunch had their
+    // streak silently zeroed. Calendar days are compared the way daysUntil() does
+    // it (local year/month/day, UTC-normalised so daylight saving can't shift
+    // them). An unparseable or future date resets nothing, as before.
     if (S.lastDate) {
-      const diffDays = (new Date() - new Date(S.lastDate)) / 86400000;
-      if (diffDays > 1.5) S.streak = 0;
+      const last = new Date(S.lastDate);
+      if (!isNaN(last.getTime())) {
+        const now = new Date();
+        const dayGap = Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) -
+                                   Date.UTC(last.getFullYear(), last.getMonth(), last.getDate())) / 86400000);
+        if (dayGap >= 2) S.streak = 0;
+      }
     }
 
     // Persist a back-filled migration immediately, so a backup taken before the
