@@ -6915,9 +6915,13 @@ function weekStartISO(now = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 
+// A percentage over fewer questions than this is noise presented as judgement,
+// so no accuracy figure anywhere is computed or shown below it.
+const ACCURACY_MIN_QUESTIONS = 5;
+
 // Weakest topic the student has actually attempted, among courses on their route.
-// Needs a few attempts before calling anything weak — two misses isn't a verdict.
-function weakestTopic(minAttempts = 3) {
+// Needs a handful of attempts before calling anything weak — three misses isn't a verdict.
+function weakestTopic(minAttempts = ACCURACY_MIN_QUESTIONS) {
   const onRoute = new Set(TOPICS.filter(t => !t.course || S.courses.has(t.course)).map(t => t.id));
   const byTopic = {};
   QUESTIONS.forEach(q => {
@@ -7006,11 +7010,29 @@ function buildBrief(now = new Date(), skip = null) {
   };
 }
 
-// Sunday and Monday only, and only once the student has a route to report on.
+// Sunday and Monday only, and only once the student has a route to report on —
+// and a week to report. A brand-new student who finished one four-question
+// session on a Sunday was handed "25% correct" and "Weakest right now:
+// Physiology at 0% across 3 questions" minutes after doing exactly what the app
+// asked. One session is not a week, wherever it lands in the calendar.
+//
+// "A week" is read from history that already exists, no new key: a brief this
+// student has already been through, or a practice streak of BRIEF_MIN_DAYS, or
+// at least two sessions with the oldest one BRIEF_MIN_DAYS back.
+const BRIEF_MIN_DAYS = 3;
+function hasAWeek(now = new Date()) {
+  if (S.briefs.length > 0) return true;
+  if (S.streak >= BRIEF_MIN_DAYS) return true;
+  if (S.sessionHistory.length < 2) return false;
+  const oldest = Math.min(...S.sessionHistory.map(h => Date.parse(h.date)).filter(n => !isNaN(n)));
+  return isFinite(oldest) && (now.getTime() - oldest) / 86400000 >= BRIEF_MIN_DAYS;
+}
+
 function shouldShowBrief(now = new Date()) {
   const day = now.getDay();
   if (day !== 0 && day !== 1) return false;
   if (S.courses.size === 0) return false;
+  if (!hasAWeek(now)) return false;
   return S.briefSeen !== weekStartISO(now);
 }
 
@@ -7083,7 +7105,7 @@ function briefCardHTML() {
     ? 'Some weeks belong to everything else. Your route is exactly where you left it, and one short session puts you back in motion.'
     : b.coverageDelta > 0
       ? `Coverage is up ${b.coverageDelta} point${b.coverageDelta !== 1 ? 's' : ''} — that's MCAT ground you now own.`
-      : b.accuracy !== null
+      : b.accuracy !== null && b.answered >= ACCURACY_MIN_QUESTIONS
         ? `${b.accuracy}% correct. Every miss you fix now is a point you don't lose on test day.`
         : 'Your route is holding steady.';
 
@@ -9843,7 +9865,7 @@ function getRetentionHTML(sessionAnswers) {
       return acc;
     }, { right: 0, wrong: 0 });
     const total = stats.right + stats.wrong;
-    if (!topic || total < 2) return null;
+    if (!topic || total < ACCURACY_MIN_QUESTIONS) return null;
     const pct = Math.round(stats.right / total * 100);
     return { topic, pct, total };
   }).filter(Boolean).sort((a, b) => b.total - a.total);
