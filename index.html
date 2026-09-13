@@ -631,12 +631,16 @@
     border-radius: var(--r-pill);
     flex-shrink: 0;
   }
+  /* Two columns at phone width, three where the column allows. 136px is what
+     "Thermodynamics" and "Stoichiometry" need at 13px plus the tile's padding,
+     so no topic name ever has to break inside a word. */
   .map-grid {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
     gap: 8px;
     margin-bottom: 16px;
   }
+  .map-grid > div { overflow-wrap: normal; word-break: normal; hyphens: none; }
 
   /* On-track card */
   .info-card {
@@ -5910,24 +5914,24 @@ function weeksAgo(days) {
 
 // ── MAP RENDERER ──────────────────────────────────────────────────────────────
 
+// The results screen's record of the whole exam. It used to be 54px flex tiles
+// with word-break:break-word, which at 375px packed five across and split names
+// mid-syllable — "Physiol ogy", "Stoichi ometry". Now the grid (.map-grid) sets
+// columns no narrower than the longest topic word needs, and names wrap only
+// between words.
 function mapHTML(mini, highlightTopics = new Set()) {
-  const mw  = mini ? '54px' : '66px';
-  const pad = mini ? '5px 7px' : '7px 8px';
-  const fs  = 'var(--fs-11)';
-  const fs2 = 'var(--fs-11)';
-
   return TOPICS.map(t => {
     const covered = t.course && S.courses.has(t.course);
     const dot = covered && highlightTopics.has(t.id)
-      ? `<span style="display:inline-block;width:5px;height:5px;background:var(--green);border-radius: var(--r-pill);vertical-align:middle;margin-left:4px;"></span>` : '';
+      ? `<span style="display:inline-block;width:6px;height:6px;background:var(--green);border-radius: var(--r-pill);vertical-align:middle;margin-left:4px;"></span>` : '';
 
-    let bg, bdr, nc, dc;
-    if (covered) { bg='rgba(29,158,117,0.15)'; bdr='transparent'; nc='var(--ink)'; dc='var(--green-bright)'; }
-    else         { bg='rgba(255,255,255,0.03)'; bdr='transparent'; nc='var(--faint)'; dc='var(--faint)'; }
+    let bg, nc, dc;
+    if (covered) { bg='rgba(29,158,117,0.15)'; nc='var(--ink)'; dc='var(--green-bright)'; }
+    else         { bg='rgba(255,255,255,0.03)'; nc='var(--muted)'; dc='var(--faint)'; }
 
-    return `<div style="background:${bg};border:1px solid ${bdr};border-radius: var(--r-ctl);padding:${pad};flex:1;min-width:${mw};max-width:100%;overflow:hidden;">
-      <div style="font-size:${fs};color:${nc};font-weight: 600;line-height:1.25;overflow-wrap:break-word;word-break:break-word;">${t.name}${dot}</div>
-      <div style="font-size:${fs2};color:${dc};margin-top:4px;overflow-wrap:break-word;word-break:break-word;">${covered ? '✓ ' : ''}${t.disp}</div>
+    return `<div style="background:${bg};border:1px solid transparent;border-radius: var(--r-ctl);padding:8px 12px;min-width:0;">
+      <div style="font-size: var(--fs-13);color:${nc};font-weight:600;line-height:1.3;">${t.name}${dot}</div>
+      <div style="font-size: var(--fs-11);color:${dc};margin-top:4px;line-height:1.3;">${covered ? '✓ ' : ''}${t.disp}</div>
     </div>`;
   }).join('');
 }
