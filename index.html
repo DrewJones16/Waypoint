@@ -9820,7 +9820,10 @@ function screenReveal() {
   // margin the two touched.
   const cta = `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} ${first ? 'style="margin-bottom:16px;"' : ''} onclick="startSession()">${ctaLabel}</button>`;
 
-  const tail = `      ${cov > 0 ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
+  // "Share my progress" waits for progress: the same two sessions held waits for
+  // (practiceSessions). Four questions in, there is a route to look at but no
+  // progress to share. A milestone card keeps its own "Share this".
+  const tail = `      ${cov > 0 && practiceSessions() >= HELD_MIN_SESSIONS ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
       <button class="btn btn-ghost" onclick="go('courses')">← Update my courses</button>`;
 
   const middle = first ? [cta, ask, body] : [ask, body, cta];
@@ -10141,12 +10144,12 @@ function screenComplete() {
 
   return `
     <div class="screen">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:-8px;">
+      ${practiceSessions() < HELD_MIN_SESSIONS ? '' : `<div style="display:flex;justify-content:flex-end;margin-bottom:-8px;">
         <button onclick="shareCoverageCard('${S.streak >= 7 ? 'streak' : 'coverage'}', this)" title="Share my progress" aria-label="Share my progress"
                 style="background:none;border:none;cursor:pointer;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px 0 0;-webkit-tap-highlight-color:transparent;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
         </button>
-      </div>
+      </div>`}
 
       ${scoreBanner}
 
@@ -10607,7 +10610,14 @@ function next() {
 
 function exitSession() {
   if (S.answers.length > 0 && !S.quickLog) {
-    const ok = confirm("Leave this session? It won't count toward today's streak unless you finish.");
+    // A streak of one is not a streak. Until the student has practised on some
+    // earlier day, the prompt says what leaving costs without the streak framing.
+    const today    = new Date().toDateString();
+    const priorDay = (S.lastDate && S.lastDate !== today) || S.streak >= 2 ||
+                     S.sessionHistory.some(h => h.date !== today);
+    const ok = confirm(priorDay
+      ? "Leave this session? It won't count toward today's streak unless you finish."
+      : "Leave this session? It only counts once you finish.");
     if (!ok) return;
   }
   S.session      = [];
