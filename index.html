@@ -244,19 +244,19 @@
      Everything below is the difference between "works" and "made". */
 
   /* One press. The same finger action feels the same everywhere. */
-  .btn, .link-btn, .back-btn, .topic-pick-btn, .term-chip, .csb, .tg-cell,
-  .cpick-info, .course-row, .sa-btn, .ans-btn, .exit-btn, .tab-btn {
+  .btn, .link-btn, .back-btn, .topic-pick-btn, .term-chip, .cst-btn, .tg-cell,
+  .cpick-info, .sa-btn, .ans-btn, .exit-btn, .tab-btn {
     transition: transform var(--dur) var(--ease), background var(--dur), border-color var(--dur), color var(--dur);
   }
   .btn:active, .link-btn:active, .back-btn:active, .topic-pick-btn:active,
-  .term-chip:active, .csb:active, .tg-cell:active, .cpick-info:active,
+  .term-chip:active, .cst-btn:active, .tg-cell:active, .cpick-info:active,
   .ans-btn:not(:disabled):active, .exit-btn:active {
     transform: var(--press);
   }
 
   /* Numbers that change must not jitter as their digits do. */
   .disp, .num, [data-count], [data-w], [data-secfill], .q-count,
-  #cov-num, #course-counter, #simple-counter, .streak-badge, .coverage-num {
+  #cov-num, #course-counter, .streak-badge, .coverage-num {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1;
   }
@@ -272,8 +272,8 @@
 
   /* A control smaller than a thumb keeps its shape and grows its target.
      The pseudo-element reaches into the gap around it, never past it. */
-  .csb, .term-chip { position: relative; }
-  .csb::after, .term-chip::after {
+  .term-chip { position: relative; }
+  .term-chip::after {
     content: ""; position: absolute; left: 0; right: 0;
     top: 50%; height: 44px; transform: translateY(-50%);
   }
@@ -393,47 +393,6 @@
   }
   .section-label:first-child { margin-top: 0; }
 
-  .course-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 12px;
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: var(--r-ctl);
-    margin-bottom: 8px;
-    cursor: default;
-    font-size: var(--fs-15);
-    color: var(--ink-2);
-    user-select: none;
-    background: var(--surface);
-  }
-  /* Course state toggle buttons */
-  .csb {
-    font-size: var(--fs-11);
-    font-weight: 600;
-    padding: 4px 12px;
-    border-radius: var(--r-ctl);
-    border: 1px solid rgba(255,255,255,0.1);
-    background: transparent;
-    color: var(--muted);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background var(--dur), border-color var(--dur), color var(--dur), transform var(--dur) var(--ease);
-    flex-shrink: 0;
-    line-height: 1;
-  }
-  .csb:active { opacity: 0.7; }
-  .csb-ip {
-    border-color: rgba(29,158,117,0.5);
-    color: var(--green-bright);
-    background: rgba(29,158,117,0.1);
-  }
-  .csb-done {
-    border-color: rgba(29,158,117,0.5);
-    color: var(--ink);
-    background: rgba(29,158,117,0.2);
-  }
   /* Term chips — "when did you take it?" is one tap, so the chips are real tap
      targets (38px tall, 44px of vertical room with the row gap) and wrap freely
      at 375px rather than scrolling sideways. */
@@ -521,7 +480,66 @@
     padding: 4px 8px; border-radius: var(--r-ctl); flex-shrink: 0; white-space: nowrap;
   }
 
-  /* Corrections grid: courses down the side, terms across the top, one tap per
+  /* The course card. Name, badge and info on one line; the answer on the next.
+     At 375px a course name, a REQUIRED badge and three real tap targets do not
+     share a row, and the answer is what the screen is for — so the answer gets
+     the width. */
+  .ccard {
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: var(--r-card);
+    background: var(--surface);
+    padding: 12px 8px 12px 16px;
+    margin-bottom: 8px;
+    transition: background var(--dur), border-color var(--dur);
+  }
+  .ccard.picked { border-color: rgba(29,158,117,0.35); background: rgba(29,158,117,0.05); }
+  .ccard-head { display: flex; align-items: center; gap: 8px; }
+  .ccard-name { flex: 1; min-width: 0; font-size: var(--fs-15); color: var(--ink); line-height: 1.3; }
+
+  /* Three states, three buttons, always all three visible. "Not yet" is the
+     default and a real answer, so it is a control like the other two rather
+     than the absence of one. */
+  .cst-group { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 8px 8px 0 0; }
+  .cst-btn {
+    min-height: 44px;
+    border-radius: var(--r-ctl);
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: var(--fs-13);
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cst-btn:active { opacity: 0.7; }
+  .cst-btn.on-none   { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.05); color: var(--ink-2); }
+  .cst-btn.on-taking { border-color: rgba(29,158,117,0.5);  background: rgba(29,158,117,0.1);  color: var(--green-bright); }
+  .cst-btn.on-done   { border-color: rgba(29,158,117,0.5);  background: rgba(29,158,117,0.2);  color: var(--ink); }
+
+  /* The sticky foot of a picker. It used to be a gradient that faded to
+     transparent at its own top edge, which put the last course card directly
+     behind the words "3 courses selected". The bar is opaque where the text
+     sits; the fade lives above it. */
+  .picker-foot {
+    position: sticky; bottom: 0; z-index: 1; flex-shrink: 0;
+    background: var(--bg);
+    margin: 0 -4px;
+    padding: 12px 4px calc(32px + env(safe-area-inset-bottom, 0px));
+  }
+  .picker-foot::before {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 24px;
+    background: linear-gradient(to top, var(--bg), transparent);
+    pointer-events: none;
+  }
+  .picker-count {
+    text-align: center; font-size: var(--fs-13); color: var(--muted);
+    margin: 0 0 8px; font-weight: 600; letter-spacing: var(--track-caps);
+  }
+
+  /* The semester grid: courses down the side, terms across the top, one tap per
      row. Never a chip that opens a picker that opens a list. */
   .tgrid { display: grid; gap: 4px; align-items: center; }
   .tgrid .tg-head {
@@ -531,7 +549,7 @@
   }
   .tgrid .tg-label {
     font-size: var(--fs-13); color: var(--ink-2); min-width: 0;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    line-height: 1.3; overflow-wrap: anywhere; padding-right: 8px;
   }
   .tg-cell {
     min-height: 44px; border-radius: var(--r-ctl);
@@ -541,6 +559,40 @@
   }
   .tg-cell:active { opacity: 0.7; }
   .tg-cell.on { border-color: rgba(29,158,117,0.5); background: rgba(29,158,117,0.16); color: var(--green-bright); }
+  /* An empty cell says what empty means. A blank box reads as broken, or as a
+     question the student has failed to answer; "—" reads as "not said", which
+     is what it is and a perfectly good answer. */
+  .tg-cell .tg-blank { color: var(--dim); }
+
+  /* The inline account ask. Quiet by design — the practice button above it is
+     the loud one — and it never grows past the height of the three lines it
+     needs, so the number it sits under stays on screen with it. */
+  .acct-ask {
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--r-card);
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .acct-line { font-size: var(--fs-13); color: var(--muted); line-height: 1.55; margin: 0 0 12px; }
+  .acct-note { font-size: var(--fs-13); line-height: 1.55; margin: -4px 0 12px; }
+  .acct-email {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--r-ctl);
+    padding: 12px;
+    margin-bottom: 12px;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--fs-15);
+    min-height: 44px;
+  }
+  .acct-email:disabled { opacity: 0.6; }
+  .acct-dismiss {
+    background: none; border: none; padding: 0; min-height: 44px;
+    font-family: inherit; font-size: var(--fs-13); font-weight: 600;
+    color: var(--faint); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
 
   /* Retention nudge card */
   .nudge-card {
@@ -5480,7 +5532,7 @@ const SUPABASE_URL = 'https://xaldfseldfqctmplfpfu.supabase.co';
 // which restricts every row in user_state to its own auth.uid().
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhbGRmc2VsZGZxY3RtcGxmcGZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNjI5MjMsImV4cCI6MjEwMTYzODkyM30.7536ZuABjA5kvBxgEmgtHZj1rpHPQnrms4hE2UhP0U8';
 
-let syncState = { status: 'idle', message: '' }; // drives the Settings UI only
+let syncState = { status: 'idle', message: '' }; // drives the Settings box and the inline account ask
 let pushTimer = null;
 
 function authSession() {
@@ -8144,24 +8196,6 @@ function liveCourses() {
   return COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
 }
 
-// Marking a class "Taking" is the step every syllabus offer hangs off, and the
-// only screen that can do it sat behind the full course picker — twelve rows of
-// re-selection to change one field. Home sends them straight to it instead.
-function openCourseStatus() {
-  S._statusFrom = 'brief';
-  go('confirm');
-}
-
-// Both ways out of the check screen. Arriving from Home means the offer they
-// just unlocked is on Home, so that is where "Looks right" belongs; every other
-// arrival is still the end of the picker, and still ends on the reveal.
-function leaveCourseStatus() {
-  const from = S._statusFrom;
-  S._statusFrom = null;
-  if (from === 'brief') { go('brief'); return; }
-  revealCourses();
-}
-
 // Replacing a schedule a professor changed is not the same job as mapping a new
 // one, and the chooser is deliberately no good at it: its mapped rows are inert
 // so a stray tap cannot spend one of five parses. The exam screen's "Your
@@ -8942,7 +8976,7 @@ function screenBrief() {
           ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan →</button>`
           : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus →</button>`)
         : (S.courses.size
-          ? `<button class="link-btn full quiet" onclick="openCourseStatus()">Starting a new term? Mark what you're taking →</button>`
+          ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking →</button>`
           : '')}
       <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
     </div>`;
@@ -9472,125 +9506,158 @@ function screenSources() {
     </div>`;
 }
 
-function screenCoursesSimple(sections) {
-  return `
-    <div class="screen">
-      <button onclick="go('year')" class="back-btn quiet">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        Back
-      </button>
-      <p class="label">Your courses</p>
-      <h2>What are you taking right now?</h2>
-      <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 20px;">Tap everything on your schedule this term.</p>
+// ── THE COURSE SCREEN ────────────────────────────────────────────────────────
+// One screen, one pass. It used to be three: pick this term's classes, tap a
+// link below the fold to re-pick the same list with badges and an info icon
+// that weren't there the first time, then confirm a status the app had guessed
+// from the student's year. Six courses, asked three ways, before a number the
+// student came for in two minutes.
+//
+// Now every row carries the answer itself — Not yet / Taking / Done — and the
+// badges and the "what does this cover?" affordance are there from the first
+// render. A screen that grows controls once you engage with it reads as a
+// poorer version of itself the first time round, which is exactly the wrong way
+// round for the first screen anyone sees.
+//
+// The year the student already gave sets the framing of the question and
+// nothing else. It never pre-selects a course. A transcript inferred from a
+// year is the app inventing data, and every number downstream of here rests on
+// the student's own answer.
 
-      <div class="courses-scroll" style="padding-bottom:80px;">
-        ${sections.map(sec => `
-          <div class="section-head"><p class="section-label">${sec}</p></div>
-          ${COURSES.filter(c => c.section === sec).map(c => {
-            const on = S.courseStatus[c.id] === 'in-progress';
-            return `
-            <button type="button" id="spick-${c.id}" class="topic-pick-btn" style="${on ? 'border-color:rgba(29,158,117,0.55);background:rgba(29,158,117,0.09);' : ''}"
-                    aria-pressed="${on}" onclick="toggleCourseSimple('${c.id}')">
-              <span class="tp-name" style="color:${on ? 'var(--green-bright)' : 'var(--ink)'};">${c.name}</span>
-              <span class="tp-arrow" style="color:${on ? 'var(--green-bright)' : 'var(--dim)'};">${on ? '✓' : '+'}</span>
-            </button>`;
-          }).join('')}
-        `).join('')}
+const COURSE_STATES = [
+  { key: 'none',   label: 'Not yet' },
+  { key: 'taking', label: 'Taking'  },
+  { key: 'done',   label: 'Done'    },
+];
 
-        <button onclick="S._pickerMode='full'; render();" class="link-btn full" style="margin-top:var(--s-2);">Already finished some courses? Add them &rarr;</button>
-      </div>
+// The state a course is in, read from the same two fields the rest of the app
+// reads. There is no fourth field and no second source of truth: "not yet" is
+// simply not being in S.courses.
+function courseState(id) {
+  if (!S.courses.has(id)) return 'none';
+  return S.courseStatus[id] === 'completed' ? 'done' : 'taking';
+}
 
-      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 calc(32px + env(safe-area-inset-bottom, 0px));flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
-        <p id="simple-counter" style="text-align:center;font-size: var(--fs-13);color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:var(--track-caps);${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
-        <button id="simple-cta" class="btn btn-primary" ${S.courses.size ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
-      </div>
-    </div>`;
+function courseStateHTML(id) {
+  const cur = courseState(id);
+  return COURSE_STATES.map(s => {
+    const on   = cur === s.key;
+    const mark = on && s.key === 'taking' ? '<span class="pulse-dot"></span>'
+               : on && s.key === 'done'   ? '✓&nbsp;' : '';
+    return `<button type="button" class="cst-btn${on ? ' on-' + s.key : ''}" aria-pressed="${on}"
+              onclick="setCourseState('${id}','${s.key}')">${mark}${s.label}</button>`;
+  }).join('');
+}
+
+// One tap sets a state. Patched in place rather than re-rendered — a full
+// render replays the fade-up and throws the scroll half way up the list, under
+// the finger that just tapped.
+function setCourseState(id, state) {
+  if (courseState(id) === state) return;
+  if (state === 'none') {
+    S.courses.delete(id);
+    delete S.courseStatus[id];
+    // The term belonged to a course they no longer claim. Keeping it would
+    // re-attach silently if they marked the course again later.
+    delete S.courseWhen[id];
+  } else {
+    S.courses.add(id);
+    S.courseStatus[id] = state === 'done' ? 'completed' : 'in-progress';
+    // A class you are taking is this term by derivation, so a stored date would
+    // be a second, contradictory answer.
+    if (state === 'taking') delete S.courseWhen[id];
+  }
+  save();
+  const box = document.getElementById('cst-' + id);
+  if (!box) { render(); return; }
+  box.innerHTML = courseStateHTML(id);
+  const card = document.getElementById('ccard-' + id);
+  if (card) card.classList.toggle('picked', state !== 'none');
+  paintCourseCount();
+}
+
+// Hidden rather than removed: a counter that appears on the first tap moves the
+// button under the finger reaching for it.
+function paintCourseCount() {
+  const n = S.courses.size;
+  const counter = document.getElementById('course-counter');
+  if (counter) {
+    counter.textContent = n + ' course' + (n !== 1 ? 's' : '') + ' selected';
+    counter.style.visibility = n > 0 ? '' : 'hidden';
+  }
+  const cta = document.getElementById('course-cta');
+  if (cta) cta.disabled = n === 0;
 }
 
 function screenCourses() {
   const sections = [...new Set(COURSES.map(c => c.section))];
+  const n = S.courses.size;
 
-  // First run asks one question — "what are you taking right now?" — and nothing
-  // else: no Taking/Done distinction, no requirement badges, no prerequisites
-  // explainer. A freshman with two classes should be done in three taps. The full
-  // catalog is one tap away for anyone who has already finished courses.
-  // Decided once per visit. Recomputing it each render flipped the screen to the
-  // full catalog the moment the first course was selected, so only one class
-  // could ever be picked. Cleared in go() when leaving this screen.
-  //
-  // Which question comes first depends on where they are. A freshman's route is
-  // ahead of them, so "what are you taking right now?" is the whole answer. A
-  // junior's is mostly behind them, and asking about this term first makes them
-  // find an escape hatch before they can answer honestly. Same two pickers, same
-  // state — only the order of the question changes.
-  if (S._pickerMode == null) {
-    S._pickerMode = (S.courses.size > 0 || DONE_FIRST_YEARS.includes(S.year)) ? 'full' : 'simple';
-    // Decided with the mode and held for the visit. Reading it live would flip
-    // the assumption — and the copy that states it — the moment the first course
-    // was tapped, which is the one time it must not move.
-    S._doneFirst = DONE_FIRST_YEARS.includes(S.year) && S.courses.size === 0;
-  }
-  if (S._pickerMode === 'simple') return screenCoursesSimple(sections);
-
-  // Done-first only on the way in: once they have courses, this is the ordinary
-  // edit screen again and the neutral wording is right.
-  const doneFirst = !!S._doneFirst;
+  // Framing only. A junior's route is mostly behind them, so leading with "what
+  // have you taken?" is the honest opening question for them and "what are you
+  // taking?" is for the freshman — but both screens are the same screen, with
+  // the same three states, all starting at Not yet.
+  const doneLead = DONE_FIRST_YEARS.includes(S.year);
+  const back = S._coursesFrom || 'brief';
 
   return `
     <div class="screen">
-      <button onclick="go('brief')" class="back-btn quiet">
+      <button onclick="go('${back}')" class="back-btn quiet">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Back
       </button>
       <p class="label">Your courses</p>
-      <h2>${doneFirst ? 'What have you taken?' : 'What are you taking?'}</h2>
-      <!-- One question per pass. This screen asks which courses; the next asks
-           which of them are finished and when. Stating the assumption up front is
-           what makes a single tap per row honest rather than a guess. -->
-      <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 12px;line-height:1.5;">${doneFirst
-        ? 'Tap everything you\'ve finished. They count as <strong style="color:var(--green-bright);">done</strong> — you can mark this term\'s classes next.'
-        : 'Tap everything on your schedule. They count as <strong style="color:var(--green-bright);">this term\'s</strong> — you can mark finished ones next.'}</p>
-      <div class="courses-scroll" style="padding-bottom:80px;">
+      <h2>${doneLead ? 'What have you taken?' : 'What are you taking?'}</h2>
+      <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 20px;line-height:1.5;">${doneLead
+        ? 'Mark what you’ve finished <strong style="color:var(--ink-2);">Done</strong> and this term’s classes <strong style="color:var(--ink-2);">Taking</strong>. Everything starts at Not yet — nothing is assumed.'
+        : 'Mark this term’s classes <strong style="color:var(--ink-2);">Taking</strong> and anything you’ve finished <strong style="color:var(--ink-2);">Done</strong>. Everything starts at Not yet — nothing is assumed.'}</p>
+
+      <div class="courses-scroll">
         ${sections.map(sec => {
           const secCourses = COURSES.filter(c => c.section === sec);
           return `
           <div class="section-head"><p class="section-label">${sec}</p></div>
           ${secCourses.map(c => {
-            const on   = S.courses.has(c.id);
+            const st   = courseState(c.id);
             const open = !!(S._expandedCourses && S._expandedCourses.has(c.id));
             const m    = REQ_META[COURSE_REQ[c.id]];
             return `
-            <div class="cpick-row" style="margin-bottom:8px;">
-              <button type="button" id="fpick-${c.id}" class="topic-pick-btn" style="${on ? 'border-color:rgba(29,158,117,0.55);background:rgba(29,158,117,0.09);' : ''}"
-                      aria-pressed="${on}" onclick="toggleCourseFull('${c.id}')">
+            <div class="ccard${st !== 'none' ? ' picked' : ''}" id="ccard-${c.id}">
+              <div class="ccard-head">
                 <!-- Wraps rather than truncating: "General Chemistr…" is the same
                      string for two different classes, and this row is the only
                      place the difference gets decided. -->
-                <span class="tp-name" style="color:${on ? 'var(--green-bright)' : 'var(--ink)'};line-height:1.3;">${c.name}</span>
+                <span class="ccard-name">${c.name}</span>
                 ${m ? `<span class="cpick-badge" style="color:${m.color};background:${m.bg};">${m.short}</span>` : ''}
-                <span class="tp-arrow" style="color:${on ? 'var(--green-bright)' : 'var(--dim)'};">${on ? '✓' : '+'}</span>
-              </button>
-              <button type="button" class="cpick-info${open ? ' open' : ''}" onclick="toggleCourseExpand('${c.id}')"
-                      aria-expanded="${open}" aria-label="What ${c.name} covers on the MCAT">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              </button>
-            </div>
-            ${open ? `<div class="course-topics-panel">${courseTopicsBreakdown(c.id)}</div>` : ''}`;
+                <button type="button" class="cpick-info${open ? ' open' : ''}" onclick="toggleCourseExpand('${c.id}')"
+                        aria-expanded="${open}" aria-label="What ${c.name} covers on the MCAT">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                </button>
+              </div>
+              <div class="cst-group" id="cst-${c.id}" role="group" aria-label="${c.name}">${courseStateHTML(c.id)}</div>
+              ${open ? `<div class="course-topics-panel" style="margin:12px 8px 0 0;">${courseTopicsBreakdown(c.id)}</div>` : ''}
+            </div>`;
           }).join('')}
         `;}).join('')}
+        <div style="height:12px;"></div>
       </div>
-      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 calc(32px + env(safe-area-inset-bottom, 0px));flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
-        <p id="course-counter" style="text-align:center;font-size: var(--fs-13);color:var(--muted);margin:0 0 8px;font-weight:600;letter-spacing:var(--track-caps);${S.courses.size > 0 ? '' : 'display:none;'}">${S.courses.size} course${S.courses.size !== 1 ? 's' : ''} selected</p>
-        <button class="btn btn-primary" style="flex-shrink:0;" onclick="finishCourses()">Calculate my coverage →</button>
+
+      <div class="picker-foot">
+        <p id="course-counter" class="picker-count" style="${n > 0 ? '' : 'visibility:hidden;'}">${n} course${n !== 1 ? 's' : ''} selected</p>
+        <button id="course-cta" class="btn btn-primary" ${n ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
       </div>
     </div>`;
 }
 
-// ── PASS TWO: THE CORRECTIONS SCREEN ─────────────────────────────────────────
-// Pass one asked which courses. This asks the two things pass one assumed: which
-// of them are finished, and when. Both are pre-answered, so the screen's real
-// job is to be skippable in one tap — it exists for the student whose situation
-// the default got wrong, and most people should never touch a control on it.
+// ── WHEN DID YOU TAKE THEM? ──────────────────────────────────────────────────
+// This used to be the second half of a "quick check" screen wedged between the
+// course picker and the number — a semester grid standing between a student and
+// the one thing they came for. It is not part of getting to the number: coverage
+// counts what a class teaches, not the month it was taught.
+//
+// So it waits. The Route offers it afterwards, as a way to sharpen a record that
+// already works without it. Nothing on it is required and nothing nags: a blank
+// row is a student who didn't say, which is a real answer and stays one.
 
 const TERM_GRID_COLS = 4, TERM_GRID_PAGES = 3;
 
@@ -9601,12 +9668,25 @@ function termShort(id) {
   return m ? TERM_SHORT[m[2]] + ' ' + m[1].slice(2) : '';
 }
 
+// The newest term a finished course may be dated to. currentTerm() follows the
+// semester start date the student typed, which Semester Sync accepts up to five
+// months out — so on its own it can name a term that has not happened, and
+// "I finished Orgo II in Spring 2027" is not an answer this grid should be able
+// to take. The calendar is the ceiling; the typed date can only move it back.
+function latestFinishedTerm(now = new Date()) {
+  const cal = termId(now.getFullYear(), seasonOfMonth(now.getMonth()));
+  const cur = currentTerm(now);
+  return termRank(cur) < termRank(cal) ? cur : cal;
+}
+
 // Four terms at a time, newest first, with a pager rather than a per-course
 // "Earlier…". A term the student already saved is always shown wherever it falls,
 // so their own answer can never disappear from the grid that holds it.
 function termGridColumns(ids) {
-  const page = Math.min(S._termPage || 0, TERM_GRID_PAGES - 1);
-  const cols = recentTerms(TERM_GRID_COLS * (page + 1)).slice(page * TERM_GRID_COLS);
+  const page    = Math.min(S._termPage || 0, TERM_GRID_PAGES - 1);
+  const ceiling = termRank(latestFinishedTerm());
+  const past    = recentTerms(TERM_GRID_COLS * TERM_GRID_PAGES + 3).filter(t => termRank(t) <= ceiling);
+  const cols    = past.slice(page * TERM_GRID_COLS, (page + 1) * TERM_GRID_COLS);
   ids.forEach(id => {
     const t = S.courseWhen[id];
     if (t && TERM_RE.test(t) && cols.indexOf(t) === -1) cols.push(t);
@@ -9616,123 +9696,96 @@ function termGridColumns(ids) {
 
 // One tap per row. Tapping the term that is already set clears it — "not sure"
 // stays a real answer, and it stays the default.
-function ccSetTerm(id, term) {
+function termsSetTerm(id, term) {
   if (S.courseWhen[id] === term) delete S.courseWhen[id];
   else S.courseWhen[id] = term;
   if (window.plausible) plausible('course_term', { props: { answer: S.courseWhen[id] || 'not_sure' } });
   save();
-  ccPaint();
+  termsPaint();
 }
 
-function ccSetStatus(id, state) {
-  if (S.courseStatus[id] === state) return;
-  S.courseStatus[id] = state;
-  // A term belongs to a finished course. Going back to "taking" makes it this
-  // term by derivation, so a stored date would be a second, contradictory answer.
-  if (state === 'in-progress') delete S.courseWhen[id];
-  save();
-  ccPaint();
-}
-
-function ccTermPage(n) {
+function termsPage(n) {
   S._termPage = Math.max(0, Math.min(n, TERM_GRID_PAGES - 1));
-  ccPaint();
+  termsPaint();
 }
 
-// Patched, not re-rendered: marking one course done makes a row appear in the
-// grid below, and a full render would replay the fade-up under the finger that
-// caused it.
-function ccPaint() {
-  if (S.screen !== 'confirm') { render(); return; }
-  ccList().forEach(c => {
-    const box = document.getElementById('ccsb-' + c.id);
-    if (box) box.innerHTML = ccStatusButtonsHTML(c.id);
-  });
-  const terms = document.getElementById('cc-terms');
-  if (terms) terms.innerHTML = ccTermsHTML();
-  // Marking a class "Taking" is exactly what makes this offer apply, so leaving
-  // it until the next full render would hide it at the moment it becomes true.
-  const syl = document.getElementById('cc-syllabus');
-  if (syl) syl.innerHTML = ccSyllabusOfferHTML();
+// Patched, not re-rendered: a full render would replay the fade-up under the
+// finger that caused it.
+function termsPaint() {
+  if (S.screen !== 'terms') { render(); return; }
+  const grid = document.getElementById('terms-grid');
+  if (grid) grid.innerHTML = termsGridHTML();
+  else render();
 }
 
-function ccList() {
-  return COURSES.filter(c => S.courses.has(c.id));
+// Every finished course, in catalog order. A class in progress is this term by
+// definition, so it is never asked about and never listed here.
+function finishedCourses() {
+  return COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'completed');
 }
 
-function ccSyllabusOfferHTML() {
-  if (!unmappedCourses().length) return '';
-  return `<button onclick="syllabusAddAnother()" class="link-btn full" style="margin-top:var(--s-4);">Turn a syllabus into an MCAT plan →</button>`;
+// The Route's offer. Absent when there is nothing to date, and worded by whether
+// the student has already answered — an offer to "add" what is already there
+// reads as if the app lost it.
+function termsLinkHTML() {
+  const done = finishedCourses();
+  if (!done.length) return '';
+  const dated = done.filter(c => TERM_RE.test(S.courseWhen[c.id] || '')).length;
+  const label = dated === done.length ? 'Change when you took your classes →'
+              : dated                 ? 'Finish saying when you took your classes →'
+              :                         'Say when you took your finished classes →';
+  return `<button class="link-btn full quiet" onclick="go('terms')">${label}</button>`;
 }
 
-function ccStatusButtonsHTML(id) {
-  const st = S.courseStatus[id];
-  return `<button type="button" class="csb${st === 'in-progress' ? ' csb-ip' : ''}" onclick="ccSetStatus('${id}','in-progress')">${st === 'in-progress' ? '<span class="pulse-dot"></span>' : ''}Taking</button>` +
-         `<button type="button" class="csb${st === 'completed' ? ' csb-done' : ''}" onclick="ccSetStatus('${id}','completed')">${st === 'completed' ? '\u2713 ' : ''}Done</button>`;
-}
-
-function ccTermsHTML() {
-  const done = ccList().filter(c => S.courseStatus[c.id] === 'completed');
+function termsGridHTML() {
+  const done = finishedCourses();
   if (!done.length) return '';
   const cols = termGridColumns(done.map(c => c.id));
   const page = Math.min(S._termPage || 0, TERM_GRID_PAGES - 1);
-  const grid = `grid-template-columns:minmax(0,1.6fr) repeat(${cols.length},minmax(0,1fr));`;
+  const grid = `grid-template-columns:minmax(0,1.7fr) repeat(${cols.length},minmax(0,1fr));`;
   return `
-      <div class="section-divider"></div>
-      <p class="label" style="margin-bottom:4px;">When did you take them?</p>
-      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 12px;">Optional. It puts your finished classes on a timeline — skip it and nothing is lost.</p>
       <div class="tgrid" style="${grid}">
         <div></div>
         ${cols.map(t => `<div class="tg-head">${termShort(t)}</div>`).join('')}
-        ${done.map(c => `
+        ${done.map(c => {
+          const set = S.courseWhen[c.id];
+          return `
           <div class="tg-label">${c.name}</div>
-          ${cols.map(t => `<button type="button" class="tg-cell${S.courseWhen[c.id] === t ? ' on' : ''}"
-            aria-pressed="${S.courseWhen[c.id] === t}" aria-label="${c.name}, ${termLabel(t)}"
-            onclick="ccSetTerm('${c.id}','${t}')">${S.courseWhen[c.id] === t ? '✓' : ''}</button>`).join('')}`).join('')}
+          ${cols.map(t => `<button type="button" class="tg-cell${set === t ? ' on' : ''}"
+            aria-pressed="${set === t}" aria-label="${c.name}, ${termLabel(t)}${set === t ? '' : ' — not set'}"
+            onclick="termsSetTerm('${c.id}','${t}')">${set === t ? '✓' : '<span class="tg-blank" aria-hidden="true">—</span>'}</button>`).join('')}`;
+        }).join('')}
       </div>
       <div style="display:flex;gap:16px;align-items:center;margin-top:8px;">
-        ${page < TERM_GRID_PAGES - 1 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="ccTermPage(${page + 1})">← Earlier</button>` : ''}
-        ${page > 0 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="ccTermPage(${page - 1})">Recent →</button>` : ''}
+        ${page < TERM_GRID_PAGES - 1 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page + 1})">← Earlier</button>` : ''}
+        ${page > 0 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page - 1})">Recent →</button>` : ''}
       </div>`;
 }
 
-function screenConfirmCourses() {
-  const list = ccList();
-  // Nothing to confirm is nothing to show. Reachable by a stale S.screen or by
-  // deselecting everything on the way here.
-  if (!list.length) { leaveCourseStatus(); return ''; }
-  const doneFirst = !!S._doneFirst;
+function screenTerms() {
+  const done = finishedCourses();
+  // Nothing to date is nothing to show. Reachable by clearing every finished
+  // course from the picker and coming back.
+  if (!done.length) { go('reveal'); return ''; }
 
   return `
     <div class="screen">
-      <button onclick="${S._statusFrom === 'brief' ? 'leaveCourseStatus()' : "go('courses')"}" class="back-btn quiet">
+      <button onclick="go('reveal')" class="back-btn quiet">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Back
       </button>
       <p class="label">Your courses</p>
-      <h2>Quick check</h2>
-      <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.55;margin:8px 0 20px;">${doneFirst
-        ? 'We counted all ' + list.length + ' as finished. Change any you\'re taking right now — otherwise carry on.'
-        : 'We counted all ' + list.length + ' as this term\'s. Change any you\'ve already finished — otherwise carry on.'}</p>
+      <h2>When did you take them?</h2>
+      <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.55;margin:8px 0 4px;">Optional. It puts your finished classes on a timeline — skip it and your coverage is exactly the same.</p>
+      <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin:0 0 20px;">A dash means you haven't said, which is fine. Tap a term to set it, tap it again to clear it.</p>
 
-      <div class="courses-scroll" style="padding-bottom:80px;">
-        ${list.map(c => `
-          <div class="course-row" style="align-items:center;">
-            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size: var(--fs-15);color:var(--ink);">${c.name}</span>
-            <div id="ccsb-${c.id}" style="display:flex;gap:4px;flex-shrink:0;">${ccStatusButtonsHTML(c.id)}</div>
-          </div>`).join('')}
-
-        <div id="cc-terms">${ccTermsHTML()}</div>
-
-        <!-- The syllabus offer used to hang off in-progress rows on the picker.
-             The picker's rows are one tap now, so it moves here, where the
-             student has just finished saying which classes they're in — one
-             line for the whole set rather than a link under every row. -->
-        <div id="cc-syllabus">${ccSyllabusOfferHTML()}</div>
+      <div class="courses-scroll">
+        <div id="terms-grid">${termsGridHTML()}</div>
+        <div style="height:12px;"></div>
       </div>
 
-      <div style="position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent);padding:12px 0 calc(32px + env(safe-area-inset-bottom, 0px));flex-shrink:0;margin:0 -4px;padding-left:4px;padding-right:4px;">
-        <button class="btn btn-primary" onclick="leaveCourseStatus()">Looks right →</button>
+      <div class="picker-foot">
+        <button class="btn btn-primary" onclick="go('reveal')">Back to my route →</button>
       </div>
     </div>`;
 }
@@ -9905,6 +9958,7 @@ function screenReveal() {
   // (practiceSessions). Four questions in, there is a route to look at but no
   // progress to share. A milestone card keeps its own "Share this".
   const tail = `      ${cov > 0 && practiceSessions() >= HELD_MIN_SESSIONS ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
+      ${termsLinkHTML()}
       <button class="btn btn-ghost" onclick="go('courses')">← Update my courses</button>`;
 
   const middle = first ? [cta, ask, body] : [ask, body, cta];
@@ -10059,12 +10113,47 @@ function acctSpend(surface) {
   save();
 }
 
+// Whether this surface's block is the one currently mid-exchange — it typed an
+// address, it sent the link, and it owns whatever syncState now says. Transient
+// and never persisted, like every other _ field: a message cannot outlive the
+// visit that produced it.
+function acctOwns(surface) {
+  return !!(S._acct && S._acct.surface === surface);
+}
+
+// The whole of the send. It calls the same sendMagicLink() the Settings box
+// calls and reads the same syncState it sets — there is one auth path in this
+// file and this is not a second one.
+async function acctSend(surface) {
+  const el = document.getElementById('acct-email-' + surface);
+  S._acct = { surface, email: el ? el.value.trim() : '' };
+  // Same event name it has always had: the student took the offer up. What
+  // changed is that taking it up no longer means leaving the screen.
+  if (window.plausible) plausible('acct_prompt_open', { props: { surface: surface || 'complete' } });
+  await sendMagicLink(S._acct.email);   // sets syncState, then renders
+  // Spent only once a link is actually out. A typo or a dead network leaves the
+  // ask standing, because nothing has been asked and answered yet.
+  if (syncState.status === 'sent') { S.acctPrompt = 'all'; save(); return; }
+  // A rejected address deserves a cursor in the field that holds it, not a hunt
+  // back up the screen for it.
+  const again = document.getElementById('acct-email-' + surface);
+  if (syncState.status === 'error' && again && again.focus) again.focus();
+}
+
 // `surface` is 'reveal' or 'complete'. Each is spent on its own, so declining
 // the first still leaves the second — but declining is permanent for the surface
 // it was declined on. Waypoint gets one shot per moment, not one per visit.
+//
+// The ask is answered where it is asked. It used to hand off to Settings, which
+// took the highest-intent moment in the funnel — a student looking at a number
+// they just earned — and dropped it into a settings list between "Set a daily
+// reminder" and "Sync my semester", with the number two taps behind them. The
+// field is here, the answer lands here, and nothing navigates.
 function acctPromptHTML(surface) {
-  if (acctSpent(surface)) return '';
   if (authSession()) return '';
+  // Spent means asked and answered — except for the block that is mid-exchange,
+  // which has to stay on screen long enough to say how it went.
+  if (!acctOwns(surface) && acctSpent(surface)) return '';
 
   if (surface === 'complete') {
     if (S.sessionHistory.length < 2) return '';   // nothing to lose yet
@@ -10080,27 +10169,31 @@ function acctPromptHTML(surface) {
     ? 'Add your email to keep it →'
     : 'Add your email and Waypoint keeps it safe →';
 
+  const st   = acctOwns(surface) ? syncState.status : 'idle';
+  const tone = st === 'error' ? 'var(--amber)' : st === 'sent' ? 'var(--violet)' : 'var(--green-bright)';
+  const note = st !== 'idle' && syncState.message
+    ? `<p class="acct-note" style="color:${tone};">${esc(syncState.message)}</p>` : '';
+
+  // The link is out: the block becomes the receipt for it. Leaving the field and
+  // the button up would invite a second send of the same link, and the student's
+  // next move is the practice button, not this.
+  if (st === 'sent') return `<div class="acct-ask">${note}</div>`;
+
+  const working = st === 'working';
   return `
-    <div style="background:rgba(255,255,255,0.03);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;">
-      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 12px;">${line}</p>
-      <button class="btn btn-share" style="margin:0 0 4px;" onclick="acctPromptOpen('${surface}')">${cta}</button>
-      <button style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--faint);cursor:pointer;-webkit-tap-highlight-color:transparent;" onclick="acctPromptDismiss('${surface}')">Not now</button>
+    <div class="acct-ask">
+      <p class="acct-line">${line}</p>
+      ${note}
+      <input type="email" id="acct-email-${surface}" class="acct-email" placeholder="you@school.edu"
+             autocomplete="email" inputmode="email" enterkeyhint="send" value="${esc(acctOwns(surface) ? S._acct.email : '')}"
+             ${working ? 'disabled' : ''} onkeydown="if (event.key === 'Enter') { event.preventDefault(); acctSend('${surface}'); }">
+      <button class="btn btn-share" style="margin:0 0 4px;" ${working ? 'disabled' : ''} onclick="acctSend('${surface}')">${cta}</button>
+      <button class="acct-dismiss" onclick="acctPromptDismiss('${surface}')">Not now</button>
     </div>`;
 }
 
-function acctPromptOpen(surface) {
-  // Opening it is terminal on every surface — they are in the flow now, and
-  // being asked again on the next screen would be nagging.
-  S.acctPrompt = 'all';
-  save();
-  if (window.plausible) plausible('acct_prompt_open', { props: { surface: surface || 'complete' } });
-  go('settings');
-  // Settings is long and the account block sits mid-page — land them on it.
-  const el = document.getElementById('account-section');
-  if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
-}
-
 function acctPromptDismiss(surface) {
+  S._acct = null;
   acctSpend(surface || 'complete');
   if (window.plausible) plausible('acct_prompt_dismiss', { props: { surface: surface || 'complete' } });
   render();
@@ -10420,12 +10513,11 @@ function trackScreen(screen) {
 
 function go(screen) {
   trackScreen(screen);
-  if (screen !== 'courses') S._pickerMode = null;  // next visit re-decides simple vs full
-  if (screen !== 'confirm') S._termPage = 0;      // the grid always opens on the recent terms
-  // Set by openCourseStatus() immediately before go('confirm'), so this guard
-  // never sees it on the way in — only on the way out, where a stale value would
-  // send a later visit's Back button somewhere the student never came from.
-  if (screen !== 'confirm') S._statusFrom = null;
+  if (screen !== 'terms') S._termPage = 0;        // the grid always opens on the recent terms
+  // The picker is reachable from onboarding, from Home and from the Route, and
+  // each of those is a different "back". Recorded on the way in, while S.screen
+  // is still the screen being left.
+  if (screen === 'courses') S._coursesFrom = ['year', 'brief', 'reveal'].includes(S.screen) ? S.screen : 'brief';
   // The first reveal keeps its own order for as long as the student is on it —
   // through the account ask, through a re-render — and ends when they leave.
   if (screen !== 'reveal') { S._firstReveal = false; S._revealAnimated = false; S._covMilestone = undefined; }
@@ -10443,12 +10535,9 @@ function selectYear(year) {
   go('courses');
 }
 
-// Pass one is over. The full picker asked one question and assumed the answer to
-// a second, so it hands off to the screen that lets the assumption be corrected.
-// The simple picker assumed nothing — everything on it is this term by
-// definition, and this term's date is derived — so it goes straight through.
+// There is nothing left to confirm. Every course carries its own answer now, so
+// the picker hands straight to the number — the screen the student came for.
 function finishCourses() {
-  if (S._pickerMode === 'full' && S.courses.size > 0) { go('confirm'); return; }
   revealCourses();
 }
 
@@ -10457,68 +10546,11 @@ function revealCourses() {
   if (S.year && S.courses.size > 0) {
     if (window.plausible) plausible('onboarding_complete');
   }
-  // Transient, like _pickerMode — never persisted, so it cannot survive into a
+  // Transient, like _coursesFrom — never persisted, so it cannot survive into a
   // later visit to the Route. Gated on having practised nothing yet, so someone
   // editing their courses months in doesn't get the first-run theater again.
   S._firstReveal = S.sessionHistory.length === 0 && S.totalAnswered === 0;
   go('reveal');
-}
-
-// Simple picker: multi-select, patched in place. A full render here would replay
-// the fade-up and jump the scroll position while tapping down a list of classes.
-function toggleCourseSimple(id) {
-  if (S.courseStatus[id] === 'in-progress') { S.courses.delete(id); delete S.courseStatus[id]; }
-  else { S.courses.add(id); S.courseStatus[id] = 'in-progress'; }
-  save();
-  const row = document.getElementById('spick-' + id);
-  if (!row) { render(); return; }
-  const on = S.courseStatus[id] === 'in-progress';
-  row.style.borderColor = on ? 'rgba(29,158,117,0.55)' : '';
-  row.style.background  = on ? 'rgba(29,158,117,0.09)'  : '';
-  row.setAttribute('aria-pressed', String(on));
-  const name = row.querySelector('.tp-name');
-  if (name) name.style.color = on ? 'var(--green-bright)' : 'var(--ink)';
-  const arrow = row.querySelector('.tp-arrow');
-  if (arrow) { arrow.textContent = on ? '✓' : '+'; arrow.style.color = on ? 'var(--green-bright)' : 'var(--dim)'; }
-  const n = S.courses.size;
-  const counter = document.getElementById('simple-counter');
-  if (counter) { counter.textContent = n + ' course' + (n !== 1 ? 's' : '') + ' selected'; counter.style.display = n > 0 ? '' : 'none'; }
-  const cta = document.getElementById('simple-cta');
-  if (cta) cta.disabled = n === 0;
-}
-
-// Full picker, pass one: one tap per course, patched in place for the same
-// reason the simple picker patches — a full render replays the fade-up and throws
-// the scroll position half way down twelve classes. The status a tap implies is
-// decided once per visit and stated on screen; pass two is where it gets fixed.
-function toggleCourseFull(id) {
-  if (S.courses.has(id)) {
-    S.courses.delete(id);
-    delete S.courseStatus[id];
-    // The term belonged to a course they no longer claim. Keeping it would
-    // re-attach silently if they tapped the course again later.
-    delete S.courseWhen[id];
-  } else {
-    S.courses.add(id);
-    S.courseStatus[id] = S._doneFirst ? 'completed' : 'in-progress';
-  }
-  save();
-  const row = document.getElementById('fpick-' + id);
-  if (!row) { render(); return; }
-  const on = S.courses.has(id);
-  row.style.borderColor = on ? 'rgba(29,158,117,0.55)' : '';
-  row.style.background  = on ? 'rgba(29,158,117,0.09)'  : '';
-  row.setAttribute('aria-pressed', String(on));
-  const name = row.querySelector('.tp-name');
-  if (name) name.style.color = on ? 'var(--green-bright)' : 'var(--ink)';
-  const arrow = row.querySelector('.tp-arrow');
-  if (arrow) { arrow.textContent = on ? '✓' : '+'; arrow.style.color = on ? 'var(--green-bright)' : 'var(--dim)'; }
-  const counter = document.getElementById('course-counter');
-  if (counter) {
-    const n = S.courses.size;
-    counter.textContent = n + ' course' + (n !== 1 ? 's' : '') + ' selected';
-    counter.style.display = n > 0 ? '' : 'none';
-  }
 }
 
 function startSession() {
@@ -11204,7 +11236,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, confirm:40, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, sources:50 };
+const PROG = { landing:0, brief:10, year:15, courses:30, terms:50, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, sources:50 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -11371,7 +11403,10 @@ function render() {
     case 'brief':    html += screenBrief();    break;
     case 'year':     html += screenYear();     break;
     case 'courses':  html += screenCourses();  break;
-    case 'confirm':  html += screenConfirmCourses(); break;
+    case 'terms':    html += screenTerms();    break;
+    // Retired: one course screen carries all three states now, so there is
+    // nothing left to confirm. A tab left open across the deploy lands on it.
+    case 'confirm':  S.screen = 'courses'; html += screenCourses(); break;
     case 'reveal':   html += screenReveal();   break;
     case 'question': html += screenQuestion(); break;
     case 'complete': html += screenComplete(); break;
