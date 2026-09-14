@@ -564,6 +564,36 @@
      is what it is and a perfectly good answer. */
   .tg-cell .tg-blank { color: var(--dim); }
 
+  /* The inline account ask. Quiet by design — the practice button above it is
+     the loud one — and it never grows past the height of the three lines it
+     needs, so the number it sits under stays on screen with it. */
+  .acct-ask {
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--r-card);
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .acct-line { font-size: var(--fs-13); color: var(--muted); line-height: 1.55; margin: 0 0 12px; }
+  .acct-note { font-size: var(--fs-13); line-height: 1.55; margin: -4px 0 12px; }
+  .acct-email {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--r-ctl);
+    padding: 12px;
+    margin-bottom: 12px;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--fs-15);
+    min-height: 44px;
+  }
+  .acct-email:disabled { opacity: 0.6; }
+  .acct-dismiss {
+    background: none; border: none; padding: 0; min-height: 44px;
+    font-family: inherit; font-size: var(--fs-13); font-weight: 600;
+    color: var(--faint); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+
   /* Retention nudge card */
   .nudge-card {
     background: rgba(99,102,241,0.08);
@@ -5502,7 +5532,7 @@ const SUPABASE_URL = 'https://xaldfseldfqctmplfpfu.supabase.co';
 // which restricts every row in user_state to its own auth.uid().
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhbGRmc2VsZGZxY3RtcGxmcGZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNjI5MjMsImV4cCI6MjEwMTYzODkyM30.7536ZuABjA5kvBxgEmgtHZj1rpHPQnrms4hE2UhP0U8';
 
-let syncState = { status: 'idle', message: '' }; // drives the Settings UI only
+let syncState = { status: 'idle', message: '' }; // drives the Settings box and the inline account ask
 let pushTimer = null;
 
 function authSession() {
@@ -10083,12 +10113,47 @@ function acctSpend(surface) {
   save();
 }
 
+// Whether this surface's block is the one currently mid-exchange — it typed an
+// address, it sent the link, and it owns whatever syncState now says. Transient
+// and never persisted, like every other _ field: a message cannot outlive the
+// visit that produced it.
+function acctOwns(surface) {
+  return !!(S._acct && S._acct.surface === surface);
+}
+
+// The whole of the send. It calls the same sendMagicLink() the Settings box
+// calls and reads the same syncState it sets — there is one auth path in this
+// file and this is not a second one.
+async function acctSend(surface) {
+  const el = document.getElementById('acct-email-' + surface);
+  S._acct = { surface, email: el ? el.value.trim() : '' };
+  // Same event name it has always had: the student took the offer up. What
+  // changed is that taking it up no longer means leaving the screen.
+  if (window.plausible) plausible('acct_prompt_open', { props: { surface: surface || 'complete' } });
+  await sendMagicLink(S._acct.email);   // sets syncState, then renders
+  // Spent only once a link is actually out. A typo or a dead network leaves the
+  // ask standing, because nothing has been asked and answered yet.
+  if (syncState.status === 'sent') { S.acctPrompt = 'all'; save(); return; }
+  // A rejected address deserves a cursor in the field that holds it, not a hunt
+  // back up the screen for it.
+  const again = document.getElementById('acct-email-' + surface);
+  if (syncState.status === 'error' && again && again.focus) again.focus();
+}
+
 // `surface` is 'reveal' or 'complete'. Each is spent on its own, so declining
 // the first still leaves the second — but declining is permanent for the surface
 // it was declined on. Waypoint gets one shot per moment, not one per visit.
+//
+// The ask is answered where it is asked. It used to hand off to Settings, which
+// took the highest-intent moment in the funnel — a student looking at a number
+// they just earned — and dropped it into a settings list between "Set a daily
+// reminder" and "Sync my semester", with the number two taps behind them. The
+// field is here, the answer lands here, and nothing navigates.
 function acctPromptHTML(surface) {
-  if (acctSpent(surface)) return '';
   if (authSession()) return '';
+  // Spent means asked and answered — except for the block that is mid-exchange,
+  // which has to stay on screen long enough to say how it went.
+  if (!acctOwns(surface) && acctSpent(surface)) return '';
 
   if (surface === 'complete') {
     if (S.sessionHistory.length < 2) return '';   // nothing to lose yet
@@ -10104,27 +10169,31 @@ function acctPromptHTML(surface) {
     ? 'Add your email to keep it →'
     : 'Add your email and Waypoint keeps it safe →';
 
+  const st   = acctOwns(surface) ? syncState.status : 'idle';
+  const tone = st === 'error' ? 'var(--amber)' : st === 'sent' ? 'var(--violet)' : 'var(--green-bright)';
+  const note = st !== 'idle' && syncState.message
+    ? `<p class="acct-note" style="color:${tone};">${esc(syncState.message)}</p>` : '';
+
+  // The link is out: the block becomes the receipt for it. Leaving the field and
+  // the button up would invite a second send of the same link, and the student's
+  // next move is the practice button, not this.
+  if (st === 'sent') return `<div class="acct-ask">${note}</div>`;
+
+  const working = st === 'working';
   return `
-    <div style="background:rgba(255,255,255,0.03);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;">
-      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 12px;">${line}</p>
-      <button class="btn btn-share" style="margin:0 0 4px;" onclick="acctPromptOpen('${surface}')">${cta}</button>
-      <button style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--faint);cursor:pointer;-webkit-tap-highlight-color:transparent;" onclick="acctPromptDismiss('${surface}')">Not now</button>
+    <div class="acct-ask">
+      <p class="acct-line">${line}</p>
+      ${note}
+      <input type="email" id="acct-email-${surface}" class="acct-email" placeholder="you@school.edu"
+             autocomplete="email" inputmode="email" enterkeyhint="send" value="${esc(acctOwns(surface) ? S._acct.email : '')}"
+             ${working ? 'disabled' : ''} onkeydown="if (event.key === 'Enter') { event.preventDefault(); acctSend('${surface}'); }">
+      <button class="btn btn-share" style="margin:0 0 4px;" ${working ? 'disabled' : ''} onclick="acctSend('${surface}')">${cta}</button>
+      <button class="acct-dismiss" onclick="acctPromptDismiss('${surface}')">Not now</button>
     </div>`;
 }
 
-function acctPromptOpen(surface) {
-  // Opening it is terminal on every surface — they are in the flow now, and
-  // being asked again on the next screen would be nagging.
-  S.acctPrompt = 'all';
-  save();
-  if (window.plausible) plausible('acct_prompt_open', { props: { surface: surface || 'complete' } });
-  go('settings');
-  // Settings is long and the account block sits mid-page — land them on it.
-  const el = document.getElementById('account-section');
-  if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
-}
-
 function acctPromptDismiss(surface) {
+  S._acct = null;
   acctSpend(surface || 'complete');
   if (window.plausible) plausible('acct_prompt_dismiss', { props: { surface: surface || 'complete' } });
   render();
