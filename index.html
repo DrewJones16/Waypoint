@@ -5888,6 +5888,26 @@ function markTopicsSeen(topicIds) {
 //
 // The one deliberate exception is sync ("Synced 3 hours ago"): wp_updated_at is
 // an instant, and how long ago an instant was is elapsed time, not a day count.
+//
+// Stamps written before this, by the UTC isoDate(). Fixed forward, never
+// rewritten: they are wrong by at most one day, only for practice after 6pm
+// Mountain, and each corrects itself the next time that topic is practised.
+// Only topicLastSeen carries them — wp_lastDate and sessionHistory were always
+// local toDateString(), and the brief weeks were already local. Old and new
+// stamps mix without a crash or an impossible value (future stamps clamp to 0);
+// what remains is a one-day skew on those historical entries:
+//   - freshness: an old evening stamp reads a day younger, so the topic stays
+//     fresh (60), fading (180) and un-nudged (21/42) one day longer;
+//   - wording: read the next morning it says "Practiced today";
+//   - topicsSeenToday: on the evening it was written it is not "today", and the
+//     next day it is — so "another 5" can offer that topic once more that evening;
+//   - practiceSessions: two practices either side of 6pm on one day, both
+//     recorded by the old code, still count as two dates. A new practice the
+//     morning after an old evening stamp can share its date and count as one —
+//     the gate errs shut;
+//   - daysOnRecord: can under-count by a day (the claim gate errs shut);
+//   - courseLastSeen: ranks that course a day more recent.
+// None of these is compensated for; they age out with the data.
 const DAY_MS = 86400000;
 const ISO_DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -8653,7 +8673,10 @@ function daysOnRecord(now = new Date()) {
   const gaps = [...(S.sessionHistory || []).map(h => h && h.date), ...Object.values(S.topicLastSeen || {})]
     .map(v => daysBetween(v, now)).filter(n => !isNaN(n));
   if (!gaps.length) return null;
-  return Math.max(...gaps);
+  // Never negative: a stamp written by the old UTC isoDate() on an evening can
+  // name tomorrow, and "-1 days on record" is not a number. Same clamp as
+  // topicFreshness().
+  return Math.max(0, ...gaps);
 }
 
 // Week 10 of a known semester, or — with no semester on file — two months of
