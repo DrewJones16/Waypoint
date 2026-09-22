@@ -7352,7 +7352,9 @@ function screenPace() {
   const courseId = S.paceCourse;
   const course   = COURSES.find(c => c.id === courseId);
   const units    = courseId ? courseTimeline(courseId) : [];
-  if (!course || !units.length) { go('brief'); return ''; }
+  // No course to re-anchor — a stale tab, or a course dropped from the picker
+  // since. Home's markup, not go(): see screenTerms().
+  if (!course || !units.length) { S.screen = 'brief'; return screenBrief(); }
 
   const currentKey = currentUnitKey(courseId);
   const offset     = paceOffset(courseId);
@@ -7982,7 +7984,8 @@ function sessionDays() {
 // unit?" into "because the plan says so, and I can see the plan."
 function screenExamPlan() {
   const plan = midtermPlan();
-  if (!plan) { go('brief'); return ''; }
+  // The exam was cleared, or the tab predates it. Home's markup, not go().
+  if (!plan) { S.screen = 'brief'; return screenBrief(); }
 
   const back = `
     <div class="brief-topbar">
@@ -10398,7 +10401,11 @@ function screenTerms() {
   const done = finishedCourses();
   // Nothing to date is nothing to show. Reachable by clearing every finished
   // course from the picker and coming back.
-  if (!done.length) { go('reveal'); return ''; }
+  //
+  // Hands back the Route's markup rather than calling go(): go() re-renders,
+  // and then this render finishes and paints its own empty string over the top,
+  // which is a blank screen.
+  if (!done.length) { S.screen = 'reveal'; return screenReveal(); }
 
   return `
     <div class="screen">
@@ -10610,7 +10617,16 @@ ${tail}
 
 function screenQuestion() {
   const q = S.session[S.idx];
-  if (!q) { go('complete'); return ''; }
+  // Off the end of the session, or a tab reopened with no session in memory.
+  // Answers on record mean the session really did finish and the results screen
+  // is the right landing; none means there was never a session to finish, and
+  // the results screen would grade an empty one. Markup, not go(): see
+  // screenTerms().
+  if (!q) {
+    const finished = S.answers.length > 0;
+    S.screen = finished ? 'complete' : 'brief';
+    return finished ? screenComplete() : screenBrief();
+  }
 
   const topicObj = TOPICS.find(t => t.id === q.topic);
   const answered = S.answered !== null;
@@ -12171,9 +12187,12 @@ function playFirstReveal() {
 function render() {
   try {
   const el = document.getElementById('app');
-  const pct = PROG[S.screen] || 0;
 
-  let html = `<div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`;
+  // The screen is chosen first and the progress bar built after, because a
+  // screen may redirect to another one on the way through (an empty session
+  // lands on Home) — and a bar drawn beforehand would show the width of the
+  // screen we didn't render.
+  let html = '';
   switch (S.screen) {
     case 'landing':  html += screenLanding();  break;
     case 'brief':    html += screenBrief();    break;
@@ -12204,6 +12223,8 @@ function render() {
     // explainers moved to 'coverage' — must never render an empty shell.
     default: S.screen = 'brief'; html += screenBrief(); break;
   }
+
+  html = `<div class="prog-bar"><div class="prog-fill" style="width:${PROG[S.screen] || 0}%"></div></div>` + html;
 
   const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
   if (showTabBar) {
