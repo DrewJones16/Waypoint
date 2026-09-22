@@ -9473,6 +9473,136 @@ function screenCoverage() {
     </div>`;
 }
 
+// ── HOW YOUR NUMBER WAS BUILT ─────────────────────────────────────────────────
+// Reliability you can check in one tap, for the student who will never open the
+// Sources page. It answers "is this real?" with the student's own transcript
+// rather than with a methodology.
+//
+// No new arithmetic. Every figure here is a term of the same sum coverage()
+// computes, through the same courseCredit() — a course you're taking counts
+// half, a finished one counts in full — so the rows add up to the headline by
+// construction rather than by agreement. The only presentation decision is that
+// a half-credit course shows its exact half (6.5, not 7): rounding each row
+// would make an honest column that does not add up.
+
+// Halves are exact in binary floating point and every contribution is a
+// multiple of one, so this only ever has to choose between "9" and "6.5".
+function covPoints(n) {
+  const v = Math.round(n * 2) / 2;
+  return v % 1 === 0 ? String(v) : v.toFixed(1);
+}
+
+// One row per course, grouped by the section it contributes to. Computed per
+// (course, section) rather than per course, so a course that ever taught across
+// two sections would split correctly instead of landing in whichever one its
+// first topic belongs to.
+function coverageContributions() {
+  const groups = MCAT_SECTIONS.map(sec => ({ sec, rows: [], points: 0 }));
+  const byId = {};
+  groups.forEach(g => byId[g.sec.id] = g);
+
+  COURSES.forEach(c => {
+    if (!S.courses.has(c.id)) return;
+    const credit = courseCredit(c.id);
+    const per = {};
+    TOPICS.forEach(t => {
+      if (t.course !== c.id) return;
+      per[t.mcat] = (per[t.mcat] || 0) + t.w * credit;
+    });
+    Object.keys(per).forEach(k => {
+      const g = byId[k];
+      if (!g) return;
+      // A course whose topics all carry weight 0 (Statistics) still earns its
+      // row: it is on the route and it is tested, just not as its own share of
+      // questions. The row says "skill" where the others say a number.
+      g.rows.push({ course: c, points: per[k], credit, full: TOPICS.filter(t => t.course === c.id).reduce((n, t) => n + t.w, 0) });
+      g.points += per[k];
+    });
+  });
+
+  groups.forEach(g => g.rows.sort((a, b) => b.points - a.points || b.full - a.full));
+  const live = groups.filter(g => g.rows.length);
+  return { groups: live, raw: live.reduce((n, g) => n + g.points, 0) };
+}
+
+function screenExplain() {
+  // Nothing to explain without a route. Same shape as screenTerms(): bounce
+  // rather than render an empty page someone arrived at from a stale tab.
+  if (S.courses.size === 0) { go('reveal'); return ''; }
+
+  const cov = coverage(S.courses, true);
+  const { groups, raw } = coverageContributions();
+
+  // The biggest single thing on the student's route, named so the rule has a
+  // worked example in their own courses rather than in an invented one.
+  const all = groups.reduce((a, g) => a.concat(g.rows), []);
+  const top = all.slice().sort((a, b) => b.full - a.full)[0] || null;
+  const worked = !top || top.full === 0 ? ''
+    : top.credit === 1
+      ? `Your biggest single piece is <strong style="color:var(--ink-2);">${top.course.name}</strong>, worth ${top.full}% of MCAT content. You've finished it, so all ${top.full} count.`
+      : `Your biggest single piece is <strong style="color:var(--ink-2);">${top.course.name}</strong>, worth ${top.full}% of MCAT content. You're taking it now, so ${covPoints(top.full / 2)} of that counts until you mark it done.`;
+
+  const mark = credit => credit === 1
+    ? `<span class="bd-mark" style="background:rgba(29,158,117,0.16);color:var(--green-bright);">✓</span>`
+    : `<span class="bd-mark" style="background:rgba(245,179,106,0.16);color:var(--amber);">½</span>`;
+
+  const rows = g => g.rows.map(r => `
+            <div class="bd-row">
+              <span class="bd-name">${mark(r.credit)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.course.name}</span>
+                <span style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${r.credit === 1 ? 'done' : 'taking'}</span></span>
+              <span class="bd-w" style="color:${r.points > 0 ? 'var(--green-bright)' : 'var(--muted)'};">${r.full === 0 ? 'skill' : covPoints(r.points) + '%'}</span>
+            </div>`).join('');
+
+  // Shown only when the halves actually make the sum a fraction, which is the
+  // only time the two figures differ and the only time a student would notice.
+  const rounding = covPoints(raw) !== String(cov)
+    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:8px 0 0;">Your route shows ${cov}% — the same ${covPoints(raw)}, rounded to a whole number.</p>`
+    : '';
+
+  return `
+    <div class="screen" style="padding-bottom:48px;">
+      <div class="brief-topbar">
+        <button onclick="go('reveal')" class="back-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back
+        </button>
+      </div>
+
+      <p class="label">Your route</p>
+      <!-- A route of nothing but Statistics is 0%, and "Where your 0% comes
+           from" reads as a verdict on the class. That student can't reach this
+           screen from the Route at all — there is no number to tap — but a
+           stale tab can, and it should still read as arithmetic. -->
+      <h2 style="margin-bottom:8px;">${cov > 0 ? `Where your ${cov}% comes from.` : 'How your route is counted.'}</h2>
+      <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:${worked ? '12' : '20'}px;">Every course you've marked counts for the MCAT content it teaches. A course you've finished counts in full; one you're taking now counts half until you mark it done.</p>
+      ${worked ? `<p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:20px;">${worked}</p>` : ''}
+
+      ${groups.map(g => `
+        <div style="margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
+            <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);"><span style="display:inline-flex;color:var(--green);">${sectionIcon(g.sec.id)}</span>${g.sec.short}</span>
+            <span style="font-size: var(--fs-11);color:var(--muted);flex-shrink:0;">${covPoints(g.points)}%</span>
+          </div>
+          ${rows(g)}
+        </div>`).join('')}
+
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius: var(--r-card);padding:16px;margin-bottom:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size: var(--fs-15);color:var(--ink);"><span>Add them up</span><strong style="color:var(--green-bright);">${covPoints(raw)}%</strong></div>
+        ${rounding}
+        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:8px 0 0;">Courses can reach 77% between them. The other 23% is CARS — a reading skill no class teaches.</p>
+      </div>
+
+      <div class="section-divider"></div>
+      <p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">Section balance</p>
+      ${sectionBalanceHTML({ bare: true })}
+
+      <div class="section-divider"></div>
+      <button onclick="openSources()" class="link-btn full">See the whole derivation →</button>
+      <button onclick="go('coverage')" class="link-btn full quiet">How the Coverage Model works →</button>
+      <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
+    </div>`;
+}
+
 // ── Sources ──────────────────────────────────────────────────────────────────
 // Waypoint's claim is that it knows where a premed stands, and every number it
 // shows is that claim in practice. A student who checks — and premeds check, on
@@ -9993,7 +10123,15 @@ function screenReveal() {
   // counts the headline up and sweeps the ring together, exactly as before.
   const head = cov > 0 ? `      <p class="label">Your route</p>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px;">
-        <h1 style="margin:0;min-width:0;"><span class="disp" id="cov-num" data-count="${cov}" style="display:block;font-size: var(--fs-display);font-weight:800;color:var(--ink);line-height:1;letter-spacing:-0.03em;">${cov}%</span><span style="display:block;font-family:inherit;font-size: var(--fs-17);font-weight:600;color:var(--ink-2);line-height:1.3;margin-top:8px;letter-spacing:-0.01em;">of the MCAT covered</span></h1>
+        <!-- The number is a button, because a figure a student can't interrogate
+             is a figure they have to take on faith. One tap opens the same sum
+             built out of their own courses. The <button> sits INSIDE the <h1>
+             rather than around it — the heading stays a heading, and #cov-num
+             and the ring's [data-target] keep their names, so the first-reveal
+             animation is untouched. No aria-label: the button's own content is
+             the heading's text, and a label would replace "38% of the MCAT
+             covered" with a description of the link for anyone reading it. -->
+        <h1 style="margin:0;min-width:0;"><button onclick="go('explain')" title="See where this number comes from" style="display:block;background:none;border:none;padding:0;margin:0;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;min-width:0;"><span class="disp" id="cov-num" data-count="${cov}" style="display:block;font-size: var(--fs-display);font-weight:800;color:var(--ink);line-height:1;letter-spacing:-0.03em;">${cov}%</span><span style="display:block;font-family:inherit;font-size: var(--fs-17);font-weight:600;color:var(--ink-2);line-height:1.3;margin-top:8px;letter-spacing:-0.01em;">of the MCAT covered</span></button></h1>
         <div style="position:relative;flex-shrink:0;width:88px;height:88px;" aria-hidden="true">
           <svg width="88" height="88" viewBox="0 0 112 112" style="transform:rotate(-90deg);position:absolute;inset:0;">
             <circle cx="56" cy="56" r="${ringR}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="11"/>
@@ -10009,9 +10147,13 @@ function screenReveal() {
       <h2 style="margin-bottom:4px;">${headline}</h2>
       <p id="reveal-subhead" style="font-size: var(--fs-15);margin-bottom:22px;">${subhead}</p>`;
 
+  // Still one link under the number, but it now leads to the student's own
+  // derivation rather than to the methodology. The methodology is one further
+  // tap from there, which is the right order: whose number is this, then how
+  // is the model built.
   const ring = `      ${cov > 0 ? `
         <div style="margin:0 0 20px;">
-          <button onclick="go('coverage')" class="link-btn">How the Coverage Model works →</button>
+          <button onclick="go('explain')" class="link-btn">Where this number comes from →</button>
         </div>` : ''}`;
 
   // On a first reveal this block follows the practice button rather than
@@ -11348,7 +11490,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, terms:50, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, sources:50 };
+const PROG = { landing:0, brief:10, year:15, courses:30, terms:50, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, explain:50, sources:50 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -11419,6 +11561,16 @@ let ringAnimKey = null;
 // The entrance for the coverage ring. The markup already paints the true value,
 // so this only ever ADDS an animation — skipping it leaves the number correct.
 // `force` is for the first-reveal beat, which always plays.
+// Every .sec-bar-fill in `root` sweeps from 0 to its data-w after a paint
+// delay. One definition, because two screens draw these bars and a bar that
+// only animates on one of them is a bar that is wrong on the other.
+function fillSectionBars(root) {
+  if (!root) return;
+  setTimeout(() => {
+    root.querySelectorAll('.sec-bar-fill').forEach(el => { el.style.width = el.dataset.w + '%'; });
+  }, 120);
+}
+
 function animateCoverageRing(force) {
   const ring = document.querySelector('[data-target]');
   const cn   = document.getElementById('cov-num');
@@ -11529,6 +11681,7 @@ function render() {
     case 'examplan': html += screenExamPlan(); break;
     case 'syllabus': html += screenSyllabus(); break;
     case 'coverage': html += screenCoverage(); break;
+    case 'explain':  html += screenExplain();  break;
     case 'sources':  html += screenSources();  break;
     case 'quicklog':          html += screenQuickLog();         break;
     // Retired: topic and subtopic are one screen now. A stale S.screen (an
@@ -11555,14 +11708,12 @@ function render() {
     const m = document.getElementById('sectioned-map');
     if (m) {
       m.innerHTML = sectionedMapHTML();
-      // Animate section bars after a short paint delay
-      setTimeout(() => {
-        m.querySelectorAll('.sec-bar-fill').forEach(el => {
-          el.style.width = el.dataset.w + '%';
-        });
-      }, 120);
+      fillSectionBars(m);
     }
   }
+  // Section balance renders on the tap-to-explain screen too, and a bar left at
+  // width:0 reads as "none of it", which is the opposite of what it says.
+  if (S.screen === 'explain') fillSectionBars(el);
   if (S.screen === 'complete') {
     const m = document.getElementById('map-mini');
     if (m) m.innerHTML = mapHTML(true, todayTopics());
