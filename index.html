@@ -5178,6 +5178,7 @@ const S = {
   briefs:    [],      // [{weekStart, coverage, totalAnswered, ...}] — Sunday Brief snapshots
   briefSeen: null,    // weekStart of the most recently dismissed brief
   remindAsked: 0,     // the daily-reminder offer is made once, after session 3
+  termCardSeen: null, // termId whose end-of-term snapshot card has been waved off
   // Which surfaces have spent their account invitation, comma separated.
   // This was a 0/1 "asked once, anywhere, never again" flag. The ask now has two
   // moments — the reveal, where the number first lands, and the end of a session
@@ -5195,7 +5196,7 @@ const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
                  'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
-                 'wp_upcoming','wp_pace_offset','wp_acct_prompt'];
+                 'wp_upcoming','wp_pace_offset','wp_acct_prompt','wp_term_card'];
 
 // The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
 // files (which users share and store) and out of the cloud payload. It is
@@ -5250,6 +5251,9 @@ function save() {
   localStorage.setItem('wp_brief_seen', S.briefSeen || '');
   localStorage.setItem('wp_remind_asked', S.remindAsked ? '1' : '');
   localStorage.setItem('wp_acct_prompt', S.acctPrompt || '');
+  // A plain string, deliberately: a damaged value here costs one card's
+  // dismissal and can never trip load()'s catch.
+  localStorage.setItem('wp_term_card', S.termCardSeen || '');
   // Stamp every write so cloud sync can tell which side is newer. Harmless and
   // inert when logged out; schedulePush() returns immediately without a session.
   localStorage.setItem('wp_updated_at', new Date().toISOString());
@@ -5359,6 +5363,8 @@ function load() {
     // and declined, and 'all' is what they chose.
     const ap = localStorage.getItem('wp_acct_prompt') || '';
     S.acctPrompt = ap === '1' ? 'all' : ap;
+    const tc = localStorage.getItem('wp_term_card') || '';
+    S.termCardSeen = TERM_RE.test(tc) ? tc : null;
     if (migratedUpcoming) {
       const mt = localStorage.getItem('wp_midterm');
       if (mt) {
@@ -7178,14 +7184,18 @@ function weekStartISO(now = new Date()) {
 // topic was practised, so a topic whose stamp lands on or after this week's
 // Sunday is a topic practised this week. Ids left behind by an older TOPICS
 // list are dropped rather than counted.
-function topicsPracticedThisWeek(now = new Date()) {
-  const start = dayIndex(weekStartISO(now));
+function topicsPracticedSince(startISO) {
+  const start = dayIndex(startISO);
   if (isNaN(start)) return 0;
   return Object.keys(S.topicLastSeen).filter(tid => {
     if (!TOPICS.some(t => t.id === tid)) return false;
     const k = dayIndex(S.topicLastSeen[tid]);
     return !isNaN(k) && k >= start;
   }).length;
+}
+
+function topicsPracticedThisWeek(now = new Date()) {
+  return topicsPracticedSince(weekStartISO(now));
 }
 
 // A percentage over fewer questions than this is noise presented as judgement,
@@ -7421,6 +7431,113 @@ function briefCardHTML() {
       : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">That's today's ground covered. Come back tomorrow and the week keeps building.</p>`;
 
   return card('var(--green)', 'Your week', headline, body, cta,
+              { tint: 'var(--green-bright)', titleSize: 'var(--fs-17)', gap: 22, aside: dismiss });
+}
+
+// ── THE END-OF-TERM SNAPSHOT ──────────────────────────────────────────────────
+// A term is the unit a premed's life is actually measured in, and the end of one
+// is the moment they have something to say about it. So Waypoint offers a card:
+// what the term's finished coursework covers, and how much ground was practised
+// inside it.
+//
+// Everything here comes from data that already exists. The window is
+// semesterWeek() over wp_sem_start; which term it is, is currentTerm(); which
+// courses belong to it, is wp_course_when. With no semester start on file there
+// is no window and no card — the card is not offered rather than guessed at.
+//
+// The PACING tables are fifteen weeks, so week 14 is the end of term. The far
+// edge is week 21: past ~150 days currentTerm() stops trusting wp_sem_start and
+// falls back to the calendar, and a card that named the wrong term would be
+// worse than no card.
+const TERM_CARD_FROM  = 14;
+const TERM_CARD_UNTIL = 21;
+
+// AAMC rounds its own published discipline shares to the nearest 5%, so every
+// weight in this app inherits that grain. A share card is where a figure travels
+// furthest from its derivation and where "38%" would most look like a
+// measurement, so this is the one surface that rounds all the way back out to
+// the precision the inputs actually have.
+function aboutCoverage(n) {
+  const v = Math.round(n / 5) * 5;
+  if (n > 0 && v === 0) return 'under 5%';
+  return `about ${v}%`;
+}
+
+// Everything the card says, or null when there is nothing honest to say.
+function termSnapshot(now = new Date()) {
+  const wk = semesterWeek(S.semStart, now);
+  if (wk === null || wk < TERM_CARD_FROM || wk > TERM_CARD_UNTIL) return null;
+  const term  = currentTerm(now);
+  const label = termLabel(term);
+  if (!label) return null;
+
+  // Tagged to this term AND finished. An in-progress class hasn't banked its
+  // weight yet, and a finished class with no term on it belongs to a term
+  // nobody has named — counting it here would be inventing the date.
+  const finished = COURSES.filter(c => S.courses.has(c.id)
+                                    && S.courseStatus[c.id] === 'completed'
+                                    && S.courseWhen[c.id] === term);
+  const gained = finished.reduce((n, c) =>
+    n + TOPICS.filter(t => t.course === c.id).reduce((m, t) => m + t.w, 0), 0);
+  const topics = topicsPracticedSince(S.semStart);
+
+  // A term with nothing in it gets no card. Nothing here is a demand, and an
+  // empty summary offered as an achievement is the worst version of one.
+  if (gained === 0 && topics === 0) return null;
+
+  // A route of nothing but Statistics covers 0% — it is tested as a skill, not
+  // as its own share of questions. That student can practise all term and the
+  // card's own headline would still read "about 0% of the MCAT covered", which
+  // is a true sentence and a cruel thing to hand someone. No card.
+  const cov = coverage(S.courses, true);
+  if (cov === 0) return null;
+
+  return { term, label, finished, gained, topics, week: wk, cov };
+}
+
+function dismissTermCard() {
+  const t = termSnapshot();
+  if (t) { S.termCardSeen = t.term; save(); }
+  if (window.plausible) plausible('term_card_dismiss');
+  render();
+}
+
+// One card on Home, for the weeks a term is ending. It inherits the share gate
+// the Route's "Share my progress" button uses — two sessions — because the card
+// exists to be shared and an offer to share nothing is not an offer. It can be
+// waved off, once per term, and it retires by itself when the window closes.
+function termCardHTML() {
+  const t = termSnapshot();
+  if (!t) return '';
+  if (S.termCardSeen === t.term) return '';
+  if (practiceSessions() < HELD_MIN_SESSIONS) return '';
+
+  const names = t.finished.map(c => `<strong style="color:var(--ink-2);">${c.name}</strong>`);
+  const list  = names.length === 1 ? names[0]
+              : names.length === 2 ? names.join(' and ')
+              : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+
+  // "Coursework covering about 5% of the MCAT" is the true sentence. "5% more
+  // than you started with" would not be: a class you were already taking was
+  // counting half all term, so finishing it moves the number by half of that.
+  const finishedLine = t.finished.length
+    ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 8px;">You finished ${list} — coursework covering ${aboutCoverage(t.gained)} of the MCAT.</p>`
+    : '';
+  // "And 2 distinct topics…" needs the sentence before it. Without a finished
+  // class there isn't one, and the "And" is left standing on its own.
+  const practiceLine = t.topics
+    ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">${t.finished.length ? 'And ' : ''}<strong style="color:var(--ink-2);">${t.topics}</strong> distinct topic${t.topics !== 1 ? 's' : ''} practiced since the term started.</p>`
+    : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">That's this term's ground, on the map for good.</p>`;
+
+  const dismiss = `<button style="background:none;border:none;font-size: var(--fs-11);color:var(--faint);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;min-height:44px;padding:0 8px;margin:-16px -8px;-webkit-tap-highlight-color:transparent;" onclick="dismissTermCard()">Not now</button>`;
+
+  const cta = `<button class="btn btn-share" style="margin:0;font-size: var(--fs-13);padding:12px 16px;" onclick="shareCoverageCard('term', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share this term</button>`;
+
+  // Green, like every other coverage surface — this card is about ground
+  // covered. Violet belongs to the Twist, which is the card most likely to be
+  // sitting directly above it.
+  return card('var(--green)', t.label, 'That\'s a term on the map.',
+              finishedLine + practiceLine, cta,
               { tint: 'var(--green-bright)', titleSize: 'var(--fs-17)', gap: 22, aside: dismiss });
 }
 
@@ -9058,6 +9175,7 @@ function screenBrief() {
       </div>
 
       ${todayCardHTML()}
+      ${termCardHTML()}
 
       <button class="link-btn full" onclick="go('quicklog')">Practice a specific topic →</button>
       <!-- The syllabus offer moved to the foot of the check screen last sprint,
@@ -9526,9 +9644,11 @@ function coverageContributions() {
 }
 
 function screenExplain() {
-  // Nothing to explain without a route. Same shape as screenTerms(): bounce
-  // rather than render an empty page someone arrived at from a stale tab.
-  if (S.courses.size === 0) { go('reveal'); return ''; }
+  // Nothing to explain without a route — a stale tab, or a bookmark from before
+  // the courses were cleared. Hand back the Route's own markup rather than
+  // calling go(): go() re-renders, and then this render finishes and paints its
+  // own empty string over the top, which is a blank screen.
+  if (S.courses.size === 0) { S.screen = 'reveal'; return screenReveal(); }
 
   const cov = coverage(S.courses, true);
   const { groups, raw } = coverageContributions();
@@ -9785,11 +9905,23 @@ function setCourseState(id, state) {
     // re-attach silently if they marked the course again later.
     delete S.courseWhen[id];
   } else {
+    const was = courseState(id);
     S.courses.add(id);
     S.courseStatus[id] = state === 'done' ? 'completed' : 'in-progress';
     // A class you are taking is this term by derivation, so a stored date would
     // be a second, contradictory answer.
     if (state === 'taking') delete S.courseWhen[id];
+    // ...and finishing a class you were taking keeps that same derivation
+    // rather than throwing it away. courseTerm() answers currentTerm() for an
+    // in-progress course, so the class already sat under this term on the
+    // timeline; without this it dropped into the untagged pile the moment it
+    // was marked done. Only on that one transition — 'Not yet' straight to
+    // 'Done' is a class from some earlier term, and dating it now would be a
+    // guess. Never overwrites a term the student typed themselves.
+    if (state === 'done' && was === 'taking' && !S.courseWhen[id]) {
+      const term = currentTerm();
+      if (TERM_RE.test(term || '')) S.courseWhen[id] = term;
+    }
   }
   save();
   const box = document.getElementById('cst-' + id);
@@ -11176,12 +11308,17 @@ async function deliverShare({ canvas, filename, title, text }) {
 }
 
 async function shareCoverageCard(variant = 'coverage', btn) {
-  if (window.plausible) plausible('share_card');
+  if (window.plausible) plausible('share_card', { props: { variant } });
   const cov   = coverage(S.courses, true);
   const myTopics    = TOPICS.filter(t => t.course && S.courses.has(t.course));
   const totalTopics = TOPICS.filter(t => t.course).length;
   const streak = S.streak;
   const isStreak = variant === 'streak' && streak >= 7;
+  // The term card is offered only inside its window, and the window can close
+  // between the render that offered it and the tap. Falling back to the route
+  // card is better than painting a term that has stopped being this one.
+  const snap    = variant === 'term' ? termSnapshot() : null;
+  const isTerm  = !!snap;
 
   // Sharing should feel instant — show a loading state on the button right away
   // rather than leaving it looking like a dead click while the card renders.
@@ -11230,12 +11367,26 @@ async function shareCoverageCard(variant = 'coverage', btn) {
 
   ctx.fillStyle = tok('--muted');
   ctx.font = '500 28px "Inter", sans-serif';
-  ctx.fillText(isStreak ? 'My study streak' : 'My MCAT prep route', 70, 152);
+  ctx.fillText(isTerm ? snap.label : isStreak ? 'My study streak' : 'My MCAT prep route', 70, 152);
 
-  // Big number — coverage % or streak, depending on variant
+  // Big number — coverage %, streak, or the term's honestly-rounded coverage
   ctx.textAlign = 'center';
   ctx.fillStyle = tok('--ink');
-  if (isStreak) {
+  if (isTerm) {
+    // "about" carries the rounding where a reader can't miss it: the figure
+    // below is to the nearest 5, which is the grain AAMC's own published shares
+    // have. A card is where a number travels furthest from its derivation.
+    const rounded = Math.round(snap.cov / 5) * 5;
+    ctx.fillStyle = tok('--muted');
+    ctx.font = '700 34px "Space Grotesk", sans-serif';
+    ctx.fillText(snap.cov > 0 && rounded === 0 ? 'UNDER' : 'ABOUT', W / 2, 400);
+    ctx.fillStyle = tok('--ink');
+    ctx.font = '700 200px "Space Grotesk", sans-serif';
+    ctx.fillText(`${snap.cov > 0 && rounded === 0 ? 5 : rounded}%`, W / 2, 553);
+    ctx.fillStyle = tok('--green');
+    ctx.font = '600 40px "Inter", sans-serif';
+    ctx.fillText('of the MCAT covered', W / 2, 610);
+  } else if (isStreak) {
     ctx.font = '700 200px "Space Grotesk", sans-serif';
     ctx.fillText(`🔥 ${streak}`, W / 2, 540);
     ctx.fillStyle = tok('--green');
@@ -11262,7 +11413,25 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.stroke();
   roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.stroke();
 
-  if (isStreak) {
+  if (isTerm) {
+    // What the term's finished coursework covers. A term with nothing finished
+    // says so with a dash rather than with a zero dressed as a result.
+    ctx.fillStyle = tok('--ink');
+    ctx.font = '700 90px "Space Grotesk", sans-serif';
+    ctx.fillText(snap.gained > 0 ? `${Math.max(5, Math.round(snap.gained / 5) * 5)}%` : '—', cardX1 + cardW / 2, cardY + 120);
+    ctx.fillStyle = tok('--muted');
+    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.fillText(snap.gained > 0 ? 'finished this term' : 'still in progress', cardX1 + cardW / 2, cardY + 175);
+
+    // Distinct topics practised inside the term. A count, so it needs no
+    // rounding and gets none.
+    ctx.fillStyle = tok('--ink');
+    ctx.font = '700 90px "Space Grotesk", sans-serif';
+    ctx.fillText(String(snap.topics), cardX2 + cardW / 2, cardY + 120);
+    ctx.fillStyle = tok('--muted');
+    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.fillText(snap.topics === 1 ? 'topic practiced' : 'topics practiced', cardX2 + cardW / 2, cardY + 175);
+  } else if (isStreak) {
     // Coverage % card
     ctx.fillStyle = tok('--ink');
     ctx.font = '700 90px "Space Grotesk", sans-serif';
@@ -11299,7 +11468,9 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   // Tagline
   ctx.fillStyle = tok('--faint');
   ctx.font = '500 32px "Inter", sans-serif';
-  const taglineText = isStreak
+  const taglineText = isTerm
+    ? `${snap.label} is on the map. Coursework maps to MCAT content, so a semester finished is exam ground covered.`
+    : isStreak
     ? 'Consistency compounds — every day on track is a day closer to being ready.'
     : 'Building the habit one topic at a time, while the material is still in front of you.';
   const lines = wrapCanvasText(ctx, taglineText, W - 180);
@@ -11313,9 +11484,11 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   try {
     await deliverShare({
       canvas,
-      filename: isStreak ? 'waypoint-streak.png' : 'waypoint-progress.png',
-      title: 'My Waypoint progress',
-      text: isStreak
+      filename: isTerm ? 'waypoint-term.png' : isStreak ? 'waypoint-streak.png' : 'waypoint-progress.png',
+      title: isTerm ? `My ${snap.label}` : 'My Waypoint progress',
+      text: isTerm
+        ? `${snap.label} done — ${aboutCoverage(snap.cov)} of the MCAT covered, tracked with Waypoint.`
+        : isStreak
         ? `I'm on a ${streak}-day Waypoint streak — tracking my MCAT coverage.`
         : `I've covered ${cov}% of the MCAT — tracked with Waypoint.`,
     });
