@@ -7265,26 +7265,34 @@ function buildBrief(now = new Date(), skip = null) {
   const prior = S.briefs.filter(b => b && b.weekStart && b.weekStart < weekStart).slice(-1)[0] || null;
   const cov = coverage(S.courses, true);
 
-  let answered, correct;
+  // The brief shows on a Sunday or a Monday and reports the week that just
+  // ended, so its "this week" runs from the last brief to now — NOT from the
+  // Sunday that weekStart names, which on the morning the brief appears is
+  // today. `since` is that same span as a date, so the topic count and the
+  // question count describe one period rather than two.
+  let answered, correct, since;
   if (prior && typeof prior.totalAnswered === 'number') {
     answered = Math.max(0, S.totalAnswered - prior.totalAnswered);
     correct  = Math.max(0, lifetimeCorrect() - (prior.lifetimeCorrect || 0));
+    since    = prior.weekStart;
   } else {
     // First brief: fall back to whatever sessions are still in history.
     // The last seven calendar days, today included.
     const recent = S.sessionHistory.filter(h => daysBetween(h.date, now) <= 6);
     answered = recent.reduce((n, h) => n + (h.total || 0), 0);
     correct  = recent.reduce((n, h) => n + (h.correct || 0), 0);
+    since    = isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6));
   }
 
   return {
     weekStart,
     coverage: cov,
     coverageDelta: prior ? cov - (prior.coverage || 0) : 0,
-    // The week's own unit, alongside the week's questions. Derived from
-    // topicLastSeen at read time, not from a brief snapshot — a student who
-    // never dismissed last week's brief still gets an accurate count.
-    topics: topicsPracticedThisWeek(now),
+    // The week's own unit, over the same span as the week's questions above.
+    // Derived from topicLastSeen at read time rather than from a snapshot, so a
+    // student who skipped three briefs gets a count of the period the questions
+    // beside it also cover, not of one week inside it.
+    topics: topicsPracticedSince(since),
     answered, correct,
     accuracy: answered > 0 ? Math.round(correct / answered * 100) : null,
     streak: S.streak,
