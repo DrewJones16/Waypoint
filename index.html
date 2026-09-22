@@ -6194,16 +6194,36 @@ const MAP_GAP = 2;
 const MAP_NAMES = { physics: 'Phys I', physics2: 'Phys II' };
 const mapName = t => MAP_NAMES[t.id] || TILE_NAMES[t.id] || t.name;
 
+// ── COVERED AND HELD, ON THE SAME TILE ────────────────────────────────────────
+// Two truths, one visual. The HEIGHT of a tile's fill is what your coursework
+// covers. The COLOUR of that fill is whether there is evidence you still hold
+// it: the brighter green means practised recently enough to count, and a small
+// dot in the corner carries the states a fill can't — fading, faded, and not
+// yet checked. The held layer adds no figure to the map.
+//
+// It inherits every gate held has always had. Off entirely until
+// freshnessActive() says there is a record worth describing, so a first session
+// never sees it. Never carried by enrollment: heldDisplayState() decides, and a
+// topic that reads fresh only because the student is sitting in the class shows
+// as "not yet checked", never as held. And the language stays that — never
+// "unpinned", never a loss.
 function routeMapHTML(opts) {
   const o = opts || {};
   const bands = routeMapBands(o.bandPx || MAP_BAND_PX);
   const idPrefix = o.idPrefix || 'rt';
+  // The landing card stands in an example student's shoes for S.courses but not
+  // for their practice record, so held there would be this visitor's freshness
+  // read against someone else's route. Static maps show coverage only.
+  const live = !o.static && freshnessActive();
 
   const body = bands.map(band => {
     const tiles = band.tiles.map(b => {
       const t    = b.topic;
       const fill = tileFill(t);
       const cars = t.mcat === 'cars';
+      const f    = live && t.course && S.courses.has(t.course) ? topicFreshness(t.id) : null;
+      const st   = f ? heldDisplayState(f) : null;
+      const held = st === 'fresh';
       // One line of 11px type needs about 20px of tile. Below that the tile is
       // colour and a tooltip; above it, the name; and only a tile with real room
       // carries a second line.
@@ -6214,6 +6234,12 @@ function routeMapHTML(opts) {
       const room = b.h >= 46;
       const ink  = fill > 0 ? 'var(--ink)' : cars ? 'var(--ink-2)' : 'var(--muted)';
       const base = cars ? 'rgba(245,158,11,0.09)' : 'rgba(255,255,255,0.03)';
+      // Held brightens the fill and rings the tile. Both, because on a
+      // half-filled tile the fill is only the bottom half, and the ring is what
+      // makes the state read across the whole of it.
+      const wash = held ? 'rgba(77,227,171,0.40)' : 'rgba(29,158,117,0.42)';
+      const ring = held ? 'rgba(77,227,171,0.45)' : 'transparent';
+      const dot  = st && st !== 'fresh' ? FRESH_META[st] : null;
       // A finished tile is already a filled tile — the word "covered" under it
       // says what the colour has said. Only the states the fill can't carry on
       // its own get a word.
@@ -6224,10 +6250,19 @@ function routeMapHTML(opts) {
       // invites claiming a class: the tooltip says what the course will cover
       // when they take it, not what adding it would do to their standing.
       const course = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
+      // Two taps, two questions. An empty tile asks "did you take this?"; a tile
+      // with a held state answers "where do I stand on it?" with the same detail
+      // line the timeline opens.
       const pick   = fill === 0 && course && !o.static;
-      const tip    = pick ? `Covered when you take ${course.name}` : t.name;
-      const tag    = pick ? 'button' : 'div';
-      const attrs  = pick ? ` onclick="go('courses')" style="border:none;font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;` : ' style="';
+      const tell   = !!f && !pick;
+      const tip    = pick ? `Covered when you take ${course.name}`
+                   : f    ? f.why.replace(/<[^>]+>/g, '').replace(/"/g, '&quot;')
+                   :        t.name;
+      const tag    = pick || tell ? 'button' : 'div';
+      const click  = pick ? `go('courses')` : tell ? `toggleMapTile('${t.id}')` : '';
+      const attrs  = tag === 'button'
+        ? ` onclick="${click}" aria-expanded="${S._mapOpen === t.id}" style="border:1px solid ${ring};font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;box-sizing:border-box;`
+        : ` style="border:1px solid ${ring};box-sizing:border-box;`;
 
       return `<div style="position:absolute;left:${b.left.toFixed(3)}%;top:${Math.round(b.top)}px;width:${b.width.toFixed(3)}%;height:${Math.round(b.h)}px;box-sizing:border-box;padding:0 ${MAP_GAP}px ${MAP_GAP}px 0;">
           <${tag} title="${tip}"${attrs}position:absolute;inset:0 ${MAP_GAP}px ${MAP_GAP}px 0;border-radius: var(--r-ctl);overflow:hidden;background:${base};padding:0;">
@@ -6236,8 +6271,13 @@ function routeMapHTML(opts) {
                  then correct on paint — the landing card, the share card, a
                  print — and the reveal animation is the one thing that resets
                  it to zero and plays it back up. -->
-            <div class="map-fill" data-fill="${Math.round(fill * 100)}" style="position:absolute;left:0;right:0;bottom:0;height:${Math.round(fill * 100)}%;background:rgba(29,158,117,0.42);transition:height 1s var(--ease);"></div>
-            ${name ? `<div style="position:absolute;inset:0;padding:3px;display:flex;flex-direction:column;justify-content:flex-start;gap:1px;overflow:hidden;">
+            <div class="map-fill" data-fill="${Math.round(fill * 100)}" style="position:absolute;left:0;right:0;bottom:0;height:${Math.round(fill * 100)}%;background:${wash};transition:height 1s var(--ease);"></div>
+            ${dot ? `<span style="position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-radius: var(--r-pill);box-sizing:border-box;background:${dot.hollow ? 'transparent' : dot.color};border:1px solid ${dot.color};"></span>` : ''}
+            <!-- 2px of horizontal padding, not 3: a held tile carries a 1px ring
+                 inside its own box, and those two pixels were what pushed
+                 "Genetics" — one unbreakable word on a three-percent tile — over
+                 the edge the moment a student practised it. -->
+            ${name ? `<div style="position:absolute;inset:0;padding:3px 2px;display:flex;flex-direction:column;justify-content:flex-start;gap:1px;overflow:hidden;">
               <!-- 600, not 700, and a hair of negative tracking: "Genetics" is
                    one unbreakable word and a three-percent tile gives it about
                    51px. At 700 it needed 52 and broke to "Genetic" / "s". Words
@@ -6261,20 +6301,32 @@ function routeMapHTML(opts) {
     ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:2px 0 0;">${skills.map(t => t.name).join(' and ')} ${skills.length === 1 ? 'is' : 'are'} tested as a skill across the sections rather than as a share of their own, so ${skills.length === 1 ? 'it has' : 'they have'} no tile.</p>`
     : '';
 
-  return `<div id="${idPrefix}-map">${body}${o.legend === false ? '' : mapLegendHTML()}${foot}</div>`;
+  const detail = live && S._mapOpen ? freshDetailHTML(S._mapOpen) : '';
+  return `<div id="${idPrefix}-map">${body}${detail}${o.legend === false ? '' : mapLegendHTML(live)}${foot}</div>`;
 }
 
 // A map needs a key. Three states, in the order a route fills them.
-function mapLegendHTML() {
+function toggleMapTile(tid) {
+  S._mapOpen = (S._mapOpen === tid) ? null : tid;
+  render();
+}
+
+function mapLegendHTML(live) {
   // Squares, not dots: the half-filled swatch is the one that has to read, and
   // a gradient across 10px of circle does not.
   const swatch = (bg, border) => `<span style="display:inline-block;width:10px;height:10px;border-radius:var(--r-ctl);box-sizing:border-box;background:${bg};${border ? 'border:1px solid ' + border + ';' : ''}vertical-align:-1px;margin-right:4px;"></span>`;
   const item = (sw, label) => `<span style="white-space:nowrap;">${sw}${label}</span>`;
-  return `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size: var(--fs-11);color:var(--faint);margin:4px 0 8px;">
-        ${item(swatch('rgba(29,158,117,0.42)'), 'finished — counts whole')}
+  const pip = st => `<span style="display:inline-block;width:8px;height:8px;border-radius: var(--r-pill);box-sizing:border-box;background:${FRESH_META[st].hollow ? 'transparent' : FRESH_META[st].color};border:1px solid ${FRESH_META[st].color};vertical-align:0;margin-right:4px;"></span>`;
+  const row = inner => `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size: var(--fs-11);color:var(--faint);margin:4px 0 8px;">${inner}</div>`;
+  // The second row arrives with the held layer and not before, so a student who
+  // has never practised is never handed a key to something they cannot see.
+  return row(`${item(swatch('rgba(29,158,117,0.42)'), 'finished — counts whole')}
         ${item(swatch('linear-gradient(to top, rgba(29,158,117,0.42) 50%, rgba(255,255,255,0.05) 50%)'), 'taking — counts half')}
-        ${item(swatch('rgba(255,255,255,0.05)', 'rgba(255,255,255,0.12)'), 'still ahead')}
-      </div>`;
+        ${item(swatch('rgba(255,255,255,0.05)', 'rgba(255,255,255,0.12)'), 'still ahead')}`)
+    + (live ? row(`${item(swatch('rgba(77,227,171,0.40)', 'rgba(77,227,171,0.45)'), 'practiced recently')}
+        ${item(pip('fading'), 'fading')}
+        ${item(pip('faded'), 'faded')}
+        ${item(pip('unpinned'), 'not yet checked')}`) : '');
 }
 
 // ── SECTIONED MAP (reveal screen) ─────────────────────────────────────────────
