@@ -7669,7 +7669,9 @@ function briefCardHTML() {
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">${sub}</p>
 
       <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:16px;">
-        ${stat(b.coverage + '%', 'covered')}
+        <!-- Rounded like the Route pill two inches above it. Raw, this read
+             "28% covered" beside "Route · 30%" on one screen. -->
+        ${stat(Math.round(b.coverage / 5) * 5 + '%', 'covered')}
         <!-- The week's questions are already in the headline; this slot used to
              repeat them. Distinct topics practised is the figure that changes
              week to week and isn't stated anywhere else on the card. -->
@@ -7726,6 +7728,13 @@ function aboutCoverage(n) {
   const v = Math.round(n / 5) * 5;
   if (n > 0 && v === 0) return 'under 5%';
   return `about ${v}%`;
+}
+
+// The same phrase opening a sentence. One rounding rule, two positions — never
+// a second place where the figure could be rounded differently.
+function aboutCoverageCap(n) {
+  const s = aboutCoverage(n);
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 // Everything the card says, or null when there is nothing honest to say.
@@ -10529,22 +10538,28 @@ function screenReveal() {
   // not two.
   const first = !!S._firstReveal;
 
-  // The headline is the territory line now, and the map under it is the figure.
-  // The percentage has retired into the tap-to-explain view: it was a grade to a
-  // grade-anxious audience, it topped out at 77% so a finished route still read
-  // as unfinished, and it claimed a precision AAMC's own rounding doesn't have.
+  // The headline is the territory line, and the map under it is the hero. What
+  // the percentage did badly was be the hero: it read as a grade to a
+  // grade-anxious audience, topped out at 77% so a finished route still looked
+  // unfinished, and claimed a precision AAMC's own rounding doesn't have.
   //
-  // What it did well was say what the amount MEANT, and that is exactly what the
-  // territory line does — derived from the same weighted figure internally, so
-  // nothing about the model changed, only what the student is shown.
+  // But it is a real answer to a real question, and a Route where the only way
+  // to see it was to tap through had gone one step too far. So it is back, one
+  // line down and one type size smaller: after the territory line, before the
+  // map, in the same green secondary line that was already the way in to the
+  // derivation. Rounded like every other figure that leaves the model.
   //
-  // The whole block is still one tap into the derivation, and #route-map keeps
-  // its name the way #cov-num used to: the first-reveal animation finds it there.
+  // Deliberately OUTSIDE the <h1>. The heading is the territory line alone —
+  // inside it, the figure would be part of the heading's accessible name, which
+  // is the one place this sprint decided a percentage does not belong.
+  //
+  // #route-map keeps its name the way #cov-num used to: the first-reveal
+  // animation finds it there.
   const head = cov > 0 ? `      <p class="label">Your route</p>
-      <h1 style="margin:0 0 14px;"><button onclick="go('explain')" title="See how this map is built" style="display:block;width:100%;background:none;border:none;padding:0;margin:0;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+      <h1 style="margin:0 0 4px;"><button onclick="go('explain')" title="See how this map is built" style="display:block;width:100%;background:none;border:none;padding:0;margin:0;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
         <span id="reveal-subhead" style="display:block;font-family:inherit;font-size: var(--fs-24);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.02em;">${subhead}</span>
-        <span style="display:block;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--green-bright);line-height:1.4;margin-top:6px;">Here's the exam, and what your classes have covered of it →</span>
-      </button></h1>` : `      <p class="label">Your route</p>
+      </button></h1>
+      <button onclick="go('explain')" class="link-btn" style="min-height:0;padding:2px 0 12px;line-height:1.4;">${aboutCoverageCap(cov)} of the MCAT&nbsp;covered&nbsp;&rarr;</button>` : `      <p class="label">Your route</p>
       <h2 style="margin-bottom:4px;">${headline}</h2>
       <p id="reveal-subhead" style="font-size: var(--fs-15);margin-bottom:22px;">${subhead}</p>`;
 
