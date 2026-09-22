@@ -6258,6 +6258,66 @@ function lockedMapHTML() {
   }).join('');
 }
 
+// ── SECTION BALANCE ───────────────────────────────────────────────────────────
+// Where the coverage sits, section by section. The One Number sprint took these
+// bars out of the Route sidebar because three percentages beside the headline
+// competed with it, and that decision stands: this lives at the foot of the map,
+// below the timeline and below what's still ahead, where nothing it says is
+// arguing with the hero.
+//
+// The arithmetic is sectionCoverage()'s, not a second copy of it — the same
+// weighted credit the headline uses, so a section can never disagree with the
+// number it is part of. CARS is absent for the reason it is absent everywhere:
+// no course teaches it.
+
+// Which section a student's coursework is thinnest in, stated as a fact about
+// the coursework and never as a deficiency. Ties are named together rather than
+// resolved arbitrarily, and a route that sits evenly says so instead of
+// inventing a weak spot. EVEN_SPREAD is the gap below which "thinnest" would be
+// a rounding artefact dressed up as a finding.
+const EVEN_SPREAD = 10;
+function sectionBalanceLine(sec) {
+  const keys = ['bb', 'cp', 'ps'];
+  const vals = keys.map(k => sec[k]);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi === 0) return '';
+  // Every course on the route is done. "About evenly" would be true and would
+  // also be the wrong thing to say to someone who has finished the sequence.
+  if (lo === 100) return 'Your coursework covers all three science sections.';
+  if (hi - lo < EVEN_SPREAD) return 'Your coursework sits about evenly across the three science sections.';
+  const names = keys.filter(k => sec[k] === lo)
+                    .map(k => (MCAT_SECTIONS.find(x => x.id === k) || {}).short)
+                    .filter(Boolean);
+  if (!names.length) return '';
+  const list = names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+  return `${list} ${names.length === 1 ? 'is' : 'are'} where your coursework is thinnest.`;
+}
+
+// `bare` drops the divider and heading, for a caller that provides its own.
+function sectionBalanceHTML(opts) {
+  const o = opts || {};
+  const sec = sectionCoverage(S.courses);
+  if (Math.max(sec.bb, sec.cp, sec.ps) === 0) return '';   // nothing to compare yet
+  const line = sectionBalanceLine(sec);
+
+  const rows = MCAT_SECTIONS.filter(x => x.id !== 'cars').map(x => `
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
+          <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-13);color:var(--ink-2);min-width:0;"><span style="display:inline-flex;color:var(--green);">${sectionIcon(x.id)}</span>${x.short}</span>
+          <span style="font-size: var(--fs-13);font-weight:700;color:${sec[x.id] > 0 ? 'var(--green-bright)' : 'var(--faint)'};flex-shrink:0;">${sec[x.id]}%</span>
+        </div>
+        <div style="height:3px;background:rgba(255,255,255,0.06);border-radius: var(--r-pill);overflow:hidden;">
+          <div class="sec-bar-fill" data-w="${sec[x.id]}" style="height:100%;width:0%;background:var(--green);border-radius: var(--r-pill);transition:width 1.2s ease;"></div>
+        </div>
+      </div>`).join('');
+
+  return `${o.bare ? '' : `<div class="section-divider"></div>
+      <p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">Section balance</p>`}
+      ${line ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">${line}</p>` : ''}
+      ${rows}
+      <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:4px 0 0;">Each bar is how much of that section's content your coursework covers. CARS isn't here — no class teaches it.</p>`;
+}
+
 function sectionedMapHTML() {
   // Off entirely until the student has practiced something — see freshnessActive().
   const live = freshnessActive();
@@ -6269,14 +6329,18 @@ function sectionedMapHTML() {
   const head = text => `<p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">${text}</p>`;
   // "Your semesters", not "where you've been": the newest group is the term the
   // student is sitting in right now, and a past-tense heading would misname it.
-  if (!timeline) return locked;
+  // Section balance closes the map: below the timeline and below what's still
+  // ahead, so the Route's first viewport still carries exactly one figure.
+  const balance = sectionBalanceHTML();
+  if (!timeline) return locked + balance;
   // Held closes the covered ground it describes. It used to sit directly under
   // the coverage headline, a second percentage in the hero; the top of the Route
   // body is no better for a returning student, whose body starts ~300px down.
   // Under the timeline it is next to the tiles it summarises and out of the
   // first viewport.
-  return (timeline ? head('Your semesters') + timeline + standingLineHTML() : '')
-       + (locked   ? `<div class="section-divider"></div>` + head('Still ahead') + locked : '');
+  return head('Your semesters') + timeline + standingLineHTML()
+       + (locked ? `<div class="section-divider"></div>` + head('Still ahead') + locked : '')
+       + balance;
 }
 
 // ── JOURNEY PATH (waypoint map) ────────────────────────────────────────────────
