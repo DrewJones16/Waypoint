@@ -7101,6 +7101,29 @@ function weekStartISO(now = new Date()) {
   return isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()));
 }
 
+// ── THE WEEK'S OWN UNIT ───────────────────────────────────────────────────────
+// Coverage moves a few times a year — when a class is added, when one is marked
+// done. A weekly surface that reports it is reporting the same figure it
+// reported last Sunday, which teaches a student that nothing they did counted.
+//
+// So the week gets a unit that actually moves: how many distinct topics they
+// practised in it. A count, never a percentage and never an accuracy figure —
+// both of those are judgements, and this is a record of ground touched.
+//
+// It needs no new key. topicLastSeen already holds the most recent date each
+// topic was practised, so a topic whose stamp lands on or after this week's
+// Sunday is a topic practised this week. Ids left behind by an older TOPICS
+// list are dropped rather than counted.
+function topicsPracticedThisWeek(now = new Date()) {
+  const start = dayIndex(weekStartISO(now));
+  if (isNaN(start)) return 0;
+  return Object.keys(S.topicLastSeen).filter(tid => {
+    if (!TOPICS.some(t => t.id === tid)) return false;
+    const k = dayIndex(S.topicLastSeen[tid]);
+    return !isNaN(k) && k >= start;
+  }).length;
+}
+
 // A percentage over fewer questions than this is noise presented as judgement,
 // so no accuracy figure anywhere is computed or shown below it.
 const ACCURACY_MIN_QUESTIONS = 5;
@@ -7184,6 +7207,10 @@ function buildBrief(now = new Date(), skip = null) {
     weekStart,
     coverage: cov,
     coverageDelta: prior ? cov - (prior.coverage || 0) : 0,
+    // The week's own unit, alongside the week's questions. Derived from
+    // topicLastSeen at read time, not from a brief snapshot — a student who
+    // never dismissed last week's brief still gets an accurate count.
+    topics: topicsPracticedThisWeek(now),
     answered, correct,
     accuracy: answered > 0 ? Math.round(correct / answered * 100) : null,
     streak: S.streak,
@@ -7304,7 +7331,10 @@ function briefCardHTML() {
 
       <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:16px;">
         ${stat(b.coverage + '%', 'covered')}
-        ${stat(b.answered, 'this week')}
+        <!-- The week's questions are already in the headline; this slot used to
+             repeat them. Distinct topics practised is the figure that changes
+             week to week and isn't stated anywhere else on the card. -->
+        ${stat(b.topics, b.topics === 1 ? 'topic practiced' : 'topics practiced')}
         ${stat(b.streak, b.streak === 1 ? 'day streak' : 'day streak')}
       </div>
 
@@ -10250,6 +10280,23 @@ function sessionStandingHTML() {
   return '';
 }
 
+// The week's unit, on the screen where it just moved. Same function the Brief
+// reports from, so the two can't disagree, and the same gates: a first session
+// has no week behind it, and a student without a real week of history gets no
+// weekly framing at all — the rule the Brief has always followed.
+//
+// A count, never a percentage. Nothing here grades the session.
+function weekTopicsHTML() {
+  if (isFirstEverSession()) return '';
+  if (!hasAWeek()) return '';
+  const n = topicsPracticedThisWeek();
+  if (n === 0) return '';   // can't happen after a session, and says nothing if it does
+  const text = n === 1
+    ? `<strong style="color:var(--ink);">One topic</strong> practiced this week so far.`
+    : `<strong style="color:var(--ink);">${n} distinct topics</strong> practiced this week.`;
+  return `<p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 20px;">${text}</p>`;
+}
+
 // A student's first questions ever, in subjects they are still learning, are
 // not a performance to grade. First ever = the curated first set, or nothing
 // answered before this session (totalAnswered already includes it), which also
@@ -10332,6 +10379,7 @@ function screenComplete() {
 
       ${closingLine}
       ${sessionStandingHTML()}
+      ${weekTopicsHTML()}
 
       <div class="today-note">
         <span class="today-dot"></span>practiced today
