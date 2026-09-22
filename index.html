@@ -5164,7 +5164,7 @@ const S = {
   totalAnswered:  0,    // lifetime question count
   sessionHistory: [],   // last 7 sessions [{date, correct, total}]
   milestonesShown: {}, // {10: true, 50: true, ...} — so milestone banners only show once
-  covMilestonesShown: {}, // {15: true, 22: true, ...} — coverage-% milestone banners
+  covMilestonesShown: {}, // {'bb-50': true, ...} — section milestones already shown
   topicLastSeen: {}, // {topicId: 'YYYY-MM-DD'} — last date the user engaged with this topic (session or quick-log)
   quickLog: null,      // { topicId, subtopicId, subtopicFallback } while a quick-log session is active
   quickLogTopic: null, // topicId chosen in step 1, waiting for subtopic pick
@@ -5178,6 +5178,7 @@ const S = {
   briefs:    [],      // [{weekStart, coverage, totalAnswered, ...}] — Sunday Brief snapshots
   briefSeen: null,    // weekStart of the most recently dismissed brief
   remindAsked: 0,     // the daily-reminder offer is made once, after session 3
+  termCardSeen: null, // termId whose end-of-term snapshot card has been waved off
   // Which surfaces have spent their account invitation, comma separated.
   // This was a 0/1 "asked once, anywhere, never again" flag. The ask now has two
   // moments — the reveal, where the number first lands, and the end of a session
@@ -5195,7 +5196,7 @@ const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
                  'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
-                 'wp_upcoming','wp_pace_offset','wp_acct_prompt'];
+                 'wp_upcoming','wp_pace_offset','wp_acct_prompt','wp_term_card'];
 
 // The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
 // files (which users share and store) and out of the cloud payload. It is
@@ -5250,6 +5251,9 @@ function save() {
   localStorage.setItem('wp_brief_seen', S.briefSeen || '');
   localStorage.setItem('wp_remind_asked', S.remindAsked ? '1' : '');
   localStorage.setItem('wp_acct_prompt', S.acctPrompt || '');
+  // A plain string, deliberately: a damaged value here costs one card's
+  // dismissal and can never trip load()'s catch.
+  localStorage.setItem('wp_term_card', S.termCardSeen || '');
   // Stamp every write so cloud sync can tell which side is newer. Harmless and
   // inert when logged out; schedulePush() returns immediately without a session.
   localStorage.setItem('wp_updated_at', new Date().toISOString());
@@ -5359,6 +5363,8 @@ function load() {
     // and declined, and 'all' is what they chose.
     const ap = localStorage.getItem('wp_acct_prompt') || '';
     S.acctPrompt = ap === '1' ? 'all' : ap;
+    const tc = localStorage.getItem('wp_term_card') || '';
+    S.termCardSeen = TERM_RE.test(tc) ? tc : null;
     if (migratedUpcoming) {
       const mt = localStorage.getItem('wp_midterm');
       if (mt) {
@@ -5743,11 +5749,17 @@ function exampleRoute() {
   EXAMPLE_ROUTE.taking.forEach(c => status[c] = 'in-progress');
   // Stand S in the example's shoes for the length of the call, the way
   // coverageAfterCourse() does, rather than reimplementing credit handling.
-  const prev = S.courseStatus;
+  const prevStatus = S.courseStatus, prevCourses = S.courses;
   S.courseStatus = status;
+  S.courses = courses;
   try {
-    return { cov: coverage(courses, true), sections: sectionCoverage(courses) };
-  } finally { S.courseStatus = prev; }
+    // The map is rendered here, inside the example's shoes, for the same reason
+    // the figures are: one renderer, one model, and a marketing card that cannot
+    // drift from the app it is advertising.
+    return { cov: coverage(courses, true), sections: sectionCoverage(courses),
+             map: routeMapHTML({ idPrefix: 'ex', bandPx: 220, legend: false,
+                                 sectionLabels: false, names: false, static: true }) };
+  } finally { S.courseStatus = prevStatus; S.courses = prevCourses; }
 }
 
 function coverage(courses, statusAware = false) {
@@ -5757,74 +5769,125 @@ function coverage(courses, statusAware = false) {
   }, 0));
 }
 
-// Coverage-percentage celebration moments — fire once each as the route fills in
-// Thresholds sit on the sequence totals these weights actually produce —
-// 16 / 31 / 64 with 77 the course-linked maximum. They moved when the weights
-// were re-derived; see the migration in load() that stops them re-firing for
-// anyone who had already passed them under the old numbers.
+// ── MILESTONES, IN AAMC'S OWN STRUCTURE ───────────────────────────────────────
+// These used to be thresholds on the coverage percentage — 12, 16, 31, 64, 77.
+// With the percentage retired from the hero, a milestone named after one is a
+// milestone named after a number the student no longer sees. So they are named
+// after the exam instead: AAMC's own sections, earned by weighted fill of that
+// section's content.
 //
-// The card sits under the reveal's headline number, so its copy never states a
-// percentage of its own — a threshold figure beside the student's real one reads
-// as a second, smaller score.
-const COVERAGE_MILESTONES = [
-  { at: 12, title: 'First waypoint reached',     text: 'The MCAT is on your route — and you\'re mapping it while the material is still in front of you.' },
-  { at: 16, title: 'Freshman benchmark cleared', text: 'Past what a standard freshman sequence adds up to. You\'re here, and you\'re just getting started.' },
-  { at: 31, title: 'Sophomore ground covered',   text: 'Past a standard sophomore\'s ground, with the biggest blocks still ahead.' },
-  { at: 64, title: 'Junior-year territory',      text: 'Past what a standard sequence adds up to by the end of junior year.' },
-  { at: 77, title: 'Full route unlocked',        text: 'Every course on your route is covered. From here, it\'s practice and retention.' },
-];
+// Earned by WEIGHTED FILL, never by touching a tagged topic. That distinction is
+// the whole design. A milestone that fired on "you have covered something in
+// Bio/Biochem" would fire for every student in their first semester, which is
+// exactly why counting AAMC's 31 content categories was rejected as a headline.
+// sectionCoverage() is the same weighted credit the rest of the app uses — an
+// in-progress class counts half here too — so a section fills over years.
+//
+// Why NOT foundational concepts. AAMC's ten foundational concepts are in
+// CONTENT_MAP and the brief allowed milestones at that level only if topics map
+// to them verifiably without inventing weights. They don't:
+//
+//   - CONTENT_MAP tags topics by undergraduate DISCIPLINE, not by weight. There
+//     is no published per-concept share of the exam to fill.
+//   - 9 of the 18 weighted topics appear under more than one concept, carrying
+//     59% of the exam's weight between them. Biochemistry alone (13%) sits in
+//     concepts 1, 2 and 5. Splitting that 13 across three concepts would mean
+//     choosing the split ourselves — inventing exactly the numbers the brief
+//     forbids.
+//   - Going by discipline tags instead reproduces the rejected category count:
+//     a freshman with Bio I and Gen Chem I already touches 7 of the 10 concepts,
+//     and it still cannot tell Bio I from Bio I + II.
+//
+// So there are no foundational-concept milestones. Section level is where the
+// weights actually exist.
 
-// The coverage weights were re-derived from AAMC's published figures, which
-// moved every milestone threshold. Keyed by threshold, the stored map would then
-// read as "unseen" for the new numbers and congratulate a returning student all
-// over again for ground they crossed months ago.
+// Shares of a SECTION's weighted content, not of the exam. Checked against the
+// standard sequence so each one lands in a different year rather than stacking:
+// Bio/Biochem crosses 25 with Bio I, 50 with Bio II and 100 with Biochem;
+// Chem/Physics crosses 25 with Gen Chem I and needs Physics II for 100;
+// Psych/Soc opens with Psychology and completes with Sociology.
+const SECTION_THRESHOLDS = [25, 50, 100];
+
+// CARS has no coursework foundation to complete — no class teaches it — so it
+// has no milestones, for the same reason it has no tile fill.
+function sectionMilestones() {
+  const out = [];
+  MCAT_SECTIONS.forEach(sec => {
+    if (sec.id === 'cars') return;
+    SECTION_THRESHOLDS.forEach(at => out.push({ id: `${sec.id}-${at}`, sec, at }));
+  });
+  return out;
+}
+
+const MILESTONE_LEVELS = {
+  25:  { label: 'on the board',
+         text: sec => `Your coursework now covers real ground in AAMC's ${sec.long} — that section is no longer all ahead of you.` },
+  50:  { label: 'past halfway',
+         text: sec => `More than half of what AAMC's ${sec.long} section tests is coursework you have already done.` },
+  100: { label: 'foundation complete',
+         text: sec => `Every course that maps to AAMC's ${sec.long} is behind you. What is left in that section is practice and retention.` },
+};
+
+function earnedMilestones() {
+  const fill = sectionCoverage(S.courses);
+  return sectionMilestones().filter(m => (fill[m.sec.id] || 0) >= m.at);
+}
+
+// The ratchet, per section. The highest threshold a section has ever shown is
+// read straight from wp_cov_milestones, and nothing at or below it is offered
+// again — so un-marking a course can never hand a milestone back to be re-earned.
+// Per section rather than globally: finishing Psych/Soc must not lock a student
+// out of their first Bio/Biochem milestone.
+function milestoneCeiling(secId) {
+  return SECTION_THRESHOLDS.reduce((hi, at) => S.covMilestonesShown[`${secId}-${at}`] ? Math.max(hi, at) : hi, 0);
+}
+
+// The milestones moved from percentage thresholds to AAMC's sections, so the
+// stored map reads as "unseen" for every new key and would congratulate a
+// returning student for four semesters of ground they crossed months ago.
 //
-// So: anyone who had seen at least one milestone has every threshold at or below
-// their current coverage marked as seen, once. A genuinely new user has an empty
-// map and is left alone — they should get their milestones.
+// So: everything already reached is marked, once. A student loading the app for
+// the first time has no courses yet, reaches nothing, and is marked nothing —
+// they get their milestones as they earn them. No check of who the user is;
+// the state at load() is the answer.
+//
+// The old numeric keys (12/16/31/64/77) and the v2 flag are left exactly where
+// they are. They are inert, and rewriting stored history to tidy it is not worth
+// the one thing that could go wrong.
 function migrateCovMilestones() {
-  if (S.covMilestonesShown.v2) return;
-  const seenAny = Object.keys(S.covMilestonesShown).length > 0;
-  if (seenAny) {
-    const cov = coverage(S.courses, true);
-    COVERAGE_MILESTONES.forEach(m => { if (cov >= m.at) S.covMilestonesShown[m.at] = true; });
-  }
-  S.covMilestonesShown.v2 = true;
+  if (S.covMilestonesShown.v3) return;
+  earnedMilestones().forEach(m => { S.covMilestonesShown[m.id] = true; });
+  S.covMilestonesShown.v3 = true;
   save();
 }
 
 // One card, the highest one earned, decided once per visit to the Route.
 //
 // This used to mark only the milestone it showed, and it runs on every render —
-// so a reveal at 38% showed "Sophomore ground covered", and the next render (a
-// tap on "Not now", a return from a session) found 16 still unseen and swapped
-// in "Freshman benchmark cleared". Now everything the student has passed is
-// marked at once, and the chosen card is held in S._covMilestone until they
-// leave the Route (go() clears it), so a re-render shows the same card rather
-// than the next one down.
-//
-// And a milestone never moves downward. The highest one a student has ever seen
-// is read straight from wp_cov_milestones, and nothing at or below it is shown
-// again — which also covers routes saved before this fix, where "31" was marked
-// seen and "16" was left waiting underneath it.
+// so a reveal showed one card and the next render swapped in the next one down.
+// Now everything the student has passed is marked at once, and the chosen card
+// is held in S._covMilestone until they leave the Route (go() clears it), so a
+// re-render shows the same card rather than the next one.
 function milestoneCopy() {
   if (S._covMilestone === undefined) {
-    const cov    = coverage(S.courses, true);
-    const top    = COVERAGE_MILESTONES.reduce((hi, m) => S.covMilestonesShown[m.at] ? m.at : hi, 0);
-    const earned = COVERAGE_MILESTONES.filter(m => cov >= m.at);
-    const hit    = earned.filter(m => !S.covMilestonesShown[m.at] && m.at > top);
-    S._covMilestone = hit.length ? hit[hit.length - 1].at : null;
+    const earned = earnedMilestones();
+    const hit    = earned.filter(m => !S.covMilestonesShown[m.id] && m.at > milestoneCeiling(m.sec.id));
+    // Highest threshold first, so the biggest thing they just did leads; section
+    // order breaks a tie, so the card is the same one on every render.
+    hit.sort((a, b) => b.at - a.at || MCAT_SECTIONS.indexOf(a.sec) - MCAT_SECTIONS.indexOf(b.sec));
+    S._covMilestone = hit.length ? hit[0].id : null;
     if (hit.length) {
-      earned.forEach(m => { S.covMilestonesShown[m.at] = true; });
+      earned.forEach(m => { S.covMilestonesShown[m.id] = true; });
       save();
     }
   }
-  const m = COVERAGE_MILESTONES.find(x => x.at === S._covMilestone);
+  const m = sectionMilestones().find(x => x.id === S._covMilestone);
   if (!m) return '';
+  const lvl = MILESTONE_LEVELS[m.at];
   return `<div class="cov-milestone-card">
     <div style="margin-bottom:12px;line-height:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
-    <div style="font-size: var(--fs-11);font-weight:800;color:var(--green-bright);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">${m.title}</div>
-    <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.55;margin-bottom:12px;">${m.text}</p>
+    <div style="font-size: var(--fs-11);font-weight:800;color:var(--green-bright);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">${m.sec.short} — ${lvl.label}</div>
+    <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.55;margin-bottom:12px;">${lvl.text(m.sec)}</p>
     <button class="btn btn-share" style="margin-top:0;font-size: var(--fs-13);padding:12px 16px;" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share this</button>
   </div>`;
 }
@@ -6061,6 +6124,262 @@ function mapHTML(mini, highlightTopics = new Set()) {
   }).join('');
 }
 
+// ── THE ROUTE MAP ─────────────────────────────────────────────────────────────
+// The hero. A map of the MCAT, not a score of it.
+//
+// A percentage was the wrong shape for what this screen has to say. It reads as
+// a grade to an audience already primed to read grades; its ceiling is 77%, so a
+// student who has taken every course still sees a number that looks unfinished;
+// and it claims a precision the inputs never had, since AAMC rounds its own
+// published discipline shares to the nearest 5%.
+//
+// A map has none of those problems. Every tile is a topic the exam actually
+// tests, its area is that topic's share of the exam, and the ground you have
+// covered is filled in. Nothing is out of 100 and nothing is a mark.
+//
+// Tiles are the weighted TOPICS this app has always used — NOT AAMC's 31 content
+// categories. No per-category weights exist; building them would mean inventing
+// numbers, and because categories count by discipline rather than by course they
+// saturate by sophomore year (a freshman with Bio I and Gen Chem I already
+// touches 15 of 31, and nothing distinguishes Bio I from Bio I + II).
+//
+// Tiles fill PARTIALLY, from the same weighted model as everything else: a class
+// you're taking fills half, a class you've finished fills whole. That partial
+// fill is what keeps the map honest where a category count would have gone solid
+// in year one.
+
+// Squarified treemap (Bruls, Huizing & van Wijk). Lays `items` into the given
+// rectangle with area proportional to value, preferring tiles near square —
+// which is what keeps a 1%-of-the-exam tile wide enough to carry its own name at
+// 375px rather than becoming an unreadable sliver.
+function squarify(items, x, y, w, h) {
+  const out = [];
+  const total = items.reduce((n, i) => n + i.value, 0);
+  if (total <= 0 || !items.length || w <= 0 || h <= 0) return out;
+  const scale = (w * h) / total;
+  let rest = items.slice().sort((a, b) => b.value - a.value);
+  let rx = x, ry = y, rw = w, rh = h;
+
+  const worst = (row, side) => {
+    const s  = row.reduce((n, i) => n + i.value * scale, 0);
+    const mx = Math.max(...row.map(i => i.value * scale));
+    const mn = Math.min(...row.map(i => i.value * scale));
+    return Math.max((side * side * mx) / (s * s), (s * s) / (side * side * mn));
+  };
+
+  // Guarded: a degenerate rectangle would otherwise spin here forever, and this
+  // function runs on the one screen that must never fail to paint.
+  let guard = 0;
+  while (rest.length && guard++ < 200) {
+    const side = Math.min(rw, rh);
+    if (side <= 0) break;
+    const row = [rest[0]];
+    let i = 1;
+    while (i < rest.length && worst(row.concat([rest[i]]), side) <= worst(row, side)) {
+      row.push(rest[i]); i++;
+    }
+    const area  = row.reduce((n, it) => n + it.value * scale, 0);
+    const thick = area / side;
+    let off = 0;
+    row.forEach(it => {
+      const len = (it.value * scale) / thick;
+      if (rw >= rh) out.push({ item: it.item, x: rx, y: ry + off, w: thick, h: len });
+      else          out.push({ item: it.item, x: rx + off, y: ry, w: len, h: thick });
+      off += len;
+    });
+    if (rw >= rh) { rx += thick; rw -= thick; } else { ry += thick; rh -= thick; }
+    rest = rest.slice(row.length);
+  }
+  return out;
+}
+
+// Total pixel height of the tiles themselves, before section labels and gaps.
+// Swept at 375px against the real weights: this is the shortest map where every
+// tile still clears 51px wide — enough for its own name — including
+// Stoichiometry, one percent of the exam and the smallest tile there is. Taller
+// bands buy nothing (the narrow tiles stay 51px) and cost a viewport.
+const MAP_BAND_PX = 360;
+const MAP_NOMINAL_W = 340;   // the width the aspect ratios are computed against
+
+// One band per section, height proportional to the section's share of the exam,
+// with the section's topics squarified inside it. Widths come back as
+// percentages so the same layout serves a 327px phone and a 382px column;
+// heights are pixels, because the bands are what make the proportions true.
+//
+// A topic AAMC gives no share to (Research methods, weight 0) has an area of
+// zero, and zero is the honest area. Rather than floor it into a sliver that
+// means nothing, it is left off the map and named underneath it.
+function routeMapBands(bandPx = MAP_BAND_PX, nominalW = MAP_NOMINAL_W) {
+  const totalW = TOPICS.reduce((n, t) => n + t.w, 0);
+  return MCAT_SECTIONS.map(sec => {
+    const topics = TOPICS.filter(t => t.mcat === sec.id);
+    const weight = topics.reduce((n, t) => n + t.w, 0);
+    const height = Math.round(bandPx * weight / totalW);
+    const boxes  = squarify(topics.filter(t => t.w > 0).map(t => ({ item: t, value: t.w })),
+                            0, 0, nominalW, height);
+    return { sec, weight, height,
+             tiles: boxes.map(b => ({ topic: b.item,
+                                      left:  b.x / nominalW * 100,
+                                      width: b.w / nominalW * 100,
+                                      top: b.y, h: b.h })) };
+  }).filter(b => b.tiles.length);
+}
+
+// How full a tile is: the same courseCredit() the coverage sum uses, so the map
+// and the number can never tell different stories. CARS has no course and never
+// fills — that is the point of showing it.
+function tileFill(t) {
+  return t.course && S.courses.has(t.course) ? courseCredit(t.course) : 0;
+}
+
+// Topics with no share of their own, named under the map rather than drawn on
+// it. Derived, so a future weight change moves this line with it.
+function mapSkillTopics() {
+  return TOPICS.filter(t => t.w === 0);
+}
+
+const MAP_GAP = 2;
+
+// TILE_NAMES, tightened where a 51px tile can't hold the timeline's version.
+// "Physics I" needs 50px of the 39 a one-percent tile leaves after its padding.
+const MAP_NAMES = { physics: 'Phys I', physics2: 'Phys II' };
+const mapName = t => MAP_NAMES[t.id] || TILE_NAMES[t.id] || t.name;
+
+// ── COVERED AND HELD, ON THE SAME TILE ────────────────────────────────────────
+// Two truths, one visual. The HEIGHT of a tile's fill is what your coursework
+// covers. The COLOUR of that fill is whether there is evidence you still hold
+// it: the brighter green means practised recently enough to count, and a small
+// dot in the corner carries the states a fill can't — fading, faded, and not
+// yet checked. The held layer adds no figure to the map.
+//
+// It inherits every gate held has always had. Off entirely until
+// freshnessActive() says there is a record worth describing, so a first session
+// never sees it. Never carried by enrollment: heldDisplayState() decides, and a
+// topic that reads fresh only because the student is sitting in the class shows
+// as "not yet checked", never as held. And the language stays that — never
+// "unpinned", never a loss.
+function routeMapHTML(opts) {
+  const o = opts || {};
+  const bands = routeMapBands(o.bandPx || MAP_BAND_PX);
+  const idPrefix = o.idPrefix || 'rt';
+  // The landing card stands in an example student's shoes for S.courses but not
+  // for their practice record, so held there would be this visitor's freshness
+  // read against someone else's route. Static maps show coverage only.
+  const live = !o.static && freshnessActive();
+
+  const body = bands.map(band => {
+    const tiles = band.tiles.map(b => {
+      const t    = b.topic;
+      const fill = tileFill(t);
+      const cars = t.mcat === 'cars';
+      const f    = live && t.course && S.courses.has(t.course) ? topicFreshness(t.id) : null;
+      const st   = f ? heldDisplayState(f) : null;
+      const held = st === 'fresh';
+      // One line of 11px type needs about 20px of tile. Below that the tile is
+      // colour and a tooltip; above it, the name; and only a tile with real room
+      // carries a second line.
+      // A thumbnail asks for the shape of the exam, not eighteen topic names in
+      // four letters each. `names:false` turns them off rather than eliding them.
+      const name = o.names !== false && b.h >= 20;
+      const wrap = b.h >= 34;   // room for a second line, so "Acid-Base" need not elide
+      const room = b.h >= 46;
+      const ink  = fill > 0 ? 'var(--ink)' : cars ? 'var(--ink-2)' : 'var(--muted)';
+      const base = cars ? 'rgba(245,158,11,0.09)' : 'rgba(255,255,255,0.03)';
+      // Held brightens the fill and rings the tile. Both, because on a
+      // half-filled tile the fill is only the bottom half, and the ring is what
+      // makes the state read across the whole of it.
+      const wash = held ? 'rgba(77,227,171,0.40)' : 'rgba(29,158,117,0.42)';
+      const ring = held ? 'rgba(77,227,171,0.45)' : 'transparent';
+      const dot  = st && st !== 'fresh' ? FRESH_META[st] : null;
+      // A finished tile is already a filled tile — the word "covered" under it
+      // says what the colour has said. Only the states the fill can't carry on
+      // its own get a word.
+      const sub  = cars ? 'ongoing' : fill === 0.5 ? 'taking' : '';
+
+      // An empty tile is the one place a student who left a class off can say so,
+      // which is the job the retired "Still ahead" grid used to do. It never
+      // invites claiming a class: the tooltip says what the course will cover
+      // when they take it, not what adding it would do to their standing.
+      const course = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
+      // Two taps, two questions. An empty tile asks "did you take this?"; a tile
+      // with a held state answers "where do I stand on it?" with the same detail
+      // line the timeline opens.
+      const pick   = fill === 0 && course && !o.static;
+      const tell   = !!f && !pick;
+      const tip    = pick ? `Covered when you take ${course.name}`
+                   : f    ? f.why.replace(/<[^>]+>/g, '').replace(/"/g, '&quot;')
+                   :        t.name;
+      const tag    = pick || tell ? 'button' : 'div';
+      const click  = pick ? `go('courses')` : tell ? `toggleMapTile('${t.id}')` : '';
+      const attrs  = tag === 'button'
+        ? ` onclick="${click}" aria-expanded="${S._mapOpen === t.id}" style="border:1px solid ${ring};font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;box-sizing:border-box;`
+        : ` style="border:1px solid ${ring};box-sizing:border-box;`;
+
+      return `<div style="position:absolute;left:${b.left.toFixed(3)}%;top:${Math.round(b.top)}px;width:${b.width.toFixed(3)}%;height:${Math.round(b.h)}px;box-sizing:border-box;padding:0 ${MAP_GAP}px ${MAP_GAP}px 0;">
+          <${tag} title="${tip}"${attrs}position:absolute;inset:0 ${MAP_GAP}px ${MAP_GAP}px 0;border-radius: var(--r-ctl);overflow:hidden;background:${base};padding:0;">
+            <!-- The fill is at its true height in the markup, not left at zero
+                 for JavaScript to supply. Every surface that renders a map is
+                 then correct on paint — the landing card, the share card, a
+                 print — and the reveal animation is the one thing that resets
+                 it to zero and plays it back up. -->
+            <div class="map-fill" data-fill="${Math.round(fill * 100)}" style="position:absolute;left:0;right:0;bottom:0;height:${Math.round(fill * 100)}%;background:${wash};transition:height 1s var(--ease);"></div>
+            ${dot ? `<span style="position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-radius: var(--r-pill);box-sizing:border-box;background:${dot.hollow ? 'transparent' : dot.color};border:1px solid ${dot.color};"></span>` : ''}
+            <!-- 2px of horizontal padding, not 3: a held tile carries a 1px ring
+                 inside its own box, and those two pixels were what pushed
+                 "Genetics" — one unbreakable word on a three-percent tile — over
+                 the edge the moment a student practised it. -->
+            ${name ? `<div style="position:absolute;inset:0;padding:3px 2px;display:flex;flex-direction:column;justify-content:flex-start;gap:1px;overflow:hidden;">
+              <!-- 600, not 700, and a hair of negative tracking: "Genetics" is
+                   one unbreakable word and a three-percent tile gives it about
+                   51px. At 700 it needed 52 and broke to "Genetic" / "s". Words
+                   wrap only at spaces and hyphens — never mid-word. -->
+              <span style="font-size: var(--fs-11);font-weight:600;letter-spacing:-0.01em;color:${ink};line-height:1.1;overflow:hidden;${wrap ? '' : 'text-overflow:ellipsis;white-space:nowrap;'}">${mapName(t)}</span>
+              ${room && sub ? `<span style="font-size: var(--fs-11);color:${cars ? 'var(--amber)' : 'var(--muted)'};line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sub}</span>` : ''}
+            </div>` : ''}
+          </${tag}>
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="margin-bottom:${o.sectionLabels === false ? 4 : 10}px;">
+        ${o.sectionLabels === false ? '' : `<div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;"><span style="display:inline-flex;color:var(--green);">${sectionIcon(band.sec.id)}</span>${band.sec.short}</div>`}
+        <div style="position:relative;height:${band.height}px;">${tiles}</div>
+      </div>`;
+  }).join('');
+
+  const skills = o.sectionLabels === false ? [] : mapSkillTopics();
+  const foot = skills.length
+    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:2px 0 0;">${skills.map(t => t.name).join(' and ')} ${skills.length === 1 ? 'is' : 'are'} tested as a skill across the sections rather than as a share of their own, so ${skills.length === 1 ? 'it has' : 'they have'} no tile.</p>`
+    : '';
+
+  const detail = live && S._mapOpen ? freshDetailHTML(S._mapOpen) : '';
+  return `<div id="${idPrefix}-map">${body}${detail}${o.legend === false ? '' : mapLegendHTML(live)}${foot}</div>`;
+}
+
+// A map needs a key. Three states, in the order a route fills them.
+function toggleMapTile(tid) {
+  S._mapOpen = (S._mapOpen === tid) ? null : tid;
+  render();
+}
+
+function mapLegendHTML(live) {
+  // Squares, not dots: the half-filled swatch is the one that has to read, and
+  // a gradient across 10px of circle does not.
+  const swatch = (bg, border) => `<span style="display:inline-block;width:10px;height:10px;border-radius:var(--r-ctl);box-sizing:border-box;background:${bg};${border ? 'border:1px solid ' + border + ';' : ''}vertical-align:-1px;margin-right:4px;"></span>`;
+  const item = (sw, label) => `<span style="white-space:nowrap;">${sw}${label}</span>`;
+  const pip = st => `<span style="display:inline-block;width:8px;height:8px;border-radius: var(--r-pill);box-sizing:border-box;background:${FRESH_META[st].hollow ? 'transparent' : FRESH_META[st].color};border:1px solid ${FRESH_META[st].color};vertical-align:0;margin-right:4px;"></span>`;
+  const row = inner => `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size: var(--fs-11);color:var(--faint);margin:4px 0 8px;">${inner}</div>`;
+  // The second row arrives with the held layer and not before, so a student who
+  // has never practised is never handed a key to something they cannot see.
+  return row(`${item(swatch('rgba(29,158,117,0.42)'), 'finished — counts whole')}
+        ${item(swatch('linear-gradient(to top, rgba(29,158,117,0.42) 50%, rgba(255,255,255,0.05) 50%)'), 'taking — counts half')}
+        ${item(swatch('rgba(255,255,255,0.05)', 'rgba(255,255,255,0.12)'), 'still ahead')}`)
+    + (live ? row(`${item(swatch('rgba(77,227,171,0.40)', 'rgba(77,227,171,0.45)'), 'practiced recently')}
+        ${item(pip('fading'), 'fading')}
+        ${item(pip('faded'), 'faded')}
+        ${item(pip('unpinned'), 'not yet checked')}`) : '');
+}
+
 // ── SECTIONED MAP (reveal screen) ─────────────────────────────────────────────
 
 const TILE_NAMES = {
@@ -6115,32 +6434,6 @@ function coveredTileHTML(t, live, open) {
 // weight 0 on purpose. Everywhere a weight is shown to a student it reads as the
 // skill it is, rather than as a zero that looks like an error or a slight.
 function wLabel(t, plus) { return t.w === 0 ? 'skill' : (plus ? '+' : '') + t.w + '%'; }
-
-// Ground still ahead. The tile opens the course list, for a student who left a
-// class off, but it never invites claiming one: the tooltip says what the course
-// will cover when they take it, not what adding it would do to the number.
-function lockedTileHTML(t) {
-  const cName = (COURSES.find(c => c.id === t.course) || {}).name || 'a course';
-  return `<button onclick="go('courses')" title="Covered when you take ${cName}" style="background:rgba(255,255,255,0.03);border:1px solid transparent;${TILE_BOX}cursor:pointer;text-align:left;font-family:inherit;">
-        <div style="font-size: var(--fs-11);color:var(--muted);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#767E96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>${TILE_NAMES[t.id] || t.name}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-          <div style="font-size: var(--fs-11);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${tileCourse(t)}</div>
-          <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);flex-shrink:0;margin-left:4px;">${wLabel(t, true)}</div>
-        </div>
-      </button>`;
-}
-
-// CARS — ongoing, not course-gated, and so never on the timeline: it belongs to
-// no semester the student ever registered for.
-function carsTileHTML(t) {
-  return `<div style="background:rgba(245,158,11,0.09);border:1px solid transparent;${TILE_BOX}">
-          <div style="font-size: var(--fs-11);color:var(--ink);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-            <div style="font-size: var(--fs-11);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-style:italic;">ongoing</div>
-            <div style="font-size: var(--fs-11);font-weight:700;color:var(--amber);flex-shrink:0;margin-left:4px;">${wLabel(t)}</div>
-          </div>
-        </div>`;
-}
 
 // Covered courses bucketed by the term they were taken, newest first. An untagged
 // course lands in one bucket keyed 'unset', which ranks below every real term and
@@ -6225,58 +6518,90 @@ function termTimelineHTML(live, open) {
   }).join('');
 }
 
-// ── WHAT'S STILL LOCKED ───────────────────────────────────────────────────────
-// The section map, unchanged in everything but which tiles it holds: covered
-// ground has moved up into the timeline, so what's left here is the ground the
-// student hasn't claimed. The per-section header keeps both numbers, so "12 of
-// 25% in Bio" is still readable at a glance — it's just now the caption on
-// what's missing rather than on a mix of both.
-function lockedMapHTML() {
-  return MCAT_SECTIONS.map(sec => {
-    const secTopics  = TOPICS.filter(t => t.mcat === sec.id);
-    const secTotal   = secTopics.reduce((s, t) => s + t.w, 0);
-    const secCovered = secTopics.reduce((s, t) => s + (t.course && S.courses.has(t.course) ? t.w * courseCredit(t.course) : 0), 0);
-    const secPct     = Math.round(secCovered / secTotal * 100);
-    const hasAny     = secCovered > 0;
+// ── SECTION BALANCE ───────────────────────────────────────────────────────────
+// Where the coverage sits, section by section. The One Number sprint took these
+// bars out of the Route sidebar because three percentages beside the headline
+// competed with it, and that decision stands: this lives at the foot of the map,
+// below the timeline and below what's still ahead, where nothing it says is
+// arguing with the hero.
+//
+// The arithmetic is sectionCoverage()'s, not a second copy of it — the same
+// weighted credit the headline uses, so a section can never disagree with the
+// number it is part of. CARS is absent for the reason it is absent everywhere:
+// no course teaches it.
 
-    const rest = secTopics.filter(t => !t.course || !S.courses.has(t.course));
-    if (!rest.length) return '';   // nothing left to unlock here — the timeline has it all
-
-    const tiles = rest.map(t => t.course ? lockedTileHTML(t) : carsTileHTML(t)).join('');
-
-    return `
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);"><span style="display:inline-flex;color:var(--green);">${sectionIcon(sec.id)}</span>${sec.short}</div>
-          <div style="font-size: var(--fs-11);color:${hasAny ? 'var(--green)' : 'var(--faint)'};">${Math.round(secCovered)}/${secTotal}%</div>
-        </div>
-        <div style="height:3px;background:rgba(255,255,255,0.06);border-radius: var(--r-pill);margin-bottom:12px;overflow:hidden;">
-          <div class="sec-bar-fill" data-w="${secPct}" style="height:100%;width:0%;background:var(--green);border-radius: var(--r-pill);transition:width 1.2s ease;"></div>
-        </div>
-        <div style="${TILE_ROW}">${tiles}</div>
-      </div>`;
-  }).join('');
+// Which section a student's coursework is thinnest in, stated as a fact about
+// the coursework and never as a deficiency. Ties are named together rather than
+// resolved arbitrarily, and a route that sits evenly says so instead of
+// inventing a weak spot. EVEN_SPREAD is the gap below which "thinnest" would be
+// a rounding artefact dressed up as a finding.
+const EVEN_SPREAD = 10;
+function sectionBalanceLine(sec) {
+  const keys = ['bb', 'cp', 'ps'];
+  const vals = keys.map(k => sec[k]);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi === 0) return '';
+  // Every course on the route is done. "About evenly" would be true and would
+  // also be the wrong thing to say to someone who has finished the sequence.
+  if (lo === 100) return 'Your coursework covers all three science sections.';
+  if (hi - lo < EVEN_SPREAD) return 'Your coursework sits about evenly across the three science sections.';
+  const names = keys.filter(k => sec[k] === lo)
+                    .map(k => (MCAT_SECTIONS.find(x => x.id === k) || {}).short)
+                    .filter(Boolean);
+  if (!names.length) return '';
+  const list = names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+  return `${list} ${names.length === 1 ? 'is' : 'are'} where your coursework is thinnest.`;
 }
 
+// `bare` drops the divider and heading, for a caller that provides its own.
+function sectionBalanceHTML(opts) {
+  const o = opts || {};
+  const sec = sectionCoverage(S.courses);
+  if (Math.max(sec.bb, sec.cp, sec.ps) === 0) return '';   // nothing to compare yet
+  const line = sectionBalanceLine(sec);
+
+  const rows = MCAT_SECTIONS.filter(x => x.id !== 'cars').map(x => `
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
+          <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-13);color:var(--ink-2);min-width:0;"><span style="display:inline-flex;color:var(--green);">${sectionIcon(x.id)}</span>${x.short}</span>
+          <span style="font-size: var(--fs-13);font-weight:700;color:${sec[x.id] > 0 ? 'var(--green-bright)' : 'var(--faint)'};flex-shrink:0;">${sec[x.id]}%</span>
+        </div>
+        <div style="height:3px;background:rgba(255,255,255,0.06);border-radius: var(--r-pill);overflow:hidden;">
+          <div class="sec-bar-fill" data-w="${sec[x.id]}" style="height:100%;width:0%;background:var(--green);border-radius: var(--r-pill);transition:width 1.2s ease;"></div>
+        </div>
+      </div>`).join('');
+
+  return `${o.bare ? '' : `<div class="section-divider"></div>
+      <p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">Section balance</p>`}
+      ${line ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">${line}</p>` : ''}
+      ${rows}
+      <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:4px 0 0;">Each bar is how much of that section's content your coursework covers. CARS isn't here — no class teaches it.</p>`;
+}
+
+// What the body carries now that the hero is a map.
+//
+// It used to end with "Still ahead" — a second grid of the same topics, framed
+// as what was missing. The hero map says that in the same tiles it says
+// everything else in, so a second copy was two maps of one exam arguing about
+// which one to read. It is gone, and the affordance it carried moved into the
+// map itself: an unfilled tile is a button into the course list, for the student
+// who left a class off.
+//
+// What is left is the part the map genuinely cannot say: the student's own
+// semesters, in order, with the held state on each topic — and the section
+// balance under it.
 function sectionedMapHTML() {
   // Off entirely until the student has practiced something — see freshnessActive().
   const live = freshnessActive();
   const open = live ? S._freshOpen : null;
   const timeline = termTimelineHTML(live, open);
-  const locked   = lockedMapHTML();
-  // Headings only earn their place once there are two blocks to tell apart. A
-  // student with no courses sees exactly the map they saw before this sprint.
   const head = text => `<p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">${text}</p>`;
+  const balance = sectionBalanceHTML();
   // "Your semesters", not "where you've been": the newest group is the term the
   // student is sitting in right now, and a past-tense heading would misname it.
-  if (!timeline) return locked;
-  // Held closes the covered ground it describes. It used to sit directly under
-  // the coverage headline, a second percentage in the hero; the top of the Route
-  // body is no better for a returning student, whose body starts ~300px down.
-  // Under the timeline it is next to the tiles it summarises and out of the
-  // first viewport.
-  return (timeline ? head('Your semesters') + timeline + standingLineHTML() : '')
-       + (locked   ? `<div class="section-divider"></div>` + head('Still ahead') + locked : '');
+  if (!timeline) return balance;
+  // Held closes the covered ground it describes, next to the tiles it summarises.
+  return head('Your semesters') + timeline + standingLineHTML() + balance;
 }
 
 // ── JOURNEY PATH (waypoint map) ────────────────────────────────────────────────
@@ -7027,7 +7352,9 @@ function screenPace() {
   const courseId = S.paceCourse;
   const course   = COURSES.find(c => c.id === courseId);
   const units    = courseId ? courseTimeline(courseId) : [];
-  if (!course || !units.length) { go('brief'); return ''; }
+  // No course to re-anchor — a stale tab, or a course dropped from the picker
+  // since. Home's markup, not go(): see screenTerms().
+  if (!course || !units.length) { S.screen = 'brief'; return screenBrief(); }
 
   const currentKey = currentUnitKey(courseId);
   const offset     = paceOffset(courseId);
@@ -7101,6 +7428,33 @@ function weekStartISO(now = new Date()) {
   return isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()));
 }
 
+// ── THE WEEK'S OWN UNIT ───────────────────────────────────────────────────────
+// Coverage moves a few times a year — when a class is added, when one is marked
+// done. A weekly surface that reports it is reporting the same figure it
+// reported last Sunday, which teaches a student that nothing they did counted.
+//
+// So the week gets a unit that actually moves: how many distinct topics they
+// practised in it. A count, never a percentage and never an accuracy figure —
+// both of those are judgements, and this is a record of ground touched.
+//
+// It needs no new key. topicLastSeen already holds the most recent date each
+// topic was practised, so a topic whose stamp lands on or after this week's
+// Sunday is a topic practised this week. Ids left behind by an older TOPICS
+// list are dropped rather than counted.
+function topicsPracticedSince(startISO) {
+  const start = dayIndex(startISO);
+  if (isNaN(start)) return 0;
+  return Object.keys(S.topicLastSeen).filter(tid => {
+    if (!TOPICS.some(t => t.id === tid)) return false;
+    const k = dayIndex(S.topicLastSeen[tid]);
+    return !isNaN(k) && k >= start;
+  }).length;
+}
+
+function topicsPracticedThisWeek(now = new Date()) {
+  return topicsPracticedSince(weekStartISO(now));
+}
+
 // A percentage over fewer questions than this is noise presented as judgement,
 // so no accuracy figure anywhere is computed or shown below it.
 const ACCURACY_MIN_QUESTIONS = 5;
@@ -7168,22 +7522,34 @@ function buildBrief(now = new Date(), skip = null) {
   const prior = S.briefs.filter(b => b && b.weekStart && b.weekStart < weekStart).slice(-1)[0] || null;
   const cov = coverage(S.courses, true);
 
-  let answered, correct;
+  // The brief shows on a Sunday or a Monday and reports the week that just
+  // ended, so its "this week" runs from the last brief to now — NOT from the
+  // Sunday that weekStart names, which on the morning the brief appears is
+  // today. `since` is that same span as a date, so the topic count and the
+  // question count describe one period rather than two.
+  let answered, correct, since;
   if (prior && typeof prior.totalAnswered === 'number') {
     answered = Math.max(0, S.totalAnswered - prior.totalAnswered);
     correct  = Math.max(0, lifetimeCorrect() - (prior.lifetimeCorrect || 0));
+    since    = prior.weekStart;
   } else {
     // First brief: fall back to whatever sessions are still in history.
     // The last seven calendar days, today included.
     const recent = S.sessionHistory.filter(h => daysBetween(h.date, now) <= 6);
     answered = recent.reduce((n, h) => n + (h.total || 0), 0);
     correct  = recent.reduce((n, h) => n + (h.correct || 0), 0);
+    since    = isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6));
   }
 
   return {
     weekStart,
     coverage: cov,
     coverageDelta: prior ? cov - (prior.coverage || 0) : 0,
+    // The week's own unit, over the same span as the week's questions above.
+    // Derived from topicLastSeen at read time rather than from a snapshot, so a
+    // student who skipped three briefs gets a count of the period the questions
+    // beside it also cover, not of one week inside it.
+    topics: topicsPracticedSince(since),
     answered, correct,
     accuracy: answered > 0 ? Math.round(correct / answered * 100) : null,
     streak: S.streak,
@@ -7304,7 +7670,10 @@ function briefCardHTML() {
 
       <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:16px;">
         ${stat(b.coverage + '%', 'covered')}
-        ${stat(b.answered, 'this week')}
+        <!-- The week's questions are already in the headline; this slot used to
+             repeat them. Distinct topics practised is the figure that changes
+             week to week and isn't stated anywhere else on the card. -->
+        ${stat(b.topics, b.topics === 1 ? 'topic practiced' : 'topics practiced')}
         ${stat(b.streak, b.streak === 1 ? 'day streak' : 'day streak')}
       </div>
 
@@ -7327,6 +7696,113 @@ function briefCardHTML() {
       : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">That's today's ground covered. Come back tomorrow and the week keeps building.</p>`;
 
   return card('var(--green)', 'Your week', headline, body, cta,
+              { tint: 'var(--green-bright)', titleSize: 'var(--fs-17)', gap: 22, aside: dismiss });
+}
+
+// ── THE END-OF-TERM SNAPSHOT ──────────────────────────────────────────────────
+// A term is the unit a premed's life is actually measured in, and the end of one
+// is the moment they have something to say about it. So Waypoint offers a card:
+// what the term's finished coursework covers, and how much ground was practised
+// inside it.
+//
+// Everything here comes from data that already exists. The window is
+// semesterWeek() over wp_sem_start; which term it is, is currentTerm(); which
+// courses belong to it, is wp_course_when. With no semester start on file there
+// is no window and no card — the card is not offered rather than guessed at.
+//
+// The PACING tables are fifteen weeks, so week 14 is the end of term. The far
+// edge is week 21: past ~150 days currentTerm() stops trusting wp_sem_start and
+// falls back to the calendar, and a card that named the wrong term would be
+// worse than no card.
+const TERM_CARD_FROM  = 14;
+const TERM_CARD_UNTIL = 21;
+
+// AAMC rounds its own published discipline shares to the nearest 5%, so every
+// weight in this app inherits that grain. A share card is where a figure travels
+// furthest from its derivation and where "38%" would most look like a
+// measurement, so this is the one surface that rounds all the way back out to
+// the precision the inputs actually have.
+function aboutCoverage(n) {
+  const v = Math.round(n / 5) * 5;
+  if (n > 0 && v === 0) return 'under 5%';
+  return `about ${v}%`;
+}
+
+// Everything the card says, or null when there is nothing honest to say.
+function termSnapshot(now = new Date()) {
+  const wk = semesterWeek(S.semStart, now);
+  if (wk === null || wk < TERM_CARD_FROM || wk > TERM_CARD_UNTIL) return null;
+  const term  = currentTerm(now);
+  const label = termLabel(term);
+  if (!label) return null;
+
+  // Tagged to this term AND finished. An in-progress class hasn't banked its
+  // weight yet, and a finished class with no term on it belongs to a term
+  // nobody has named — counting it here would be inventing the date.
+  const finished = COURSES.filter(c => S.courses.has(c.id)
+                                    && S.courseStatus[c.id] === 'completed'
+                                    && S.courseWhen[c.id] === term);
+  const gained = finished.reduce((n, c) =>
+    n + TOPICS.filter(t => t.course === c.id).reduce((m, t) => m + t.w, 0), 0);
+  const topics = topicsPracticedSince(S.semStart);
+
+  // A term with nothing in it gets no card. Nothing here is a demand, and an
+  // empty summary offered as an achievement is the worst version of one.
+  if (gained === 0 && topics === 0) return null;
+
+  // A route of nothing but Statistics covers 0% — it is tested as a skill, not
+  // as its own share of questions. That student can practise all term and the
+  // card's own headline would still read "about 0% of the MCAT covered", which
+  // is a true sentence and a cruel thing to hand someone. No card.
+  const cov = coverage(S.courses, true);
+  if (cov === 0) return null;
+
+  return { term, label, finished, gained, topics, week: wk, cov };
+}
+
+function dismissTermCard() {
+  const t = termSnapshot();
+  if (t) { S.termCardSeen = t.term; save(); }
+  if (window.plausible) plausible('term_card_dismiss');
+  render();
+}
+
+// One card on Home, for the weeks a term is ending. It inherits the share gate
+// the Route's "Share my progress" button uses — two sessions — because the card
+// exists to be shared and an offer to share nothing is not an offer. It can be
+// waved off, once per term, and it retires by itself when the window closes.
+function termCardHTML() {
+  const t = termSnapshot();
+  if (!t) return '';
+  if (S.termCardSeen === t.term) return '';
+  if (practiceSessions() < HELD_MIN_SESSIONS) return '';
+
+  const names = t.finished.map(c => `<strong style="color:var(--ink-2);">${c.name}</strong>`);
+  const list  = names.length === 1 ? names[0]
+              : names.length === 2 ? names.join(' and ')
+              : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+
+  // "Coursework covering about 5% of the MCAT" is the true sentence. "5% more
+  // than you started with" would not be: a class you were already taking was
+  // counting half all term, so finishing it moves the number by half of that.
+  const finishedLine = t.finished.length
+    ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 8px;">You finished ${list} — coursework covering ${aboutCoverage(t.gained)} of the MCAT.</p>`
+    : '';
+  // "And 2 distinct topics…" needs the sentence before it. Without a finished
+  // class there isn't one, and the "And" is left standing on its own.
+  const practiceLine = t.topics
+    ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">${t.finished.length ? 'And ' : ''}<strong style="color:var(--ink-2);">${t.topics}</strong> distinct topic${t.topics !== 1 ? 's' : ''} practiced since the term started.</p>`
+    : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">That's this term's ground, on the map for good.</p>`;
+
+  const dismiss = `<button style="background:none;border:none;font-size: var(--fs-11);color:var(--faint);cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;min-height:44px;padding:0 8px;margin:-16px -8px;-webkit-tap-highlight-color:transparent;" onclick="dismissTermCard()">Not now</button>`;
+
+  const cta = `<button class="btn btn-share" style="margin:0;font-size: var(--fs-13);padding:12px 16px;" onclick="shareCoverageCard('term', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share this term</button>`;
+
+  // Green, like every other coverage surface — this card is about ground
+  // covered. Violet belongs to the Twist, which is the card most likely to be
+  // sitting directly above it.
+  return card('var(--green)', t.label, 'That\'s a term on the map.',
+              finishedLine + practiceLine, cta,
               { tint: 'var(--green-bright)', titleSize: 'var(--fs-17)', gap: 22, aside: dismiss });
 }
 
@@ -7508,7 +7984,8 @@ function sessionDays() {
 // unit?" into "because the plan says so, and I can see the plan."
 function screenExamPlan() {
   const plan = midtermPlan();
-  if (!plan) { go('brief'); return ''; }
+  // The exam was cleared, or the tab predates it. Home's markup, not go().
+  if (!plan) { S.screen = 'brief'; return screenBrief(); }
 
   const back = `
     <div class="brief-topbar">
@@ -8941,6 +9418,11 @@ function todayCardHTML() {
 
 function screenBrief() {
   const cov = coverage(S.courses, true);
+  // Navigation chrome, but it is still the coverage figure leaving the model, so
+  // it leaves at the grain the model has: nearest 5, like every other percentage
+  // the app shows now that the headline is a map. The pill has no room for the
+  // word "about"; the tap-to-explain view one screen away carries it.
+  const covPill = Math.round(cov / 5) * 5;
   return `
     <div class="screen">
       <div class="brief-topbar">
@@ -8955,7 +9437,7 @@ function screenBrief() {
           <span class="disp" style="font-size: var(--fs-15);font-weight:600;color:var(--ink);">Waypoint</span>
         </button>
         <div style="display:flex;align-items:center;gap:12px;">
-          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.28);border-radius: var(--r-pill);cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;margin:-12px 0;font-family:inherit;font-size: var(--fs-13);font-weight:700;color:var(--green-bright);-webkit-tap-highlight-color:transparent;">Route · ${cov}%</button>` : ''}
+          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.28);border-radius: var(--r-pill);cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;margin:-12px 0;font-family:inherit;font-size: var(--fs-13);font-weight:700;color:var(--green-bright);-webkit-tap-highlight-color:transparent;">Route · ${covPill}%</button>` : ''}
           ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size: var(--fs-13);font-weight:600;">${S.streak}</span></div>` : ''}
           <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
@@ -8964,6 +9446,7 @@ function screenBrief() {
       </div>
 
       ${todayCardHTML()}
+      ${termCardHTML()}
 
       <button class="link-btn full" onclick="go('quicklog')">Practice a specific topic →</button>
       <!-- The syllabus offer moved to the foot of the check screen last sprint,
@@ -9014,13 +9497,18 @@ function screenLanding() {
    --><span style="display:inline-block;">You know where you're going.</span> <span style="display:inline-block;">This is where you are.</span></h1>
       <p style="font-size: var(--fs-17);color:var(--muted);line-height:1.55;margin-bottom:24px;letter-spacing:-0.01em;">Waypoint maps the classes you've taken onto the real MCAT.</p>
 
-      <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius: var(--r-card);padding:16px 16px 16px;margin-bottom:32px;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:12px;">
-          <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);padding-top:4px;">Example —<br>seven courses in</div>
-          <div style="text-align:right;flex-shrink:0;"><span class="disp" style="font-size: var(--fs-32);font-weight:800;color:var(--ink);line-height:1;">${ex.cov}%</span><div style="font-size: var(--fs-11);color:var(--faint);letter-spacing:var(--track-caps);margin-top:4px;">of the MCAT covered</div></div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;"><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size: var(--fs-11);font-weight:600;color:var(--faint);">Bio &amp; Biochem</span><span style="font-size: var(--fs-11);font-weight:700;color:var(--green);">${ex.sections.bb}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius: var(--r-pill);overflow:hidden;"><div style="width:${ex.sections.bb}%;height:100%;background:var(--green);border-radius: var(--r-pill);"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size: var(--fs-11);font-weight:600;color:var(--faint);">Chem &amp; Physics</span><span style="font-size: var(--fs-11);font-weight:700;color:var(--blue);">${ex.sections.cp}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius: var(--r-pill);overflow:hidden;"><div style="width:${ex.sections.cp}%;height:100%;background:var(--blue);border-radius: var(--r-pill);"></div></div></div><div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size: var(--fs-11);font-weight:600;color:var(--faint);">Psych &amp; Soc</span><span style="font-size: var(--fs-11);font-weight:700;color:var(--violet);">${ex.sections.ps}%</span></div><div style="height:5px;background:rgba(255,255,255,0.07);border-radius: var(--r-pill);overflow:hidden;"><div style="width:${ex.sections.ps}%;height:100%;background:var(--violet);border-radius: var(--r-pill);"></div></div></div></div>
-        <div style="font-size: var(--fs-11);color:var(--faint);margin-top:12px;line-height:1.55;">${EXAMPLE_ROUTE.label} — which counts half until it's finished. You're probably further along than you think.</div>
+      <!-- The example route, still computed at runtime from TOPICS through the
+           same functions a real student's route goes through — so a change to
+           the weights moves this card with it and a visitor who reads Sources
+           can recompute what they were shown. It used to lead with the
+           percentage and three section bars; it leads with the map now, because
+           that is what the product is. -->
+      <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius: var(--r-card);padding:16px;margin-bottom:32px;">
+        <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">Example — seven courses in</div>
+        <div style="font-size: var(--fs-17);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.01em;margin-bottom:12px;">${territoryLine(ex.cov)}</div>
+        ${ex.map}
+        ${mapLegendHTML()}
+        <div style="font-size: var(--fs-11);color:var(--faint);margin-top:12px;line-height:1.55;">${EXAMPLE_ROUTE.label} — which counts half until it's finished. Every tile is sized by how much of the exam it is. You're probably further along than you think.</div>
       </div>
 
       <button class="btn btn-primary" onclick="go('year')" style="font-size: var(--fs-15);font-weight:600;letter-spacing:-0.01em;">See where you are →</button>
@@ -9379,6 +9867,141 @@ function screenCoverage() {
     </div>`;
 }
 
+// ── HOW YOUR NUMBER WAS BUILT ─────────────────────────────────────────────────
+// Reliability you can check in one tap, for the student who will never open the
+// Sources page. It answers "is this real?" with the student's own transcript
+// rather than with a methodology.
+//
+// No new arithmetic. Every figure here is a term of the same sum coverage()
+// computes, through the same courseCredit() — a course you're taking counts
+// half, a finished one counts in full — so the rows add up to the headline by
+// construction rather than by agreement. The only presentation decision is that
+// a half-credit course shows its exact half (6.5, not 7): rounding each row
+// would make an honest column that does not add up.
+
+// Halves are exact in binary floating point and every contribution is a
+// multiple of one, so this only ever has to choose between "9" and "6.5".
+function covPoints(n) {
+  const v = Math.round(n * 2) / 2;
+  return v % 1 === 0 ? String(v) : v.toFixed(1);
+}
+
+// One row per course, grouped by the section it contributes to. Computed per
+// (course, section) rather than per course, so a course that ever taught across
+// two sections would split correctly instead of landing in whichever one its
+// first topic belongs to.
+function coverageContributions() {
+  const groups = MCAT_SECTIONS.map(sec => ({ sec, rows: [], points: 0 }));
+  const byId = {};
+  groups.forEach(g => byId[g.sec.id] = g);
+
+  COURSES.forEach(c => {
+    if (!S.courses.has(c.id)) return;
+    const credit = courseCredit(c.id);
+    const per = {};
+    TOPICS.forEach(t => {
+      if (t.course !== c.id) return;
+      per[t.mcat] = (per[t.mcat] || 0) + t.w * credit;
+    });
+    Object.keys(per).forEach(k => {
+      const g = byId[k];
+      if (!g) return;
+      // A course whose topics all carry weight 0 (Statistics) still earns its
+      // row: it is on the route and it is tested, just not as its own share of
+      // questions. The row says "skill" where the others say a number.
+      g.rows.push({ course: c, points: per[k], credit, full: TOPICS.filter(t => t.course === c.id).reduce((n, t) => n + t.w, 0) });
+      g.points += per[k];
+    });
+  });
+
+  groups.forEach(g => g.rows.sort((a, b) => b.points - a.points || b.full - a.full));
+  const live = groups.filter(g => g.rows.length);
+  return { groups: live, raw: live.reduce((n, g) => n + g.points, 0) };
+}
+
+function screenExplain() {
+  // Nothing to explain without a route — a stale tab, or a bookmark from before
+  // the courses were cleared. Hand back the Route's own markup rather than
+  // calling go(): go() re-renders, and then this render finishes and paints its
+  // own empty string over the top, which is a blank screen.
+  if (S.courses.size === 0) { S.screen = 'reveal'; return screenReveal(); }
+
+  const cov = coverage(S.courses, true);
+  const { groups, raw } = coverageContributions();
+
+  // The biggest single thing on the student's route, named so the rule has a
+  // worked example in their own courses rather than in an invented one.
+  const all = groups.reduce((a, g) => a.concat(g.rows), []);
+  const top = all.slice().sort((a, b) => b.full - a.full)[0] || null;
+  const worked = !top || top.full === 0 ? ''
+    : top.credit === 1
+      ? `Your biggest single piece is <strong style="color:var(--ink-2);">${top.course.name}</strong>, worth ${top.full}% of MCAT content. You've finished it, so all ${top.full} count.`
+      : `Your biggest single piece is <strong style="color:var(--ink-2);">${top.course.name}</strong>, worth ${top.full}% of MCAT content. You're taking it now, so ${covPoints(top.full / 2)} of that counts until you mark it done.`;
+
+  const mark = credit => credit === 1
+    ? `<span class="bd-mark" style="background:rgba(29,158,117,0.16);color:var(--green-bright);">✓</span>`
+    : `<span class="bd-mark" style="background:rgba(245,179,106,0.16);color:var(--amber);">½</span>`;
+
+  const rows = g => g.rows.map(r => `
+            <div class="bd-row">
+              <span class="bd-name">${mark(r.credit)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.course.name}</span>
+                <span style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${r.credit === 1 ? 'done' : 'taking'}</span></span>
+              <span class="bd-w" style="color:${r.points > 0 ? 'var(--green-bright)' : 'var(--muted)'};">${r.full === 0 ? 'skill' : covPoints(r.points) + '%'}</span>
+            </div>`).join('');
+
+  // Shown only when the halves actually make the sum a fraction, which is the
+  // only time the two figures differ and the only time a student would notice.
+  const rounding = covPoints(raw) !== String(cov)
+    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:8px 0 0;">The halves make that a fraction; to the whole number it is ${cov}%.</p>`
+    : '';
+
+  return `
+    <div class="screen" style="padding-bottom:48px;">
+      <div class="brief-topbar">
+        <button onclick="go('reveal')" class="back-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back
+        </button>
+      </div>
+
+      <p class="label">Your route</p>
+      <!-- The percentage lives here now rather than in the headline, and it
+           arrives rounded: "about 35%", to the nearest 5, which is the grain
+           AAMC's own published discipline shares have. The rows below are still
+           exact, because their job is to add up — the rounding is how the figure
+           is PRESENTED, not a second, softer model underneath it. -->
+      <h2 style="margin-bottom:8px;">Where your map comes from.</h2>
+      ${cov > 0 ? `<p style="font-size: var(--fs-17);color:var(--ink);font-weight:600;line-height:1.5;margin-bottom:12px;">Your coursework covers <strong style="color:var(--green-bright);">${aboutCoverage(cov)}</strong> of MCAT content.</p>` : ''}
+      <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:${worked ? '12' : '20'}px;">Every course you've marked counts for the MCAT content it teaches. A course you've finished counts in full; one you're taking now counts half until you mark it done.</p>
+      ${worked ? `<p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:20px;">${worked}</p>` : ''}
+
+      ${groups.map(g => `
+        <div style="margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
+            <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);"><span style="display:inline-flex;color:var(--green);">${sectionIcon(g.sec.id)}</span>${g.sec.short}</span>
+            <span style="font-size: var(--fs-11);color:var(--muted);flex-shrink:0;">${covPoints(g.points)}%</span>
+          </div>
+          ${rows(g)}
+        </div>`).join('')}
+
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius: var(--r-card);padding:16px;margin-bottom:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size: var(--fs-15);color:var(--ink);"><span>Add them up</span><strong style="color:var(--green-bright);">${covPoints(raw)}%</strong></div>
+        ${rounding}
+        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:8px 0 0;">Courses can reach 77% between them. The other 23% is CARS — a reading skill no class teaches.</p>
+        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:8px 0 0;">Shown as <strong style="color:var(--muted);">${aboutCoverage(cov)}</strong> above, and everywhere a figure leaves the app. AAMC rounds its own discipline shares to the nearest 5%, so that is the precision these weights actually have — the exact sum is here because it has to add up, not because the exam is measured that finely.</p>
+      </div>
+
+      <div class="section-divider"></div>
+      <p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">Section balance</p>
+      ${sectionBalanceHTML({ bare: true })}
+
+      <div class="section-divider"></div>
+      <button onclick="openSources()" class="link-btn full">See the whole derivation →</button>
+      <button onclick="go('coverage')" class="link-btn full quiet">How the Coverage Model works →</button>
+      <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
+    </div>`;
+}
+
 // ── Sources ──────────────────────────────────────────────────────────────────
 // Waypoint's claim is that it knows where a premed stands, and every number it
 // shows is that claim in practice. A student who checks — and premeds check, on
@@ -9561,11 +10184,23 @@ function setCourseState(id, state) {
     // re-attach silently if they marked the course again later.
     delete S.courseWhen[id];
   } else {
+    const was = courseState(id);
     S.courses.add(id);
     S.courseStatus[id] = state === 'done' ? 'completed' : 'in-progress';
     // A class you are taking is this term by derivation, so a stored date would
     // be a second, contradictory answer.
     if (state === 'taking') delete S.courseWhen[id];
+    // ...and finishing a class you were taking keeps that same derivation
+    // rather than throwing it away. courseTerm() answers currentTerm() for an
+    // in-progress course, so the class already sat under this term on the
+    // timeline; without this it dropped into the untagged pile the moment it
+    // was marked done. Only on that one transition — 'Not yet' straight to
+    // 'Done' is a class from some earlier term, and dating it now would be a
+    // guess. Never overwrites a term the student typed themselves.
+    if (state === 'done' && was === 'taking' && !S.courseWhen[id]) {
+      const term = currentTerm();
+      if (TERM_RE.test(term || '')) S.courseWhen[id] = term;
+    }
   }
   save();
   const box = document.getElementById('cst-' + id);
@@ -9766,7 +10401,11 @@ function screenTerms() {
   const done = finishedCourses();
   // Nothing to date is nothing to show. Reachable by clearing every finished
   // course from the picker and coming back.
-  if (!done.length) { go('reveal'); return ''; }
+  //
+  // Hands back the Route's markup rather than calling go(): go() re-renders,
+  // and then this render finishes and paints its own empty string over the top,
+  // which is a blank screen.
+  if (!done.length) { S.screen = 'reveal'; return screenReveal(); }
 
   return `
     <div class="screen">
@@ -9878,10 +10517,6 @@ function screenReveal() {
 
   const milestone = milestoneCopy();
 
-  // Coverage ring — moved here from Home so progress lives in exactly one place.
-  const ringR = 46, ringCirc = Math.round(2 * Math.PI * ringR);
-  const ringOffset = Math.round(ringCirc * (1 - cov / 100));
-
   // The blocks, defined once and composed in two orders. A first reveal has a
   // job the returning Route does not: get a student who has never answered a
   // question into their first one. So the practice CTA follows the number
@@ -9894,30 +10529,38 @@ function screenReveal() {
   // not two.
   const first = !!S._firstReveal;
 
-  // The ring draws the same figure the headline states, so it carries no number
-  // of its own. #cov-num and [data-target] keep their names: animateCoverageRing
-  // counts the headline up and sweeps the ring together, exactly as before.
+  // The headline is the territory line now, and the map under it is the figure.
+  // The percentage has retired into the tap-to-explain view: it was a grade to a
+  // grade-anxious audience, it topped out at 77% so a finished route still read
+  // as unfinished, and it claimed a precision AAMC's own rounding doesn't have.
+  //
+  // What it did well was say what the amount MEANT, and that is exactly what the
+  // territory line does — derived from the same weighted figure internally, so
+  // nothing about the model changed, only what the student is shown.
+  //
+  // The whole block is still one tap into the derivation, and #route-map keeps
+  // its name the way #cov-num used to: the first-reveal animation finds it there.
   const head = cov > 0 ? `      <p class="label">Your route</p>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px;">
-        <h1 style="margin:0;min-width:0;"><span class="disp" id="cov-num" data-count="${cov}" style="display:block;font-size: var(--fs-display);font-weight:800;color:var(--ink);line-height:1;letter-spacing:-0.03em;">${cov}%</span><span style="display:block;font-family:inherit;font-size: var(--fs-17);font-weight:600;color:var(--ink-2);line-height:1.3;margin-top:8px;letter-spacing:-0.01em;">of the MCAT covered</span></h1>
-        <div style="position:relative;flex-shrink:0;width:88px;height:88px;" aria-hidden="true">
-          <svg width="88" height="88" viewBox="0 0 112 112" style="transform:rotate(-90deg);position:absolute;inset:0;">
-            <circle cx="56" cy="56" r="${ringR}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="11"/>
-            <circle cx="56" cy="56" r="${ringR}" fill="none" stroke="#1D9E75" stroke-width="11"
-              stroke-dasharray="${ringCirc}" stroke-dashoffset="${ringOffset}" data-empty="${ringCirc}"
-              stroke-linecap="round"
-              style="transition:stroke-dashoffset 1.4s cubic-bezier(0.2,0.8,0.4,1);filter:drop-shadow(0 0 7px rgba(29,158,117,0.55));"
-              data-target="${ringOffset}"/>
-          </svg>
-        </div>
-      </div>
-      <p id="reveal-subhead" style="font-size: var(--fs-15);color:var(--muted);margin-bottom:${milestone ? '16px' : '4px'};">${subhead}</p>` : `      <p class="label">Your route</p>
+      <h1 style="margin:0 0 14px;"><button onclick="go('explain')" title="See how this map is built" style="display:block;width:100%;background:none;border:none;padding:0;margin:0;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+        <span id="reveal-subhead" style="display:block;font-family:inherit;font-size: var(--fs-24);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.02em;">${subhead}</span>
+        <span style="display:block;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--green-bright);line-height:1.4;margin-top:6px;">Here's the exam, and what your classes have covered of it →</span>
+      </button></h1>` : `      <p class="label">Your route</p>
       <h2 style="margin-bottom:4px;">${headline}</h2>
       <p id="reveal-subhead" style="font-size: var(--fs-15);margin-bottom:22px;">${subhead}</p>`;
 
+  // The map itself, always — an empty route still shows the exam it is a map of,
+  // which is the one thing a student with no courses yet should see.
+  const map = `      <div style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>`;
+
+  // Still one link under the number, but it now leads to the student's own
+  // derivation rather than to the methodology. The methodology is one further
+  // tap from there, which is the right order: whose number is this, then how
+  // is the model built.
+  // The map answers "where do I stand". This answers "how do you know", and
+  // the percentage lives on the other side of it.
   const ring = `      ${cov > 0 ? `
         <div style="margin:0 0 20px;">
-          <button onclick="go('coverage')" class="link-btn">How the Coverage Model works →</button>
+          <button onclick="go('explain')" class="link-btn">How this map is built →</button>
         </div>` : ''}`;
 
   // On a first reveal this block follows the practice button rather than
@@ -9967,14 +10610,23 @@ function screenReveal() {
     <div class="screen">
 ${head}
 
-${['      ' + milestone, ring, ...middle].join('\n\n')}
+${[map, '      ' + milestone, ring, ...middle].join('\n\n')}
 ${tail}
     </div>`;
 }
 
 function screenQuestion() {
   const q = S.session[S.idx];
-  if (!q) { go('complete'); return ''; }
+  // Off the end of the session, or a tab reopened with no session in memory.
+  // Answers on record mean the session really did finish and the results screen
+  // is the right landing; none means there was never a session to finish, and
+  // the results screen would grade an empty one. Markup, not go(): see
+  // screenTerms().
+  if (!q) {
+    const finished = S.answers.length > 0;
+    S.screen = finished ? 'complete' : 'brief';
+    return finished ? screenComplete() : screenBrief();
+  }
 
   const topicObj = TOPICS.find(t => t.id === q.topic);
   const answered = S.answered !== null;
@@ -10250,6 +10902,23 @@ function sessionStandingHTML() {
   return '';
 }
 
+// The week's unit, on the screen where it just moved. Same function the Brief
+// reports from, so the two can't disagree, and the same gates: a first session
+// has no week behind it, and a student without a real week of history gets no
+// weekly framing at all — the rule the Brief has always followed.
+//
+// A count, never a percentage. Nothing here grades the session.
+function weekTopicsHTML() {
+  if (isFirstEverSession()) return '';
+  if (!hasAWeek()) return '';
+  const n = topicsPracticedThisWeek();
+  if (n === 0) return '';   // can't happen after a session, and says nothing if it does
+  const text = n === 1
+    ? `<strong style="color:var(--ink);">One topic</strong> practiced this week so far.`
+    : `<strong style="color:var(--ink);">${n} distinct topics</strong> practiced this week.`;
+  return `<p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 20px;">${text}</p>`;
+}
+
 // A student's first questions ever, in subjects they are still learning, are
 // not a performance to grade. First ever = the curated first set, or nothing
 // answered before this session (totalAnswered already includes it), which also
@@ -10332,6 +11001,7 @@ function screenComplete() {
 
       ${closingLine}
       ${sessionStandingHTML()}
+      ${weekTopicsHTML()}
 
       <div class="today-note">
         <span class="today-dot"></span>practiced today
@@ -10802,6 +11472,67 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// The same map, painted. One layout function serves the screen and the canvas,
+// so a share card can never show a different exam from the one the student was
+// looking at when they tapped share. Returns the y it finished at.
+function paintRouteMap(ctx, x, y, w, bandPx) {
+  const bands = routeMapBands(bandPx, w);
+  const gap = 6;
+  let cy = y;
+  bands.forEach(band => {
+    ctx.textAlign = 'left';
+    ctx.fillStyle = tok('--dim');
+    ctx.font = '700 22px "Inter", sans-serif';
+    ctx.fillText(band.sec.short.toUpperCase(), x, cy + 18);
+    cy += 32;
+
+    band.tiles.forEach(b => {
+      const t  = b.topic;
+      const tx = x + b.left / 100 * w, tw = Math.max(1, b.width / 100 * w - gap);
+      const ty = cy + b.top,           th = Math.max(1, b.h - gap);
+      const fill = tileFill(t);
+      const cars = t.mcat === 'cars';
+
+      ctx.save();
+      roundRect(ctx, tx, ty, tw, th, 10);
+      ctx.clip();
+      ctx.fillStyle = cars ? 'rgba(245,158,11,0.09)' : 'rgba(255,255,255,0.04)';
+      ctx.fillRect(tx, ty, tw, th);
+      if (fill > 0) {
+        ctx.fillStyle = 'rgba(29,158,117,0.42)';
+        ctx.fillRect(tx, ty + th * (1 - fill), tw, th * fill);
+      }
+      // Canvas has no ellipsis and no wrapping. A name that doesn't fit steps
+      // down one size, and if it still doesn't fit the tile keeps its colour and
+      // says nothing — a clipped half-word is worse than no word.
+      if (th >= 34) {
+        const name = mapName(t);
+        let size = 0;
+        for (const px of [21, 18, 16]) {
+          ctx.font = `600 ${px}px "Inter", sans-serif`;
+          if (ctx.measureText(name).width <= tw - 14) { size = px; break; }
+        }
+        if (size) {
+          ctx.fillStyle = fill > 0 || cars ? tok('--ink') : tok('--muted');
+          ctx.font = `600 ${size}px "Inter", sans-serif`;
+          ctx.fillText(name, tx + 8, ty + 28);
+          if (th >= 62 && (cars || fill === 0.5)) {
+            const sub = cars ? 'ongoing' : 'taking';
+            ctx.font = '500 20px "Inter", sans-serif';
+            if (ctx.measureText(sub).width <= tw - 20) {
+              ctx.fillStyle = cars ? tok('--amber') : tok('--muted');
+              ctx.fillText(sub, tx + 10, ty + 54);
+            }
+          }
+        }
+      }
+      ctx.restore();
+    });
+    cy += band.height + 12;
+  });
+  return cy;
+}
+
 // ── Tokens, for the two surfaces CSS cannot reach ────────────────────────────
 // Canvas has never heard of a custom property, so the share-card painters ask
 // the document what a token resolves to and draw with the answer. Read once per
@@ -10922,12 +11653,17 @@ async function deliverShare({ canvas, filename, title, text }) {
 }
 
 async function shareCoverageCard(variant = 'coverage', btn) {
-  if (window.plausible) plausible('share_card');
+  if (window.plausible) plausible('share_card', { props: { variant } });
   const cov   = coverage(S.courses, true);
   const myTopics    = TOPICS.filter(t => t.course && S.courses.has(t.course));
   const totalTopics = TOPICS.filter(t => t.course).length;
   const streak = S.streak;
   const isStreak = variant === 'streak' && streak >= 7;
+  // The term card is offered only inside its window, and the window can close
+  // between the render that offered it and the tap. Falling back to the route
+  // card is better than painting a term that has stopped being this one.
+  const snap    = variant === 'term' ? termSnapshot() : null;
+  const isTerm  = !!snap;
 
   // Sharing should feel instant — show a loading state on the button right away
   // rather than leaving it looking like a dead click while the card renders.
@@ -10943,6 +11679,7 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
+  let mapEnd = 0;   // where the coverage card's map finished, so nothing lands on it
 
   try {
     await Promise.all([
@@ -10976,30 +11713,53 @@ async function shareCoverageCard(variant = 'coverage', btn) {
 
   ctx.fillStyle = tok('--muted');
   ctx.font = '500 28px "Inter", sans-serif';
-  ctx.fillText(isStreak ? 'My study streak' : 'My MCAT prep route', 70, 152);
+  ctx.fillText(isTerm ? snap.label : isStreak ? 'My study streak' : 'My MCAT prep route', 70, 152);
 
-  // Big number — coverage % or streak, depending on variant
+  // The coverage card is the map now — the same hero the Route shows, painted by
+  // the same layout function, so a share card can't show a different exam from
+  // the one the student was looking at when they tapped share. The percentage
+  // retired from the headline here for the reasons it retired everywhere else.
   ctx.textAlign = 'center';
   ctx.fillStyle = tok('--ink');
-  if (isStreak) {
+  if (isTerm) {
+    // "about" carries the rounding where a reader can't miss it: the figure
+    // below is to the nearest 5, which is the grain AAMC's own published shares
+    // have. A card is where a number travels furthest from its derivation.
+    const rounded = Math.round(snap.cov / 5) * 5;
+    ctx.fillStyle = tok('--muted');
+    ctx.font = '700 34px "Space Grotesk", sans-serif';
+    ctx.fillText(snap.cov > 0 && rounded === 0 ? 'UNDER' : 'ABOUT', W / 2, 400);
+    ctx.fillStyle = tok('--ink');
+    ctx.font = '700 200px "Space Grotesk", sans-serif';
+    ctx.fillText(`${snap.cov > 0 && rounded === 0 ? 5 : rounded}%`, W / 2, 553);
+    ctx.fillStyle = tok('--green');
+    ctx.font = '600 40px "Inter", sans-serif';
+    ctx.fillText('of the MCAT covered', W / 2, 610);
+  } else if (isStreak) {
     ctx.font = '700 200px "Space Grotesk", sans-serif';
     ctx.fillText(`🔥 ${streak}`, W / 2, 540);
     ctx.fillStyle = tok('--green');
     ctx.font = '600 40px "Inter", sans-serif';
     ctx.fillText(streak === 1 ? 'day streak' : 'day streak', W / 2, 605);
   } else {
-    ctx.font = '700 240px "Space Grotesk", sans-serif';
-    ctx.fillText(`${cov}%`, W / 2, 540);
-    ctx.fillStyle = tok('--green');
-    ctx.font = '600 40px "Inter", sans-serif';
-    ctx.fillText('of the MCAT covered', W / 2, 605);
+    // The Route's own order: territory line, then the map. Two lines of room —
+    // "Senior-year territory, a year ahead of where you are." is the longest
+    // this line ever gets.
+    ctx.font = '700 52px "Space Grotesk", sans-serif';
+    wrapCanvasText(ctx, territoryLine(cov), W - 200).slice(0, 2)
+      .forEach((line, i) => ctx.fillText(line, W / 2, 252 + i * 62));
+    mapEnd = paintRouteMap(ctx, 70, 348, W - 140, 560);
+    ctx.textAlign = 'center';
   }
 
-  // Stat cards
+  // Stat cards — the streak and term cards lead with one big figure and need
+  // the supporting pair. The coverage card's body is the map, which already
+  // fills this space.
   const cardY = 700, cardW = 445, cardH = 230, cardR = 22, gap = 50;
   const cardX1 = (W - cardW * 2 - gap) / 2;
   const cardX2 = cardX1 + cardW + gap;
 
+  if (isStreak || isTerm) {
   ctx.fillStyle = 'rgba(255,255,255,0.04)';
   roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.fill();
   roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.fill();
@@ -11008,11 +11768,30 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.stroke();
   roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.stroke();
 
-  if (isStreak) {
-    // Coverage % card
+  if (isTerm) {
+    // What the term's finished coursework covers. A term with nothing finished
+    // says so with a dash rather than with a zero dressed as a result.
     ctx.fillStyle = tok('--ink');
     ctx.font = '700 90px "Space Grotesk", sans-serif';
-    ctx.fillText(`${cov}%`, cardX1 + cardW / 2, cardY + 120);
+    ctx.fillText(snap.gained > 0 ? `${Math.max(5, Math.round(snap.gained / 5) * 5)}%` : '—', cardX1 + cardW / 2, cardY + 120);
+    ctx.fillStyle = tok('--muted');
+    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.fillText(snap.gained > 0 ? 'finished this term' : 'still in progress', cardX1 + cardW / 2, cardY + 175);
+
+    // Distinct topics practised inside the term. A count, so it needs no
+    // rounding and gets none.
+    ctx.fillStyle = tok('--ink');
+    ctx.font = '700 90px "Space Grotesk", sans-serif';
+    ctx.fillText(String(snap.topics), cardX2 + cardW / 2, cardY + 120);
+    ctx.fillStyle = tok('--muted');
+    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.fillText(snap.topics === 1 ? 'topic practiced' : 'topics practiced', cardX2 + cardW / 2, cardY + 175);
+  } else if (isStreak) {
+    // Coverage card. Smaller type than the others because it carries the word
+    // that makes it honest — nearest 5, like every percentage that leaves here.
+    ctx.fillStyle = tok('--ink');
+    ctx.font = '700 62px "Space Grotesk", sans-serif';
+    ctx.fillText(aboutCoverage(cov), cardX1 + cardW / 2, cardY + 115);
     ctx.fillStyle = tok('--muted');
     ctx.font = '500 30px "Inter", sans-serif';
     ctx.fillText('MCAT covered', cardX1 + cardW / 2, cardY + 175);
@@ -11041,15 +11820,20 @@ async function shareCoverageCard(variant = 'coverage', btn) {
     ctx.font = '500 30px "Inter", sans-serif';
     ctx.fillText('topics unlocked', cardX2 + cardW / 2, cardY + 175);
   }
+  }
 
   // Tagline
   ctx.fillStyle = tok('--faint');
   ctx.font = '500 32px "Inter", sans-serif';
-  const taglineText = isStreak
+  const taglineText = isTerm
+    ? `${snap.label} is on the map. Coursework maps to MCAT content, so a semester finished is exam ground covered.`
+    : isStreak
     ? 'Consistency compounds — every day on track is a day closer to being ready.'
-    : 'Building the habit one topic at a time, while the material is still in front of you.';
+    : 'Every tile is a topic the MCAT tests, sized by how much of the exam it is. The filled ones are classes I have taken.';
   const lines = wrapCanvasText(ctx, taglineText, W - 180);
-  lines.forEach((line, i) => ctx.fillText(line, W / 2, 1060 + i * 44));
+  // The coverage card's map runs to about y=1050, so its line sits under it.
+  const taglineY = (isStreak || isTerm) ? 1060 : mapEnd + 46;
+  lines.forEach((line, i) => ctx.fillText(line, W / 2, taglineY + i * 44));
 
   // Footer
   ctx.fillStyle = tok('--muted');
@@ -11059,11 +11843,13 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   try {
     await deliverShare({
       canvas,
-      filename: isStreak ? 'waypoint-streak.png' : 'waypoint-progress.png',
-      title: 'My Waypoint progress',
-      text: isStreak
+      filename: isTerm ? 'waypoint-term.png' : isStreak ? 'waypoint-streak.png' : 'waypoint-progress.png',
+      title: isTerm ? `My ${snap.label}` : 'My Waypoint progress',
+      text: isTerm
+        ? `${snap.label} done — ${aboutCoverage(snap.cov)} of the MCAT covered, tracked with Waypoint.`
+        : isStreak
         ? `I'm on a ${streak}-day Waypoint streak — tracking my MCAT coverage.`
-        : `I've covered ${cov}% of the MCAT — tracked with Waypoint.`,
+        : `I've covered ${aboutCoverage(cov)} of the MCAT — tracked with Waypoint.`,
     });
   } catch (e) {
     console.error('[Waypoint] share failed:', e);
@@ -11236,7 +12022,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, terms:50, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, sources:50 };
+const PROG = { landing:0, brief:10, year:15, courses:30, terms:50, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, explain:50, sources:50 };
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -11262,14 +12048,14 @@ function syncDesktopShell() {
 
   const cov = coverage(S.courses, true);
   const covNum = document.getElementById('dt-cov-num');
-  if (covNum) covNum.textContent = cov;
+  if (covNum) covNum.textContent = Math.round(cov / 5) * 5;
   const ring = document.getElementById('dt-ring-fill');
   if (ring) ring.style.strokeDashoffset = (213.6 * (1 - cov / 100)).toFixed(1);
 
   const note = document.getElementById('dt-ring-note');
   if (note) {
     note.innerHTML = cov > 0
-      ? `<strong>${cov}%</strong> of MCAT content so far. Courses map to 77%; CARS is the remaining 23% — a reading skill worth about a quarter of your exam score.`
+      ? `<strong>${aboutCoverage(cov)}</strong> of MCAT content so far. Courses map to 77%; CARS is the remaining 23% — a reading skill worth about a quarter of your exam score.`
       : 'Set up your route to see coverage climb.';
   }
 
@@ -11307,39 +12093,45 @@ let ringAnimKey = null;
 // The entrance for the coverage ring. The markup already paints the true value,
 // so this only ever ADDS an animation — skipping it leaves the number correct.
 // `force` is for the first-reveal beat, which always plays.
+// Every .sec-bar-fill in `root` sweeps from 0 to its data-w after a paint
+// delay. One definition, because two screens draw these bars and a bar that
+// only animates on one of them is a bar that is wrong on the other.
+function fillSectionBars(root) {
+  if (!root) return;
+  setTimeout(() => {
+    root.querySelectorAll('.sec-bar-fill').forEach(el => { el.style.width = el.dataset.w + '%'; });
+  }, 120);
+}
+
+// The map fills in the way the ring used to sweep: once, when the figure it
+// draws has changed, and never again on an idle re-render. Same `force` contract
+// the first reveal has always used, and the same key guard — only the key is now
+// the whole route rather than one number, so adding a course replays it and
+// tapping "Not now" on the account ask does not.
+//
+// Reduced motion skips the sweep and lands every tile at its final height, so
+// the map is complete and correct without a single transition.
 function animateCoverageRing(force) {
-  const ring = document.querySelector('[data-target]');
-  const cn   = document.getElementById('cov-num');
-  if (!ring && !cn) { ringAnimKey = null; return; }
+  const map = document.getElementById('route-map');
+  if (!map) { ringAnimKey = null; return; }
 
-  const key = S.screen + ':' + (cn ? cn.dataset.count : (ring.dataset.target || ''));
-  if (!force && key === ringAnimKey) return;   // same screen, same number — leave it alone
+  const fills = [...map.querySelectorAll('.map-fill')];
+  const key = S.screen + ':' + fills.map(f => f.dataset.fill).join(',');
+  if (!force && key === ringAnimKey) return;
   ringAnimKey = key;
-  if (reducedMotion()) return;                 // markup is already at the final value
 
-  if (ring) {
-    const empty = ring.dataset.empty || ring.getAttribute('stroke-dasharray');
-    ring.style.transition = 'none';
-    ring.style.strokeDashoffset = empty;
-    requestAnimationFrame(() => {
-      ring.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(0.2,0.8,0.4,1)';
-      requestAnimationFrame(() => { ring.style.strokeDashoffset = ring.dataset.target; });
-    });
-  }
+  const land = () => fills.forEach(f => { f.style.height = f.dataset.fill + '%'; });
+  if (reducedMotion()) { fills.forEach(f => { f.style.transition = 'none'; }); land(); return; }
 
-  if (!cn) return;
-  const target = parseInt(cn.dataset.count, 10) || 0;
-  if (target <= 0) return;
-
-  cn.textContent = '0%';
-  let t0 = null;
-  const tick = (ts) => {
-    if (!t0) t0 = ts;
-    const pr = Math.min((ts - t0) / 1100, 1);
-    cn.textContent = Math.round((1 - Math.pow(1 - pr, 3)) * target) + '%';
-    if (pr < 1) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
+  // Filled tiles come in biggest first, so the shape of the exam reads before
+  // the detail does. Everything is on screen inside a second.
+  const order = fills.filter(f => +f.dataset.fill > 0)
+                     .sort((a, b) => b.parentElement.offsetHeight - a.parentElement.offsetHeight);
+  fills.forEach(f => { f.style.height = '0%'; });
+  requestAnimationFrame(() => {
+    order.forEach((f, i) => setTimeout(() => { f.style.height = f.dataset.fill + '%'; },
+                                       Math.min(i * 45, 700)));
+  });
 }
 
 const FIRST_REVEAL_BEAT = 800;
@@ -11395,9 +12187,12 @@ function playFirstReveal() {
 function render() {
   try {
   const el = document.getElementById('app');
-  const pct = PROG[S.screen] || 0;
 
-  let html = `<div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`;
+  // The screen is chosen first and the progress bar built after, because a
+  // screen may redirect to another one on the way through (an empty session
+  // lands on Home) — and a bar drawn beforehand would show the width of the
+  // screen we didn't render.
+  let html = '';
   switch (S.screen) {
     case 'landing':  html += screenLanding();  break;
     case 'brief':    html += screenBrief();    break;
@@ -11417,6 +12212,7 @@ function render() {
     case 'examplan': html += screenExamPlan(); break;
     case 'syllabus': html += screenSyllabus(); break;
     case 'coverage': html += screenCoverage(); break;
+    case 'explain':  html += screenExplain();  break;
     case 'sources':  html += screenSources();  break;
     case 'quicklog':          html += screenQuickLog();         break;
     // Retired: topic and subtopic are one screen now. A stale S.screen (an
@@ -11427,6 +12223,8 @@ function render() {
     // explainers moved to 'coverage' — must never render an empty shell.
     default: S.screen = 'brief'; html += screenBrief(); break;
   }
+
+  html = `<div class="prog-bar"><div class="prog-fill" style="width:${PROG[S.screen] || 0}%"></div></div>` + html;
 
   const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
   if (showTabBar) {
@@ -11443,14 +12241,12 @@ function render() {
     const m = document.getElementById('sectioned-map');
     if (m) {
       m.innerHTML = sectionedMapHTML();
-      // Animate section bars after a short paint delay
-      setTimeout(() => {
-        m.querySelectorAll('.sec-bar-fill').forEach(el => {
-          el.style.width = el.dataset.w + '%';
-        });
-      }, 120);
+      fillSectionBars(m);
     }
   }
+  // Section balance renders on the tap-to-explain screen too, and a bar left at
+  // width:0 reads as "none of it", which is the opposite of what it says.
+  if (S.screen === 'explain') fillSectionBars(el);
   if (S.screen === 'complete') {
     const m = document.getElementById('map-mini');
     if (m) m.innerHTML = mapHTML(true, todayTopics());
