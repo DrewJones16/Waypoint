@@ -5164,7 +5164,7 @@ const S = {
   totalAnswered:  0,    // lifetime question count
   sessionHistory: [],   // last 7 sessions [{date, correct, total}]
   milestonesShown: {}, // {10: true, 50: true, ...} — so milestone banners only show once
-  covMilestonesShown: {}, // {15: true, 22: true, ...} — coverage-% milestone banners
+  covMilestonesShown: {}, // {'bb-50': true, ...} — section milestones already shown
   topicLastSeen: {}, // {topicId: 'YYYY-MM-DD'} — last date the user engaged with this topic (session or quick-log)
   quickLog: null,      // { topicId, subtopicId, subtopicFallback } while a quick-log session is active
   quickLogTopic: null, // topicId chosen in step 1, waiting for subtopic pick
@@ -5769,74 +5769,125 @@ function coverage(courses, statusAware = false) {
   }, 0));
 }
 
-// Coverage-percentage celebration moments — fire once each as the route fills in
-// Thresholds sit on the sequence totals these weights actually produce —
-// 16 / 31 / 64 with 77 the course-linked maximum. They moved when the weights
-// were re-derived; see the migration in load() that stops them re-firing for
-// anyone who had already passed them under the old numbers.
+// ── MILESTONES, IN AAMC'S OWN STRUCTURE ───────────────────────────────────────
+// These used to be thresholds on the coverage percentage — 12, 16, 31, 64, 77.
+// With the percentage retired from the hero, a milestone named after one is a
+// milestone named after a number the student no longer sees. So they are named
+// after the exam instead: AAMC's own sections, earned by weighted fill of that
+// section's content.
 //
-// The card sits under the reveal's headline number, so its copy never states a
-// percentage of its own — a threshold figure beside the student's real one reads
-// as a second, smaller score.
-const COVERAGE_MILESTONES = [
-  { at: 12, title: 'First waypoint reached',     text: 'The MCAT is on your route — and you\'re mapping it while the material is still in front of you.' },
-  { at: 16, title: 'Freshman benchmark cleared', text: 'Past what a standard freshman sequence adds up to. You\'re here, and you\'re just getting started.' },
-  { at: 31, title: 'Sophomore ground covered',   text: 'Past a standard sophomore\'s ground, with the biggest blocks still ahead.' },
-  { at: 64, title: 'Junior-year territory',      text: 'Past what a standard sequence adds up to by the end of junior year.' },
-  { at: 77, title: 'Full route unlocked',        text: 'Every course on your route is covered. From here, it\'s practice and retention.' },
-];
+// Earned by WEIGHTED FILL, never by touching a tagged topic. That distinction is
+// the whole design. A milestone that fired on "you have covered something in
+// Bio/Biochem" would fire for every student in their first semester, which is
+// exactly why counting AAMC's 31 content categories was rejected as a headline.
+// sectionCoverage() is the same weighted credit the rest of the app uses — an
+// in-progress class counts half here too — so a section fills over years.
+//
+// Why NOT foundational concepts. AAMC's ten foundational concepts are in
+// CONTENT_MAP and the brief allowed milestones at that level only if topics map
+// to them verifiably without inventing weights. They don't:
+//
+//   - CONTENT_MAP tags topics by undergraduate DISCIPLINE, not by weight. There
+//     is no published per-concept share of the exam to fill.
+//   - 9 of the 18 weighted topics appear under more than one concept, carrying
+//     59% of the exam's weight between them. Biochemistry alone (13%) sits in
+//     concepts 1, 2 and 5. Splitting that 13 across three concepts would mean
+//     choosing the split ourselves — inventing exactly the numbers the brief
+//     forbids.
+//   - Going by discipline tags instead reproduces the rejected category count:
+//     a freshman with Bio I and Gen Chem I already touches 7 of the 10 concepts,
+//     and it still cannot tell Bio I from Bio I + II.
+//
+// So there are no foundational-concept milestones. Section level is where the
+// weights actually exist.
 
-// The coverage weights were re-derived from AAMC's published figures, which
-// moved every milestone threshold. Keyed by threshold, the stored map would then
-// read as "unseen" for the new numbers and congratulate a returning student all
-// over again for ground they crossed months ago.
+// Shares of a SECTION's weighted content, not of the exam. Checked against the
+// standard sequence so each one lands in a different year rather than stacking:
+// Bio/Biochem crosses 25 with Bio I, 50 with Bio II and 100 with Biochem;
+// Chem/Physics crosses 25 with Gen Chem I and needs Physics II for 100;
+// Psych/Soc opens with Psychology and completes with Sociology.
+const SECTION_THRESHOLDS = [25, 50, 100];
+
+// CARS has no coursework foundation to complete — no class teaches it — so it
+// has no milestones, for the same reason it has no tile fill.
+function sectionMilestones() {
+  const out = [];
+  MCAT_SECTIONS.forEach(sec => {
+    if (sec.id === 'cars') return;
+    SECTION_THRESHOLDS.forEach(at => out.push({ id: `${sec.id}-${at}`, sec, at }));
+  });
+  return out;
+}
+
+const MILESTONE_LEVELS = {
+  25:  { label: 'on the board',
+         text: sec => `Your coursework now covers real ground in AAMC's ${sec.long} — that section is no longer all ahead of you.` },
+  50:  { label: 'past halfway',
+         text: sec => `More than half of what AAMC's ${sec.long} section tests is coursework you have already done.` },
+  100: { label: 'foundation complete',
+         text: sec => `Every course that maps to AAMC's ${sec.long} is behind you. What is left in that section is practice and retention.` },
+};
+
+function earnedMilestones() {
+  const fill = sectionCoverage(S.courses);
+  return sectionMilestones().filter(m => (fill[m.sec.id] || 0) >= m.at);
+}
+
+// The ratchet, per section. The highest threshold a section has ever shown is
+// read straight from wp_cov_milestones, and nothing at or below it is offered
+// again — so un-marking a course can never hand a milestone back to be re-earned.
+// Per section rather than globally: finishing Psych/Soc must not lock a student
+// out of their first Bio/Biochem milestone.
+function milestoneCeiling(secId) {
+  return SECTION_THRESHOLDS.reduce((hi, at) => S.covMilestonesShown[`${secId}-${at}`] ? Math.max(hi, at) : hi, 0);
+}
+
+// The milestones moved from percentage thresholds to AAMC's sections, so the
+// stored map reads as "unseen" for every new key and would congratulate a
+// returning student for four semesters of ground they crossed months ago.
 //
-// So: anyone who had seen at least one milestone has every threshold at or below
-// their current coverage marked as seen, once. A genuinely new user has an empty
-// map and is left alone — they should get their milestones.
+// So: everything already reached is marked, once. A student loading the app for
+// the first time has no courses yet, reaches nothing, and is marked nothing —
+// they get their milestones as they earn them. No check of who the user is;
+// the state at load() is the answer.
+//
+// The old numeric keys (12/16/31/64/77) and the v2 flag are left exactly where
+// they are. They are inert, and rewriting stored history to tidy it is not worth
+// the one thing that could go wrong.
 function migrateCovMilestones() {
-  if (S.covMilestonesShown.v2) return;
-  const seenAny = Object.keys(S.covMilestonesShown).length > 0;
-  if (seenAny) {
-    const cov = coverage(S.courses, true);
-    COVERAGE_MILESTONES.forEach(m => { if (cov >= m.at) S.covMilestonesShown[m.at] = true; });
-  }
-  S.covMilestonesShown.v2 = true;
+  if (S.covMilestonesShown.v3) return;
+  earnedMilestones().forEach(m => { S.covMilestonesShown[m.id] = true; });
+  S.covMilestonesShown.v3 = true;
   save();
 }
 
 // One card, the highest one earned, decided once per visit to the Route.
 //
 // This used to mark only the milestone it showed, and it runs on every render —
-// so a reveal at 38% showed "Sophomore ground covered", and the next render (a
-// tap on "Not now", a return from a session) found 16 still unseen and swapped
-// in "Freshman benchmark cleared". Now everything the student has passed is
-// marked at once, and the chosen card is held in S._covMilestone until they
-// leave the Route (go() clears it), so a re-render shows the same card rather
-// than the next one down.
-//
-// And a milestone never moves downward. The highest one a student has ever seen
-// is read straight from wp_cov_milestones, and nothing at or below it is shown
-// again — which also covers routes saved before this fix, where "31" was marked
-// seen and "16" was left waiting underneath it.
+// so a reveal showed one card and the next render swapped in the next one down.
+// Now everything the student has passed is marked at once, and the chosen card
+// is held in S._covMilestone until they leave the Route (go() clears it), so a
+// re-render shows the same card rather than the next one.
 function milestoneCopy() {
   if (S._covMilestone === undefined) {
-    const cov    = coverage(S.courses, true);
-    const top    = COVERAGE_MILESTONES.reduce((hi, m) => S.covMilestonesShown[m.at] ? m.at : hi, 0);
-    const earned = COVERAGE_MILESTONES.filter(m => cov >= m.at);
-    const hit    = earned.filter(m => !S.covMilestonesShown[m.at] && m.at > top);
-    S._covMilestone = hit.length ? hit[hit.length - 1].at : null;
+    const earned = earnedMilestones();
+    const hit    = earned.filter(m => !S.covMilestonesShown[m.id] && m.at > milestoneCeiling(m.sec.id));
+    // Highest threshold first, so the biggest thing they just did leads; section
+    // order breaks a tie, so the card is the same one on every render.
+    hit.sort((a, b) => b.at - a.at || MCAT_SECTIONS.indexOf(a.sec) - MCAT_SECTIONS.indexOf(b.sec));
+    S._covMilestone = hit.length ? hit[0].id : null;
     if (hit.length) {
-      earned.forEach(m => { S.covMilestonesShown[m.at] = true; });
+      earned.forEach(m => { S.covMilestonesShown[m.id] = true; });
       save();
     }
   }
-  const m = COVERAGE_MILESTONES.find(x => x.at === S._covMilestone);
+  const m = sectionMilestones().find(x => x.id === S._covMilestone);
   if (!m) return '';
+  const lvl = MILESTONE_LEVELS[m.at];
   return `<div class="cov-milestone-card">
     <div style="margin-bottom:12px;line-height:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
-    <div style="font-size: var(--fs-11);font-weight:800;color:var(--green-bright);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">${m.title}</div>
-    <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.55;margin-bottom:12px;">${m.text}</p>
+    <div style="font-size: var(--fs-11);font-weight:800;color:var(--green-bright);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">${m.sec.short} — ${lvl.label}</div>
+    <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.55;margin-bottom:12px;">${lvl.text(m.sec)}</p>
     <button class="btn btn-share" style="margin-top:0;font-size: var(--fs-13);padding:12px 16px;" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share this</button>
   </div>`;
 }
