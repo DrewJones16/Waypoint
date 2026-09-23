@@ -11540,10 +11540,10 @@ function paintRouteMap(ctx, x, y, w, bandPx) {
       ctx.save();
       roundRect(ctx, tx, ty, tw, th, 10);
       ctx.clip();
-      ctx.fillStyle = cars ? 'rgba(245,158,11,0.09)' : 'rgba(255,255,255,0.04)';
+      ctx.fillStyle = cars ? tok('--water') : tok('--wash');
       ctx.fillRect(tx, ty, tw, th);
       if (fill > 0) {
-        ctx.fillStyle = 'rgba(29,158,117,0.42)';
+        ctx.fillStyle = tok('--covered');
         ctx.fillRect(tx, ty + th * (1 - fill), tw, th * fill);
       }
       // Canvas has no ellipsis and no wrapping. A name that doesn't fit steps
@@ -11736,17 +11736,9 @@ async function shareCoverageCard(variant = 'coverage', btn) {
     ]);
   } catch (e) { /* fonts may not be ready — fall back to default */ }
 
-  // Background
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, tok('--bg'));
-  bg.addColorStop(1, tok('--surface'));
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  const glow = ctx.createRadialGradient(W * 0.82, H * 0.12, 0, W * 0.82, H * 0.12, W * 0.75);
-  glow.addColorStop(0, 'rgba(29,158,117,0.28)');
-  glow.addColorStop(1, 'rgba(29,158,117,0)');
-  ctx.fillStyle = glow;
+  // Background: flat stock. What was a tinted gradient with a green glow over
+  // it is one paper, because a sheet does not light itself.
+  ctx.fillStyle = tok('--bg');
   ctx.fillRect(0, 0, W, H);
 
   // Branding
@@ -11804,10 +11796,10 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   const cardX2 = cardX1 + cardW + gap;
 
   if (isStreak || isTerm) {
-  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.fillStyle = tok('--wash');
   roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.fill();
   roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.strokeStyle = tok('--line');
   ctx.lineWidth = 2;
   roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.stroke();
   roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.stroke();
@@ -11933,15 +11925,8 @@ async function shareTwistCard(btn) {
     ]);
   } catch (e) { /* fall back to default fonts */ }
 
-  // Background + purple glow (twist accent)
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, tok('--bg'));
-  bg.addColorStop(1, tok('--surface'));
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W * 0.82, H * 0.12, 0, W * 0.82, H * 0.12, W * 0.75);
-  glow.addColorStop(0, 'rgba(139,92,246,0.26)');
-  glow.addColorStop(1, 'rgba(139,92,246,0)');
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  // Background: flat stock, as on the coverage card.
+  ctx.fillStyle = tok('--bg'); ctx.fillRect(0, 0, W, H);
 
   // Branding
   ctx.textAlign = 'left';
@@ -11990,8 +11975,8 @@ async function shareTwistCard(btn) {
   };
 
   let y = 250;
-  y = drawPanel(y, 'IN CLASS', tok('--muted'), clsLines, tok('--ink-2'), 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.09)');
-  y = drawPanel(y + gap, 'ON THE MCAT', tok('--violet'), examLines, tok('--violet-soft'), 'rgba(139,92,246,0.10)', 'rgba(139,92,246,0.4)');
+  y = drawPanel(y, 'IN CLASS', tok('--muted'), clsLines, tok('--ink-2'), tok('--wash'), tok('--line'));
+  y = drawPanel(y + gap, 'ON THE MCAT', tok('--violet'), examLines, tok('--violet-soft'), tok('--violet-wash'), tok('--violet-line'));
 
   // Tagline
   ctx.textAlign = 'center';

@@ -23,13 +23,23 @@ const SPACE_STEPS = [0,4,8,12,16,20,24,32,48];
 // :root is where colours are allowed to be literal — that is the point of it.
 // Inline <svg> carries fills and strokes that no stylesheet can reach, and the
 // gradient/mask stops that need a literal to mean "opaque".
+//
+// The mask exemption used to be a claim in this comment rather than a line of
+// code; it is now actually implemented, because rule 1b below would otherwise
+// fail on rgba(0,0,0,1) in a mask, where the literal means "keep this pixel"
+// and not a colour at all.
 function regions(src) {
   const i = src.indexOf('/* ── THE SYSTEM ─');
   const j = src.indexOf('  }\n\n  *, *::before', i);
   if (i < 0 || j < 0) throw new Error('cannot find the :root token block — has it been renamed?');
   const root = src.slice(i, j + 4);
   const rest = src.slice(0, i) + src.slice(j + 4);
-  return { root, rest: rest.replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>') };
+  return {
+    root,
+    rest: rest
+      .replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>')
+      .replace(/(-webkit-)?mask-image:[^;]*;/g, 'mask-image:;'),
+  };
 }
 
 // Report a finding with the line it is on, counted in the original file.
@@ -46,6 +56,16 @@ export function scan(src) {
   // 1. No colour literal outside :root and <svg>.
   for (const m of rest.matchAll(/#[0-9A-Fa-f]{3,8}\b/g)) {
     add('hex', `${m[0]} near line ${locate(rest, m[0], Math.max(0, m.index - 1))}`);
+  }
+
+  // 1b. And no rgb()/rgba()/hsl() literal either. This is the rule that was
+  //     missing: the lock checked hex only, so for ten sprints colour drifted
+  //     in through rgba unchecked — 213 of them outside :root by the time the
+  //     app was repapered, in seventeen colour families at sixty-four alphas,
+  //     including eleven different greens. A palette is only a palette if the
+  //     translucent tints are in it too, so these have to be tokens as well.
+  for (const m of rest.matchAll(/\b(?:rgba?|hsla?)\([^)]*\)/g)) {
+    add('rgb', `${m[0]} near line ${locate(rest, m[0], Math.max(0, m.index - 1))}`);
   }
 
   // 2. Every font-size on the scale. A computed one (${...}) has to resolve to
@@ -109,6 +129,7 @@ export function scan(src) {
 // ── The self-test: a lock that cannot fail is not a lock ─────────────────────
 const VIOLATIONS = [
   ['a raw hex colour',   s => s.replace('<div id="app">', '<div id="app" style="color:#3A9;">')],
+  ['a raw rgba colour',  s => s.replace('<div id="app">', '<div id="app" style="color:rgba(1,2,3,0.5);">')],
   ['a stray icon colour', s => s.replace('<svg ', '<svg stroke="#3FA9C1" ')],
   ['an off-grid icon',   s => s.replace('<svg width="16"', '<svg width="18"')],
   ['a heavy icon stroke', s => s.replace('stroke-width="2"', 'stroke-width="2.4"')],
@@ -124,7 +145,7 @@ const ok = (n, c, x = '') => { console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? ' 
 
 const found = scan(src);
 const byRule = found.reduce((a, f) => ((a[f.rule] = a[f.rule] || []).push(f.detail), a), {});
-for (const rule of ['hex', 'font-size', 'border-radius', 'box-shadow', 'svg-colour', 'icon-stroke', 'icon-size', 'tracking']) {
+for (const rule of ['hex', 'rgb', 'font-size', 'border-radius', 'box-shadow', 'svg-colour', 'icon-stroke', 'icon-size', 'tracking']) {
   const list = byRule[rule] || [];
   ok(`no off-system ${rule}`, list.length === 0,
      list.length ? `${list.length}: ` + list.slice(0, 6).join('; ') : '');
