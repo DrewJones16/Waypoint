@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 const FILE = process.argv[2] || new URL('./index.html', import.meta.url).pathname;
 
 // ── What the system allows ───────────────────────────────────────────────────
-const FONT_STEPS  = ['--fs-11','--fs-13','--fs-15','--fs-17','--fs-20','--fs-24','--fs-32','--fs-display'];
+const FONT_STEPS  = ['--fs-11','--fs-13','--fs-15','--fs-17','--fs-20','--fs-24','--fs-32'];
 const RADII       = ['--r-ctl','--r-card','--r-pill'];
 const SHADOWS     = ['--shadow-1','--shadow-2','--shadow-shell','--glow','--glow-lg'];
 const SPACE_STEPS = [0,4,8,12,16,20,24,32,48];
@@ -38,7 +38,8 @@ function regions(src) {
     root,
     rest: rest
       .replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>')
-      .replace(/(-webkit-)?mask-image:[^;]*;/g, 'mask-image:;'),
+      .replace(/(-webkit-)?mask-image:[^;]*;/g, 'mask-image:;')
+      .replace(/<meta name="theme-color"[^>]*>/g, '<meta theme-color>'),
   };
 }
 
@@ -107,6 +108,15 @@ export function scan(src) {
     }
   }
 
+  // 5b. theme-color is the one colour the browser reads before any CSS exists,
+  //     so it cannot be a var() — but it can still be required to be a colour
+  //     the palette actually names, which is what keeps the phone's chrome and
+  //     the page the same paper.
+  const theme = /<meta name="theme-color"[^>]*content="(#[0-9A-Fa-f]{3,8})"/.exec(src);
+  if (!theme) add('theme-color', 'no <meta name="theme-color"> declared');
+  else if (!palette.has(theme[1].toUpperCase()))
+    add('theme-color', `${theme[1]} is not in the palette`);
+
   // 6. Icons are one stroke width on one grid, at three optical sizes.
   for (const svg of src.matchAll(/<svg\b[^>]*viewBox="0 0 24 24"[^>]*>/g)) {
     const tag = svg[0];
@@ -131,6 +141,7 @@ const VIOLATIONS = [
   ['a raw hex colour',   s => s.replace('<div id="app">', '<div id="app" style="color:#3A9;">')],
   ['a raw rgba colour',  s => s.replace('<div id="app">', '<div id="app" style="color:rgba(1,2,3,0.5);">')],
   ['a stray icon colour', s => s.replace('<svg ', '<svg stroke="#3FA9C1" ')],
+  ['an off-palette theme-color', s => s.replace(/(<meta name="theme-color" content=")#[0-9A-Fa-f]+/, '$1#ABCDEF')],
   ['an off-grid icon',   s => s.replace('<svg width="16"', '<svg width="18"')],
   ['a heavy icon stroke', s => s.replace('stroke-width="2"', 'stroke-width="2.4"')],
   ['a one-off tracking', s => s.replace('<div id="app">', '<div id="app" style="letter-spacing:0.06em;">')],
@@ -145,7 +156,7 @@ const ok = (n, c, x = '') => { console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? ' 
 
 const found = scan(src);
 const byRule = found.reduce((a, f) => ((a[f.rule] = a[f.rule] || []).push(f.detail), a), {});
-for (const rule of ['hex', 'rgb', 'font-size', 'border-radius', 'box-shadow', 'svg-colour', 'icon-stroke', 'icon-size', 'tracking']) {
+for (const rule of ['hex', 'rgb', 'font-size', 'border-radius', 'box-shadow', 'svg-colour', 'theme-color', 'icon-stroke', 'icon-size', 'tracking']) {
   const list = byRule[rule] || [];
   ok(`no off-system ${rule}`, list.length === 0,
      list.length ? `${list.length}: ` + list.slice(0, 6).join('; ') : '');
