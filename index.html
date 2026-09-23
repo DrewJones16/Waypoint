@@ -6153,7 +6153,14 @@ function getDirectiveTopic() {
     .filter(t => t.course && S.courses.has(t.course) && daysBetween(S.nudgeDismissed[t.id]) !== 0)
     .sort((a, b) => (inProg(b.course) - inProg(a.course)) || (b.w - a.w));
   if (candidates.length === 0) return null;
-  const top = candidates[0];
+  // Having just practised something is the clearest possible signal not to
+  // recommend it again in the same breath. Both the Route's next parcel and
+  // Home's card come through here, so they move on together. If it is the only
+  // candidate it is still the answer — the line above will say "Practised
+  // today" rather than pretending otherwise.
+  const practisedToday = t => daysBetween(S.topicLastSeen[t.id]) === 0;
+  const unseen = candidates.filter(t => !practisedToday(t));
+  const top = (unseen.length ? unseen : candidates)[0];
   return { topic: top, days: null, reason: inProg(top.course) ? 'in-progress' : 'drill' };
 }
 
@@ -6378,14 +6385,25 @@ function routeFocus() {
   if (!course) return null;
 
   const taking = S.courseStatus[t.course] === 'in-progress';
-  const f  = freshnessActive() ? topicFreshness(t.id) : null;
-  const st = f ? heldDisplayState(f) : null;
-  const unpractised = !st || st === 'unpinned';
 
-  const practice = unpractised      ? 'Not practised yet.'
-                 : st === 'fresh'   ? 'Practised recently.'
-                 : st === 'fading'  ? 'Practised, but fading.'
-                 :                    'Practised a while back.';
+  // Ungated, unlike the contour rings above. freshnessActive() asks whether
+  // there is enough of a record to draw a *map layer* — two sessions across
+  // three topics — and that is the right bar for a visual claim about the whole
+  // route. It is the wrong bar for a sentence about one topic: a student who
+  // practised Psychology five minutes ago was still being told they had not.
+  //
+  // Read days rather than heldDisplayState, because that state reads "fresh"
+  // from enrolment alone when there is no practice record at all, and this
+  // sentence must never report sitting in a class as having practised.
+  const f = topicFreshness(t.id);
+  const days = f ? f.days : null;
+  const unpractised = days === null;
+
+  const practice = unpractised   ? 'Not practised yet.'
+                 : days === 0    ? 'Practised today.'
+                 : days === 1    ? 'Practised yesterday.'
+                 : days < 7      ? `Practised ${days} days ago.`
+                 :                 `Practised ${weeksAgo(days)}.`;
 
   // Never "haven't practised" when they have — the line has to survive the
   // student having drilled it this morning.
