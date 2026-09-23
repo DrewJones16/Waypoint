@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@1,400;1,600&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F2F4EF">
+<meta name="color-scheme" content="light">
 <title>Waypoint — See how much of the MCAT your classes already cover</title>
 <meta name="description" content="You know where you're going. This is where you are. Waypoint maps the classes you've taken onto the real MCAT and shows how much of the exam they already cover — free, in about two minutes.">
 <!-- Favicon: the Waypoint mark, inline so the app stays one file -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23131520'/%3E%3Cg fill='none' stroke='%231D9E75' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='16' cy='16' r='10'/%3E%3Cpolyline points='16 10.5 16 16 19.5 19.5'/%3E%3C/g%3E%3Ccircle cx='16' cy='16' r='1.7' fill='%231D9E75'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23F2F4EF'/%3E%3Cpath d='M16 5 28 27H4Z' fill='none' stroke='%231F2A24' stroke-width='2.4' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='20' r='3' fill='%232A5F3E'/%3E%3C/svg%3E">
 <!-- Open Graph / social preview -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Waypoint">
@@ -31,62 +33,95 @@
      16 font sizes and 15 radii — mostly near-misses of each other. These
      are the survivors, chosen by how often each value was already used, so
      the app looks like itself, executed once instead of forty-six times.
-     Nothing outside this block and inline <svg> may name a colour. */
+     Nothing outside this block and inline <svg> may name a colour.
+
+     The app is a survey sheet now, not a dark console. Every name below is
+     the one it always was and every screen still reads through it — what
+     changed is that ink is now dark on paper rather than light on black, so
+     a "hairline" is ink at low alpha instead of white, and the green glow
+     that was the app's one piece of light is a printed rule instead. Keeping
+     the names is the whole reason one edit repapers twenty screens. */
   :root {
-    /* Ground and surfaces */
-    --bg:          #08090C;   /* the page */
-    --surface:     #131520;   /* a card */
-    --surface-2:   #191D2A;   /* raised, hovered, or stacked on a card */
-    --line:        rgba(255,255,255,0.07);   /* hairline */
-    --line-2:      rgba(255,255,255,0.12);   /* hairline, asserted */
+    /* Ground and surfaces. A card is paper with a rule around it, so these
+       three sit close together — the rule does the separating, not the fill. */
+    --bg:          #F2F4EF;   /* the page */
+    --surface:     #ECEFE8;   /* a card */
+    --surface-2:   #E4E8DF;   /* raised, hovered, or stacked on a card */
+    --line:        rgba(31,42,36,0.16);   /* hairline */
+    --line-2:      rgba(31,42,36,0.34);   /* hairline, asserted */
+    --wash:        rgba(31,42,36,0.04);   /* a fill you can barely see */
+    --wash-2:      rgba(31,42,36,0.07);   /* a fill you can */
 
-    /* Ink, five levels: heading, body-emphasis, body, caption, inactive */
-    --ink:         #F0F2F8;
-    --ink-2:       #B0B5C8;
-    --muted:       #8A93A8;
-    --faint:       #767E96;
-    --dim:         #444B62;
+    /* Each accent fills at one strength and outlines at another. Seventeen
+       colour families at sixty-four alphas had grown up under a lock that
+       only ever checked hex, which is how "the green" came to mean eleven
+       different greens. These are the two jobs a tint actually does. */
+    --green-wash:  rgba(42,95,62,0.09);
+    --green-wash-2:rgba(42,95,62,0.18);
+    --green-line:  rgba(42,95,62,0.40);
+    --amber-wash:  rgba(142,86,48,0.10);
+    --amber-line:  rgba(142,86,48,0.38);
+    --violet-wash: rgba(87,64,146,0.10);
+    --violet-line: rgba(87,64,146,0.38);
+    --blue-wash:   rgba(46,111,150,0.10);
+    --blue-line:   rgba(46,111,150,0.38);
+    --red-wash:    rgba(158,59,34,0.10);
+    --red-line:    rgba(158,59,34,0.38);
+    /* The one translucent paper: chrome that floats over content */
+    --scrim:       rgba(242,244,239,0.93);
 
-    /* Green: the solid one fills and outlines, the bright one is text */
-    --green:       #1D9E75;
-    --green-bright:#4DE3AB;
+    /* Ink, five levels: heading, body-emphasis, body, caption, inactive.
+       Same ladder as before, walked the other way: darkest is loudest. */
+    --ink:         #1F2A24;   /* 13.5:1 on paper */
+    --ink-2:       #3A443F;   /*  9.1 */
+    --muted:       #49554E;   /*  7.0 */
+    --faint:       #5A6961;   /*  5.2 */
+    --dim:         #617168;   /*  4.7 — still readable; nothing here is decorative */
 
-    /* The other three sections of the exam, plus the colour of a wrong answer */
-    --violet:      #A78BFA;   /* Psych & Soc, and the Twist */
-    --violet-soft: #C4B5FD;
-    --amber:       #F5B36A;   /* exams, warnings, in-progress */
-    --blue:        #60A5FA;   /* CARS */
-    --red:         #F08060;
+    /* Green: the solid one fills and outlines, the "bright" one is text.
+       On paper the text green has to be the darker of the two — the name
+       still means "the green you read", which is what every call site wants. */
+    --green:       #2A5F3E;
+    --green-bright:#1E4A2F;
+    /* The tint a covered parcel is filled with, and the paper it sits on */
+    --covered:     #CFE2C6;
 
-    /* Type. Seven steps and the coverage number. */
+    /* The other three sections of the exam, plus the colour of a wrong answer.
+       --amber doubles as the contour colour the practice rings are drawn in. */
+    --violet:      #574092;   /* Psych & Soc, and the Twist */
+    --violet-soft: #6F58AC;
+    --amber:       #8E5630;   /* exams, warnings, in-progress, contour rings */
+    --blue:        #2A668A;   /* CARS — solved against the water tint, not paper */
+    --water:       #D9E7EF;   /* the tint CARS is ruled over */
+    --red:         #9E3B22;
+
+    /* Type. Seven steps. */
     --fs-11: 11px; --fs-13: 13px; --fs-15: 15px; --fs-17: 17px;
     --fs-20: 20px; --fs-24: 24px; --fs-32: 32px;
-    --fs-display: 80px;
 
     /* Space */
     --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px;
     --s-5: 20px; --s-6: 24px; --s-7: 32px; --s-8: 48px;
 
-    /* Radius: a control, a card, a pill */
-    --r-ctl: 8px; --r-card: 14px; --r-pill: 999px;
+    /* Radius: a control, a card, a pill. A survey sheet is drawn with a
+       straight edge, so the first two are nearly square. */
+    --r-ctl: 4px; --r-card: 4px; --r-pill: 999px;
 
-    /* Elevation: resting, and lifted off the page */
-    --shadow-1: 0 8px 24px rgba(0,0,0,0.45);
-    --shadow-2: 0 0 60px rgba(0,0,0,0.7), 0 0 120px rgba(0,0,0,0.5);
-    /* The green glow is Waypoint's one piece of light, not a shadow level */
-    --glow:     0 0 24px rgba(29,158,117,0.18);
-    --glow-lg:  0 0 40px rgba(29,158,117,0.5), 0 4px 14px rgba(0,0,0,0.4);
-    /* The desktop column's edge light — one signature, used once */
-    --shadow-shell: 0 0 90px rgba(0,0,0,0.85), 0 0 180px rgba(0,0,0,0.55),
-                    -60px 0 140px -60px rgba(29,158,117,0.14),
-                    60px 0 140px -60px rgba(167,139,250,0.12);
+    /* Elevation. Paper barely casts one: these are mostly printed rules. */
+    --shadow-1: 0 1px 2px rgba(31,42,36,0.10);
+    --shadow-2: 0 0 0 1px rgba(31,42,36,0.10);
+    /* What was the green glow is the ink rule that bounds a drawn thing */
+    --glow:     0 0 0 1px rgba(42,95,62,0.22);
+    --glow-lg:  0 1px 3px rgba(42,95,62,0.28);
+    /* The desktop column's edge — one signature, used once */
+    --shadow-shell: 0 0 0 1px rgba(31,42,36,0.12), 0 2px 10px rgba(31,42,36,0.06);
 
     /* Motion */
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
     --dur:  0.16s;
 
     /* One focus ring, everywhere */
-    --focus: 2px solid var(--green-bright);
+    --focus: 2px solid var(--ink);
 
     /* Small caps are the app's second voice; they all speak at one width */
     --track-caps: 0.08em;
@@ -104,7 +139,7 @@
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     background: var(--bg);
     min-height: 100vh;
     min-height: 100dvh;
@@ -122,15 +157,15 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    border-left: 1px solid rgba(255,255,255,0.06);
-    border-right: 1px solid rgba(255,255,255,0.06);
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
     box-shadow: var(--shadow-2);
   }
 
   /* Progress bar */
   .prog-bar {
     height: 2px;
-    background: rgba(255,255,255,0.06);
+    background: var(--wash-2);
     position: sticky;
     top: 0;
     z-index: 20;
@@ -152,10 +187,10 @@
     width: 100%;
     max-width: 430px;
     display: flex;
-    background: rgba(13,15,20,0.94);
+    background: var(--scrim);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    border-top: 1px solid rgba(255,255,255,0.07);
+    border-top: 1px solid var(--line);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     z-index: 30;
   }
@@ -191,10 +226,10 @@
   }
 
   /* Typography */
-  h1 { font-family: 'Space Grotesk', -apple-system, sans-serif; font-size: var(--fs-32); font-weight: 700; line-height: 1.15; color: var(--ink); letter-spacing: -0.02em; }
-  h2 { font-family: 'Space Grotesk', -apple-system, sans-serif; font-size: var(--fs-24); font-weight: 700; line-height: 1.25; color: var(--ink); letter-spacing: -0.01em; }
+  h1 { font-family: 'Public Sans', -apple-system, sans-serif; font-size: var(--fs-32); font-weight: 700; line-height: 1.15; color: var(--ink); letter-spacing: -0.02em; }
+  h2 { font-family: 'Public Sans', -apple-system, sans-serif; font-size: var(--fs-24); font-weight: 700; line-height: 1.25; color: var(--ink); letter-spacing: -0.01em; }
   p  { color: var(--faint); line-height: 1.65; }
-  .disp { font-family: 'Space Grotesk', -apple-system, sans-serif; letter-spacing: -0.01em; }
+  .disp { font-family: 'Public Sans', -apple-system, sans-serif; letter-spacing: -0.01em; }
 
   .label {
     font-size: var(--fs-11);
@@ -256,7 +291,7 @@
 
   /* Numbers that change must not jitter as their digits do. */
   .disp, .num, [data-count], [data-w], [data-secfill], .q-count,
-  #cov-num, #course-counter, .streak-badge, .coverage-num {
+  #dt-cov-num, #course-counter, .streak-badge {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1;
   }
@@ -280,7 +315,7 @@
 
   .section-divider {
     height: 1px;
-    background: rgba(255,255,255,0.06);
+    background: var(--wash-2);
     margin: 24px 0;
   }
   .section-caption {
@@ -306,7 +341,7 @@
   }
   .btn-primary {
     background: var(--green);
-    color: var(--ink);
+    color: var(--bg);
     font-weight: 600;
     letter-spacing: -0.01em;
     box-shadow: var(--glow);
@@ -315,24 +350,24 @@
      than a second green, so the label keeps its contrast on the way up. */
   .btn-primary:hover  { filter: brightness(1.12); box-shadow: var(--glow-lg); transform: translateY(-1px); }
   .btn-primary:active { transform: var(--press); box-shadow: var(--glow); }
-  .btn-primary:disabled { background: rgba(29,158,117,0.25); color: rgba(255,255,255,0.4); cursor: default; box-shadow: none; }
+  .btn-primary:disabled { background: var(--green-wash-2); color: var(--dim); cursor: default; box-shadow: none; }
   .btn-ghost {
     background: transparent;
     color: var(--muted);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid var(--line-2);
     margin-top: 12px;
   }
-  .btn-ghost:hover { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.18); color: var(--muted); }
+  .btn-ghost:hover { background: var(--wash); border-color: var(--line-2); color: var(--muted); }
 
   /* Prominent share CTA — teal accent, lighter-weight than primary */
   .btn-share {
-    background: rgba(29,158,117,0.1);
+    background: var(--green-wash);
     color: var(--green);
-    border: 1px solid rgba(29,158,117,0.3);
+    border: 1px solid var(--green-line);
     font-weight: 600;
     margin-top: 12px;
   }
-  .btn-share:hover { background: rgba(29,158,117,0.16); border-color: rgba(29,158,117,0.45); }
+  .btn-share:hover { background: var(--green-wash-2); border-color: var(--green-line); }
   .btn-share:disabled { opacity: 0.55; cursor: default; }
 
   /* Toast (brief confirmation messages) */
@@ -342,7 +377,7 @@
     bottom: 28px;
     transform: translateX(-50%) translateY(16px);
     background: var(--surface-2);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid var(--line-2);
     color: var(--ink);
     font-size: var(--fs-13);
     font-weight: 600;
@@ -365,7 +400,7 @@
     align-items: center;
     width: 100%;
     background: var(--surface);
-    border: 1.5px solid rgba(255,255,255,0.09);
+    border: 1.5px solid var(--line);
     border-radius: var(--r-card);
     padding: 16px 16px;
     font-size: var(--fs-15);
@@ -377,8 +412,8 @@
     transition: background var(--dur), border-color var(--dur), color var(--dur), transform var(--dur) var(--ease);
     text-align: left;
   }
-  .year-btn:hover { background: var(--surface-2); border-color: rgba(255,255,255,0.16); }
-  .year-btn.selected { border: 1.5px solid var(--green); background: rgba(29,158,117,0.1); color: var(--green-bright); box-shadow: var(--glow); }
+  .year-btn:hover { background: var(--surface-2); border-color: var(--line-2); }
+  .year-btn.selected { border: 1.5px solid var(--green); background: var(--green-wash); color: var(--green-bright); box-shadow: var(--glow); }
   .year-hint { font-size: var(--fs-13); color: var(--muted); }
   .year-btn.selected .year-hint { color: var(--green-bright); }
 
@@ -409,7 +444,7 @@
     min-height: 38px;
     padding: 0 12px;
     border-radius: var(--r-ctl);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid var(--line-2);
     background: transparent;
     color: var(--ink-2);
     cursor: pointer;
@@ -419,14 +454,14 @@
   }
   .term-chip:active { opacity: 0.7; }
   .term-chip.on {
-    border-color: rgba(29,158,117,0.5);
-    background: rgba(29,158,117,0.16);
+    border-color: var(--green-line);
+    background: var(--green-wash-2);
     color: var(--green-bright);
   }
   .term-chip.quiet { color: var(--faint); }
   /* The current term, offered as the likely answer. Outlined, never filled: a
      suggestion the student hasn't confirmed must not look like a stored one. */
-  .term-chip.sug { border-color: rgba(29,158,117,0.4); color: var(--green); }
+  .term-chip.sug { border-color: var(--green-line); color: var(--green); }
   /* Pulsing activity dot */
   @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
   .pulse-dot {
@@ -449,7 +484,7 @@
     width: 100%;
     text-align: left;
     background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.07);
+    border: 1px solid var(--line);
     border-radius: var(--r-ctl);
     padding: 12px 16px;
     margin-bottom: 8px;
@@ -459,7 +494,7 @@
     font-family: inherit;
     transition: background 0.12s, border-color 0.12s;
   }
-  .topic-pick-btn:hover { background: var(--surface-2); border-color: rgba(255,255,255,0.13); }
+  .topic-pick-btn:hover { background: var(--surface-2); border-color: var(--line-2); }
   .topic-pick-btn .tp-name { flex: 1; min-width: 0; }
   .topic-pick-btn .tp-arrow { color: var(--muted); font-size: var(--fs-15); flex-shrink: 0; }
 
@@ -485,14 +520,14 @@
      share a row, and the answer is what the screen is for — so the answer gets
      the width. */
   .ccard {
-    border: 1px solid rgba(255,255,255,0.07);
+    border: 1px solid var(--line);
     border-radius: var(--r-card);
     background: var(--surface);
     padding: 12px 8px 12px 16px;
     margin-bottom: 8px;
     transition: background var(--dur), border-color var(--dur);
   }
-  .ccard.picked { border-color: rgba(29,158,117,0.35); background: rgba(29,158,117,0.05); }
+  .ccard.picked { border-color: var(--green-line); background: var(--green-wash); }
   .ccard-head { display: flex; align-items: center; gap: 8px; }
   .ccard-name { flex: 1; min-width: 0; font-size: var(--fs-15); color: var(--ink); line-height: 1.3; }
 
@@ -503,7 +538,7 @@
   .cst-btn {
     min-height: 44px;
     border-radius: var(--r-ctl);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid var(--line-2);
     background: transparent;
     color: var(--muted);
     font-family: inherit;
@@ -515,9 +550,9 @@
     -webkit-tap-highlight-color: transparent;
   }
   .cst-btn:active { opacity: 0.7; }
-  .cst-btn.on-none   { border-color: rgba(255,255,255,0.22); background: rgba(255,255,255,0.05); color: var(--ink-2); }
-  .cst-btn.on-taking { border-color: rgba(29,158,117,0.5);  background: rgba(29,158,117,0.1);  color: var(--green-bright); }
-  .cst-btn.on-done   { border-color: rgba(29,158,117,0.5);  background: rgba(29,158,117,0.2);  color: var(--ink); }
+  .cst-btn.on-none   { border-color: var(--line-2); background: var(--wash-2); color: var(--ink-2); }
+  .cst-btn.on-taking { border-color: var(--green-line);  background: var(--green-wash);  color: var(--green-bright); }
+  .cst-btn.on-done   { border-color: var(--green-line);  background: var(--green-wash-2);  color: var(--ink); }
 
   /* The sticky foot of a picker. It used to be a gradient that faded to
      transparent at its own top edge, which put the last course card directly
@@ -553,12 +588,12 @@
   }
   .tg-cell {
     min-height: 44px; border-radius: var(--r-ctl);
-    border: 1px solid rgba(255,255,255,0.1); background: transparent;
+    border: 1px solid var(--line-2); background: transparent;
     color: var(--dim); font-family: inherit; font-size: var(--fs-13); font-weight: 600;
     cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background var(--dur), border-color var(--dur), color var(--dur), transform var(--dur) var(--ease);
   }
   .tg-cell:active { opacity: 0.7; }
-  .tg-cell.on { border-color: rgba(29,158,117,0.5); background: rgba(29,158,117,0.16); color: var(--green-bright); }
+  .tg-cell.on { border-color: var(--green-line); background: var(--green-wash-2); color: var(--green-bright); }
   /* An empty cell says what empty means. A blank box reads as broken, or as a
      question the student has failed to answer; "—" reads as "not said", which
      is what it is and a perfectly good answer. */
@@ -568,7 +603,7 @@
      the loud one — and it never grows past the height of the three lines it
      needs, so the number it sits under stays on screen with it. */
   .acct-ask {
-    background: rgba(255,255,255,0.03);
+    background: var(--wash);
     border-radius: var(--r-card);
     padding: 16px;
     margin-bottom: 24px;
@@ -578,7 +613,7 @@
   .acct-email {
     width: 100%;
     background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.12);
+    border: 1px solid var(--line-2);
     border-radius: var(--r-ctl);
     padding: 12px;
     margin-bottom: 12px;
@@ -596,8 +631,8 @@
 
   /* Retention nudge card */
   .nudge-card {
-    background: rgba(99,102,241,0.08);
-    border: 1px solid rgba(129,140,248,0.25);
+    background: var(--violet-wash);
+    border: 1px solid var(--violet-line);
     border-radius: var(--r-ctl);
     padding: 12px 16px;
     margin-bottom: 16px;
@@ -626,63 +661,12 @@
     cursor: pointer;
     border: none;
   }
-  .nudge-btn-primary { background: var(--violet); color: var(--ink); }
+  .nudge-btn-primary { background: var(--violet); color: var(--bg); }
   .nudge-btn-primary:hover { background: var(--violet); }
-  .nudge-btn-ghost { background: transparent; color: var(--faint); border: 1px solid rgba(255,255,255,0.1) !important; }
+  .nudge-btn-ghost { background: transparent; color: var(--faint); border: 1px solid var(--line-2) !important; }
   .nudge-btn-ghost:hover { color: var(--muted); }
 
-  /* Coverage reveal */
-  .coverage-num {
-    font-family: 'Space Grotesk', -apple-system, sans-serif;
-    font-size: var(--fs-display);
-    font-weight: 700;
-    color: var(--green);
-    line-height: 1;
-    text-align: center;
-    letter-spacing: -0.03em;
-    text-shadow: 0 0 40px rgba(29,158,117,0.4);
-  }
-  .coverage-sub {
-    font-size: var(--fs-13);
-    color: var(--muted);
-    text-align: center;
-    margin-top: 4px;
-  }
-  .coverage-track {
-    height: 5px;
-    background: rgba(255,255,255,0.07);
-    border-radius: var(--r-pill);
-    margin: 12px 0 20px;
-    overflow: hidden;
-  }
-  .coverage-fill {
-    height: 100%;
-    background: var(--green);
-    border-radius: var(--r-pill);
-    width: 0%;
-    box-shadow: var(--glow);
-    transition: width 1.5s cubic-bezier(0.2, 0.8, 0.4, 1);
-  }
-
   /* Map */
-  .map-legend {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 12px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: var(--fs-11);
-    color: var(--muted);
-  }
-  .legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: var(--r-pill);
-    flex-shrink: 0;
-  }
   /* Two columns at phone width, three where the column allows. 136px is what
      "Thermodynamics" and "Stoichiometry" need at 13px plus the tile's padding,
      so no topic name ever has to break inside a word. */
@@ -694,10 +678,94 @@
   }
   .map-grid > div { overflow-wrap: normal; word-break: normal; hyphens: none; }
 
+  /* ── THE SHEET ────────────────────────────────────────────────────────────
+     The map is a survey plat now: a double-ruled sheet, regions named in the
+     serif, and parcels whose texture — not whose fill height — says what you
+     have covered. Texture beats height because a half-filled tile at 1% of the
+     exam is four pixels of green, and because hatching still reads when the
+     colour does not. */
+  .sheet { border: 1px solid var(--ink); padding: 4px; background: var(--bg); }
+  .sheet-in { border: 1px solid var(--ink); padding: 9px; }
+  .sheet-title {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-bottom: 7px; margin-bottom: 9px; border-bottom: 1px solid var(--line-2);
+  }
+  .sheet-title i { font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-size: var(--fs-13); color: var(--ink); }
+  .sheet-title b { font-weight: 600; font-size: var(--fs-13); color: var(--ink); white-space: nowrap; }
+  .sheet-title b small { font-weight: 400; color: var(--faint); font-size: var(--fs-11); margin: 0 var(--s-1); }
+
+  .reg {
+    font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-weight: 600;
+    font-size: var(--fs-13); color: var(--ink); line-height: 1;
+    padding: 5px 6px 4px; min-width: 0;
+    overflow: hidden;
+  }
+  .reg small { font-family: inherit; font-style: normal; font-weight: 400; font-size: var(--fs-11); color: var(--faint); margin-left: var(--s-1); }
+  .reg-row { display: flex; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .band { position: relative; box-shadow: inset 0 0 0 1px var(--line-2); }
+
+  /* A parcel. No radius anywhere — a sheet is drawn with a straight edge. */
+  .pl {
+    position: absolute; box-sizing: border-box; overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--line);
+    padding: 3px 4px; text-align: left; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.pl { border: 0; cursor: pointer; }
+  .pl-name { font-size: var(--fs-11); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; color: var(--ink); display: block; }
+  .pl-sub  { font-size: var(--fs-11); font-weight: 400; color: var(--faint); line-height: 1.1; display: block; margin-top: 1px; }
+  .pl-vert { writing-mode: vertical-rl; padding: 4px 3px; }
+
+  /* The three states, as texture. */
+  .pl-ahead { background: radial-gradient(circle, var(--line-2) 0.6px, transparent 0.9px) 0 0 / 6px 6px, var(--bg); }
+  .pl-ahead .pl-name { font-weight: 400; color: var(--muted); }
+  .pl-done  { background: var(--covered); }
+  .pl-take  { background: repeating-linear-gradient(135deg, var(--covered) 0 3px, var(--bg) 3px 6px); }
+  /* CARS is water: ruled, tinted, and never filled by a course. */
+  .pl-water { background: repeating-linear-gradient(0deg, var(--blue-line) 0 1px, transparent 1px 6px), var(--water); }
+  .pl-water .pl-name { color: var(--blue); }
+  .pl-water .pl-sub  { color: var(--blue); }
+
+  /* Practice, as a contour knoll in the corner: more rings, more recently.
+     The mask literal means "keep this pixel", not a colour. */
+  .pl-held::after {
+    content: ""; position: absolute; right: 2px; bottom: 2px;
+    width: 26px; height: 26px; pointer-events: none;
+    background: repeating-radial-gradient(circle at 50% 50%, transparent 0 2.8px, var(--amber) 2.8px 3.9px);
+    -webkit-mask-image: radial-gradient(circle, var(--ink) 0 var(--k, 8px), transparent calc(var(--k, 8px) + 1px));
+    mask-image: radial-gradient(circle, var(--ink) 0 var(--k, 8px), transparent calc(var(--k, 8px) + 1px));
+  }
+  .k1 { --k: 6px; } .k2 { --k: 9px; } .k3 { --k: 12px; }
+  /* On a small parcel the knoll is drawn at half size so it reads as a mark
+     rather than as a lid over the name. */
+  .pl-held.sm::after { width: 15px; height: 15px; }
+  .pl-held.sm.k1 { --k: 3px; } .pl-held.sm.k2 { --k: 5px; } .pl-held.sm.k3 { --k: 7px; }
+
+  /* The parcel the next action points at. A dashed claim line, the way a plat
+     marks the lot under discussion. */
+  .pl-next { outline: 1.5px dashed var(--green); outline-offset: -3px; }
+  .pl-flag { position: absolute; left: 4px; bottom: 3px; font-size: var(--fs-11); font-weight: 600; color: var(--green); }
+
+  /* Under the sheet: which parcel, why it is that one, and the way in. */
+  .focus { margin: 14px 0 0; padding-left: 10px; border-left: 2px solid var(--green);
+           font-size: var(--fs-13); line-height: 1.45; color: var(--ink-2); }
+  .focus b { color: var(--ink); font-weight: 600; }
+  .focus-why { text-align: center; font-size: var(--fs-13); color: var(--faint); margin: 9px 0 0; line-height: 1.35; }
+
+  .sheet-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 10px; font-size: var(--fs-11); line-height: 1.3; color: var(--ink-2); }
+  .sheet-legend > span { display: flex; gap: 7px; align-items: flex-start; }
+  .sw { width: 16px; height: 12px; flex: none; margin-top: 1px; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .sw.pl-held::after { width: 16px; height: 16px; right: -3px; bottom: -3px; }
+  .sheet-foot { display: flex; align-items: center; gap: var(--s-2); margin-top: 10px; border-top: 1px solid var(--line-2); padding-top: 8px;
+                font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-size: var(--fs-13); color: var(--muted); }
+  /* Exactly one percent of the drawn map: the parcel block is a square, so a
+     tenth of its width is a hundredth of its area. Not an approximation. */
+  .sheet-foot .one { aspect-ratio: 1; flex: none; box-sizing: border-box; border: 1px solid var(--ink); background: var(--bg); }
+
   /* On-track card */
   .info-card {
-    background: rgba(29,158,117,0.08);
-    border: 1px solid rgba(29,158,117,0.2);
+    background: var(--green-wash);
+    border: 1px solid var(--green-line);
     border-radius: var(--r-card);
     padding: 12px 16px;
     margin-bottom: 20px;
@@ -708,7 +776,7 @@
   .logo-box {
     width: 48px;
     height: 48px;
-    background: rgba(29,158,117,0.12);
+    background: var(--green-wash);
     border-radius: var(--r-card);
     display: flex;
     align-items: center;
@@ -743,7 +811,7 @@
   .q-tag {
     font-size: var(--fs-11);
     font-weight: 600;
-    background: rgba(255,255,255,0.07);
+    background: var(--wash-2);
     color: var(--faint);
     padding: 4px 12px;
     border-radius: var(--r-card);
@@ -775,7 +843,7 @@
     width: 100%;
     text-align: left;
     background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid var(--line);
     border-radius: var(--r-card);
     padding: 16px 16px;
     font-size: var(--fs-15);
@@ -787,10 +855,10 @@
     line-height: 1.45;
     transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.1s;
   }
-  .ans-btn:hover:not(:disabled) { background: var(--surface-2); border-color: rgba(255,255,255,0.16); transform: translateY(-1px); }
+  .ans-btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--line-2); transform: translateY(-1px); }
   .ans-btn:active:not(:disabled) { transform: translateY(0); }
-  .ans-btn.correct  { background: rgba(29,158,117,0.12); border-color: var(--green); color: var(--green-bright); font-weight: 600; box-shadow: var(--glow); }
-  .ans-btn.wrong    { background: rgba(216,90,48,0.1); border-color: var(--red); color: var(--red); box-shadow: none; }
+  .ans-btn.correct  { background: var(--green-wash); border-color: var(--green); color: var(--green-bright); font-weight: 600; box-shadow: var(--glow); }
+  .ans-btn.wrong    { background: var(--red-wash); border-color: var(--red); color: var(--red); box-shadow: none; }
   .ans-btn.dim      { opacity: 0.2; transform: none; box-shadow: none; }
 
   .explanation {
@@ -816,13 +884,13 @@
   }
   .stat-box {
     background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.07);
+    border: 1px solid var(--line);
     border-radius: var(--r-card);
     padding: 16px 8px;
     text-align: center;
   }
-  .stat-num { font-family: 'Space Grotesk', -apple-system, sans-serif; font-size: var(--fs-32); font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
-  .stat-num.teal { color: var(--green); text-shadow: 0 0 20px rgba(29,158,117,0.3); }
+  .stat-num { font-family: 'Public Sans', -apple-system, sans-serif; font-size: var(--fs-32); font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+  .stat-num.teal { color: var(--green); text-shadow: none; }
   .stat-lbl { font-size: var(--fs-11); color: var(--faint); margin-top: 4px; font-weight: 600; }
 
   .today-note {
@@ -875,10 +943,10 @@
   .explanation      { animation: slide-in 0.3s ease both; }
 
   /* ── Section color tokens ─────────────────────────────────────────── */
-  .tag-bb   { background: rgba(29,158,117,0.15);  color: var(--green-bright); }
-  .tag-cp   { background: rgba(245,158,11,0.15);  color: var(--amber); }
-  .tag-ps   { background: rgba(139,92,246,0.15);  color: var(--violet-soft); }
-  .tag-cars { background: rgba(59,130,246,0.15);  color: var(--blue); }
+  .tag-bb   { background: var(--green-wash-2);  color: var(--green-bright); }
+  .tag-cp   { background: var(--amber-wash);  color: var(--amber); }
+  .tag-ps   { background: var(--violet-wash);  color: var(--violet-soft); }
+  .tag-cars { background: var(--blue-wash);  color: var(--blue); }
 
   /* ── Landing screen ───────────────────────────────────────────────── */
   .app-brand {
@@ -890,7 +958,7 @@
   .app-brand-icon {
     width: 36px;
     height: 36px;
-    background: rgba(29,158,117,0.15);
+    background: var(--green-wash-2);
     border-radius: var(--r-ctl);
     display: flex;
     align-items: center;
@@ -898,7 +966,7 @@
     flex-shrink: 0;
   }
   .app-brand-name {
-    font-family: 'Space Grotesk', -apple-system, sans-serif;
+    font-family: 'Public Sans', -apple-system, sans-serif;
     font-size: var(--fs-17);
     font-weight: 700;
     color: var(--ink);
@@ -909,7 +977,7 @@
     border-radius: var(--r-card);
     padding: 16px;
     margin-bottom: 32px;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid var(--line);
   }
   .landing-example-label {
     font-size: var(--fs-11);
@@ -921,7 +989,7 @@
   }
   .topic-pill {
     display: inline-block;
-    background: rgba(29,158,117,0.15);
+    background: var(--green-wash-2);
     color: var(--green-bright);
     font-size: var(--fs-13);
     font-weight: 600;
@@ -944,7 +1012,7 @@
     align-items: center;
     gap: 4px;
     color: var(--amber);
-    background: rgba(245,179,106,0.14);
+    background: var(--amber-wash);
     border-radius: var(--r-pill);
     padding: 4px 12px;
   }
@@ -967,13 +1035,13 @@
     font-weight: 600;
     fill: var(--muted);
     text-anchor: middle;
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: 'Public Sans', -apple-system, sans-serif;
   }
   .journey-label.done { fill: var(--green-bright); }
 
   /* ── Coverage milestone celebration ───────────────────────────────── */
   .cov-milestone-card {
-    background: linear-gradient(135deg, rgba(29,158,117,0.28), rgba(29,158,117,0.07));
+    background: linear-gradient(135deg, var(--green-wash-2), var(--green-wash));
     border: none;
     border-radius: var(--r-card);
     padding: 20px 20px 16px;
@@ -987,8 +1055,8 @@
   .report-q summary::-webkit-details-marker { display: none; }
   .report-q summary:hover { color: var(--muted); }
   .report-reasons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-  .report-reasons button { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--r-ctl); color: var(--muted); font-size: var(--fs-13); font-family: inherit; padding: 4px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .report-reasons button:hover { background: rgba(255,255,255,0.07); color: var(--ink-2); }
+  .report-reasons button { background: var(--wash); border: 1px solid var(--line); border-radius: var(--r-ctl); color: var(--muted); font-size: var(--fs-13); font-family: inherit; padding: 4px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .report-reasons button:hover { background: var(--wash-2); color: var(--ink-2); }
 
   /* ── Desktop shell — mobile (<=767px) is 100% untouched by everything below.
      768px+  : branded backdrop + framed app column.
@@ -997,10 +1065,6 @@
   @media (min-width: 768px) {
     body {
       background:
-        radial-gradient(1100px 700px at 14% -6%, rgba(29,158,117,0.09), transparent 62%),
-        radial-gradient(1000px 720px at 86% 106%, rgba(167,139,250,0.075), transparent 60%),
-        radial-gradient(720px 480px at 88% -8%, rgba(167,139,250,0.035), transparent 65%),
-        radial-gradient(720px 480px at 10% 108%, rgba(29,158,117,0.04), transparent 65%),
         var(--bg);
       background-attachment: fixed;
     }
@@ -1011,7 +1075,7 @@
       inset: 0;
       pointer-events: none;
       z-index: 0;
-      background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1.6px);
+      background-image: radial-gradient(var(--wash-2) 1px, transparent 1.6px);
       background-size: 26px 26px;
       -webkit-mask-image: radial-gradient(120% 90% at 50% 42%, rgba(0,0,0,1) 25%, transparent 75%);
       mask-image: radial-gradient(120% 90% at 50% 42%, rgba(0,0,0,1) 25%, transparent 75%);
@@ -1019,13 +1083,13 @@
     #app {
       position: relative;
       z-index: 1;
-      border-left-color: rgba(255,255,255,0.09);
-      border-right-color: rgba(255,255,255,0.09);
+      border-left-color: var(--line);
+      border-right-color: var(--line);
       box-shadow: var(--shadow-shell);
     }
     .tab-bar {
-      border-left: 1px solid rgba(255,255,255,0.09);
-      border-right: 1px solid rgba(255,255,255,0.09);
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
     }
   }
 
@@ -1049,11 +1113,10 @@
       z-index: 5;
       padding: 32px 24px 24px;
       background:
-        linear-gradient(180deg, rgba(20,23,31,0.72), rgba(10,12,16,0.82)),
-        rgba(10,12,16,0.6);
+        var(--scrim);
       backdrop-filter: blur(18px) saturate(1.1);
       -webkit-backdrop-filter: blur(18px) saturate(1.1);
-      border-right: 1px solid rgba(255,255,255,0.07);
+      border-right: 1px solid var(--line);
       box-shadow: var(--shadow-2);
       overflow-y: auto;
       animation: dt-shell-in 0.7s var(--ease) 0.05s both;
@@ -1079,13 +1142,13 @@
     .dt-brand-mark {
       width: 38px; height: 38px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(29,158,117,0.14);
-      border: 1px solid rgba(29,158,117,0.28);
+      background: var(--green-wash-2);
+      border: 1px solid var(--green-line);
       border-radius: var(--r-ctl);
     }
     .dt-brand-name {
       display: block;
-      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      font-family: 'Public Sans', -apple-system, sans-serif;
       font-size: var(--fs-20); font-weight: 700; letter-spacing: -0.02em;
       color: var(--ink); line-height: 1;
     }
@@ -1108,15 +1171,15 @@
       -webkit-tap-highlight-color: transparent;
     }
     .dt-nav-item svg { flex-shrink: 0; }
-    .dt-nav-item:hover { background: rgba(255,255,255,0.04); color: var(--ink-2); }
+    .dt-nav-item:hover { background: var(--wash); color: var(--ink-2); }
     .dt-nav-item.active {
-      background: rgba(29,158,117,0.12);
-      border-color: rgba(29,158,117,0.3);
+      background: var(--green-wash);
+      border-color: var(--green-line);
       color: var(--green-bright);
     }
 
     .dt-divider {
-      height: 1px; background: rgba(255,255,255,0.07);
+      height: 1px; background: var(--wash-2);
       margin: 24px 4px;
     }
 
@@ -1136,7 +1199,7 @@
       align-items: center; justify-content: center;
     }
     .dt-ring-pct {
-      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      font-family: 'Public Sans', -apple-system, sans-serif;
       font-size: var(--fs-24); font-weight: 700; color: var(--ink); line-height: 1;
       font-variant-numeric: tabular-nums;
     }
@@ -1152,7 +1215,7 @@
     .dt-sec-pct { font-size: var(--fs-11); font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
     .dt-sec-track {
       grid-column: 1 / -1; height: 5px; border-radius: var(--r-pill);
-      background: rgba(255,255,255,0.06); overflow: hidden;
+      background: var(--wash-2); overflow: hidden;
     }
     .dt-sec-fill {
       height: 100%; border-radius: var(--r-pill); width: 0;
@@ -1163,12 +1226,12 @@
     .dt-stats-row { display: flex; gap: 12px; }
     .dt-stat {
       flex: 1; padding: 12px 16px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: var(--wash);
+      border: 1px solid var(--line);
       border-radius: var(--r-card);
     }
     .dt-stat-num {
-      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      font-family: 'Public Sans', -apple-system, sans-serif;
       font-size: var(--fs-20); font-weight: 700; color: var(--ink); line-height: 1;
       font-variant-numeric: tabular-nums;
     }
@@ -1187,8 +1250,8 @@
     .dt-shell.dt-empty .dt-setup-hint {
       display: block;
       margin-top: 24px; padding: 16px;
-      background: rgba(29,158,117,0.06);
-      border: 1px solid rgba(29,158,117,0.18);
+      background: var(--green-wash);
+      border: 1px solid var(--green-line);
       border-radius: var(--r-card);
       font-size: var(--fs-13); line-height: 1.55; color: var(--faint);
     }
@@ -1204,8 +1267,8 @@
     #app.has-tabbar .screen { padding-bottom: 48px; }
   }
   /* Course→topic breakdown (expandable rows + breakdown screen) */
-  .course-topics-panel { margin:-4px 8px 8px; padding:8px 12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius: var(--r-ctl); }
-  .bd-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .course-topics-panel { margin:-4px 8px 8px; padding:8px 12px; background:var(--wash); border:1px solid var(--line); border-radius: var(--r-ctl); }
+  .bd-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); }
   .bd-row:last-child { border-bottom:none; }
   .bd-name { font-size: var(--fs-13); color:var(--ink-2); display:flex; align-items:center; gap:8px; min-width:0; }
   .bd-mark { width:16px; height:16px; border-radius: var(--r-pill); display:inline-flex; align-items:center; justify-content:center; font-size: var(--fs-11); flex-shrink:0; }
@@ -1214,8 +1277,8 @@
   .ans-btn.picked { animation: ans-pop 0.18s var(--ease); }
   .reveal-banner { display: flex; align-items: center; gap: 8px; font-size: var(--fs-17); font-weight: 700; letter-spacing: -0.01em; margin: 4px 0 16px; }
   .reveal-banner .rb-badge { width: 26px; height: 26px; border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .reveal-banner.ok { color: var(--green-bright); } .reveal-banner.ok .rb-badge { background: rgba(29,158,117,0.18); }
-  .reveal-banner.no { color: var(--red); } .reveal-banner.no .rb-badge { background: rgba(216,90,48,0.16); }
+  .reveal-banner.ok { color: var(--green-bright); } .reveal-banner.ok .rb-badge { background: var(--green-wash-2); }
+  .reveal-banner.no { color: var(--red); } .reveal-banner.no .rb-badge { background: var(--red-wash); }
   /* Nothing interactive is allowed to be focusable without showing it. */
   *:focus-visible { outline: var(--focus); outline-offset: 2px; border-radius: var(--r-ctl); }
   @media (prefers-reduced-motion: reduce) {
@@ -1232,7 +1295,7 @@
 </script>
 </head>
 <body>
-<div id="app"><div id="seo-prerender" style="max-width:640px;margin:0 auto;padding:48px 24px 64px;font-family:'Inter',-apple-system,sans-serif;color:var(--ink-2);line-height:1.7;">
+<div id="app"><div id="seo-prerender" style="max-width:640px;margin:0 auto;padding:48px 24px 64px;font-family:'Public Sans',-apple-system,sans-serif;color:var(--ink-2);line-height:1.7;">
     <p style="font-size: var(--fs-15);font-weight:700;color:var(--green);letter-spacing:-0.01em;margin-bottom:20px;">Waypoint</p>
     <h1 style="font-size: var(--fs-32);font-weight:800;line-height:1.15;letter-spacing:-0.02em;color:var(--ink);margin-bottom:16px;">You know where you're going. This is where you are.</h1>
     <p style="font-size: var(--fs-15);color:var(--muted);margin-bottom:32px;">Waypoint maps the classes you've taken onto the real MCAT, so a premed student can see exactly how much of the exam their coursework already covers. Free, with nothing to buy.</p>
@@ -1263,8 +1326,8 @@
 <aside class="dt-shell dt-empty" aria-hidden="true">
   <button class="dt-brand" onclick="logoTap()">
     <span class="dt-brand-mark">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"/><polyline points="12 8 12 12 14.5 14.5"/><circle cx="12" cy="12" r="1.2" fill="#1D9E75" stroke="none"/>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/>
       </svg>
     </span>
     <span>
@@ -1300,8 +1363,8 @@
     <div class="dt-ring-wrap">
       <div class="dt-ring">
         <svg width="92" height="92" viewBox="0 0 92 92">
-          <circle cx="46" cy="46" r="34" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
-          <circle id="dt-ring-fill" cx="46" cy="46" r="34" fill="none" stroke="#1D9E75" stroke-width="7" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6" style="transition:stroke-dashoffset 0.9s var(--ease);filter:drop-shadow(0 0 5px rgba(29,158,117,0.5))"/>
+          <circle cx="46" cy="46" r="34" fill="none" stroke="var(--line)" stroke-width="7"/>
+          <circle id="dt-ring-fill" cx="46" cy="46" r="34" fill="none" stroke="#2A5F3E" stroke-width="7" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="213.6" style="transition:stroke-dashoffset 0.9s var(--ease);filter:none"/>
         </svg>
         <div class="dt-ring-center">
           <div class="dt-ring-pct"><span id="dt-cov-num">0</span><span class="u">%</span></div>
@@ -1368,9 +1431,9 @@ const COURSE_REQ = {
 const DONE_FIRST_YEARS = ['junior', 'senior'];
 
 const REQ_META = {
-  required:    { short:'Required',    color:'var(--green-bright)', bg:'rgba(29,158,117,0.14)' },
-  recommended: { short:'Recommended', color:'var(--amber)', bg:'rgba(245,179,106,0.16)' },
-  mcat:        { short:'MCAT-tested', color:'var(--violet)', bg:'rgba(139,92,246,0.16)' },
+  required:    { short:'Required',    color:'var(--green-bright)', bg:'var(--green-wash-2)' },
+  recommended: { short:'Recommended', color:'var(--amber)', bg:'var(--amber-wash)' },
+  mcat:        { short:'MCAT-tested', color:'var(--violet)', bg:'var(--violet-wash)' },
 };
 function courseReqNote(id) {
   if (id === 'biochem') return 'Strongly recommended and increasingly required — finish it before the MCAT (it\'s heavily tested).';
@@ -5523,8 +5586,8 @@ function backupStatus(msg, kind) {
   el.textContent = msg;
   el.style.display     = 'block';
   el.style.color       = err ? 'var(--amber)' : 'var(--green-bright)';
-  el.style.background  = err ? 'rgba(194,98,42,0.1)'   : 'rgba(29,158,117,0.1)';
-  el.style.borderColor = err ? 'rgba(244,180,138,0.2)' : 'rgba(29,158,117,0.2)';
+  el.style.background  = err ? 'var(--red-wash)'   : 'var(--green-wash)';
+  el.style.borderColor = err ? 'var(--red-line)' : 'var(--green-line)';
 }
 
 // ── ACCOUNTS & CLOUD SYNC ─────────────────────────────────────────────────────
@@ -5885,7 +5948,7 @@ function milestoneCopy() {
   if (!m) return '';
   const lvl = MILESTONE_LEVELS[m.at];
   return `<div class="cov-milestone-card">
-    <div style="margin-bottom:12px;line-height:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
+    <div style="margin-bottom:12px;line-height:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1E4A2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
     <div style="font-size: var(--fs-11);font-weight:800;color:var(--green-bright);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">${m.sec.short} — ${lvl.label}</div>
     <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.55;margin-bottom:12px;">${lvl.text(m.sec)}</p>
     <button class="btn btn-share" style="margin-top:0;font-size: var(--fs-13);padding:12px 16px;" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share this</button>
@@ -6114,8 +6177,8 @@ function mapHTML(mini, highlightTopics = new Set()) {
       ? `<span style="display:inline-block;width:6px;height:6px;background:var(--green);border-radius: var(--r-pill);vertical-align:middle;margin-left:4px;"></span>` : '';
 
     let bg, nc, dc;
-    if (covered) { bg='rgba(29,158,117,0.15)'; nc='var(--ink)'; dc='var(--green-bright)'; }
-    else         { bg='rgba(255,255,255,0.03)'; nc='var(--muted)'; dc='var(--faint)'; }
+    if (covered) { bg='var(--green-wash-2)'; nc='var(--ink)'; dc='var(--green-bright)'; }
+    else         { bg='var(--wash)'; nc='var(--muted)'; dc='var(--faint)'; }
 
     return `<div style="background:${bg};border:1px solid transparent;border-radius: var(--r-ctl);padding:8px 12px;min-width:0;">
       <div style="font-size: var(--fs-13);color:${nc};font-weight:600;line-height:1.3;">${t.name}${dot}</div>
@@ -6198,8 +6261,6 @@ function squarify(items, x, y, w, h) {
 // tile still clears 51px wide — enough for its own name — including
 // Stoichiometry, one percent of the exam and the smallest tile there is. Taller
 // bands buy nothing (the narrow tiles stay 51px) and cost a viewport.
-const MAP_BAND_PX = 360;
-const MAP_NOMINAL_W = 340;   // the width the aspect ratios are computed against
 
 // One band per section, height proportional to the section's share of the exam,
 // with the section's topics squarified inside it. Widths come back as
@@ -6209,20 +6270,62 @@ const MAP_NOMINAL_W = 340;   // the width the aspect ratios are computed against
 // A topic AAMC gives no share to (Research methods, weight 0) has an area of
 // zero, and zero is the honest area. Rather than floor it into a sliver that
 // means nothing, it is left off the map and named underneath it.
-function routeMapBands(bandPx = MAP_BAND_PX, nominalW = MAP_NOMINAL_W) {
-  const totalW = TOPICS.reduce((n, t) => n + t.w, 0);
-  return MCAT_SECTIONS.map(sec => {
-    const topics = TOPICS.filter(t => t.mcat === sec.id);
-    const weight = topics.reduce((n, t) => n + t.w, 0);
-    const height = Math.round(bandPx * weight / totalW);
-    const boxes  = squarify(topics.filter(t => t.w > 0).map(t => ({ item: t, value: t.w })),
-                            0, 0, nominalW, height);
-    return { sec, weight, height,
-             tiles: boxes.map(b => ({ topic: b.item,
-                                      left:  b.x / nominalW * 100,
-                                      width: b.w / nominalW * 100,
-                                      top: b.y, h: b.h })) };
-  }).filter(b => b.tiles.length);
+// ── THE SHEET ────────────────────────────────────────────────────────────────
+// Two rows, four regions, and every parcel's AREA is its share of the exam.
+//
+// The concept this is built from drew the four regions as equal quadrants, and
+// they are not equal: Bio & Biochem is 32% of the exam, Chem & Physics 20%,
+// Psych & Soc 25%, CARS 23%. Equal squares would have said otherwise, and the
+// scale key at the foot would have been decorative. So the rows are weighted by
+// what they hold (52 / 48) and each row's columns by theirs, which makes every
+// region's rectangle exactly its own percentage of the block.
+//
+// Everything below works in one unit: percent of the block's width. The block
+// is kept square by CSS (the two bands' aspect ratios sum to 1), so one unit
+// across equals one unit down, and a parcel of area 100 unit² is 1% of a
+// 10,000 unit² exam. That is what lets the foot say "this square is 1% of the
+// exam" and be exactly right at any viewport rather than at one nominal width.
+const SHEET_ROWS = [['bb', 'cp'], ['ps', 'cars']];
+// The regions as a plat would name them. Not sec.long, which is AAMC's full
+// title and three words too long for a 20%-wide column.
+const SHEET_REG = {
+  bb:   'Biology and biochemistry',
+  cp:   'Chemistry and physics',
+  ps:   'Psychology and sociology',
+  cars: 'Reading <small>CARS</small>',
+};
+const SHEET_ASPECT = 1.85;     // block height / block width — swept: 17 of 18 parcels keep a horizontal name
+const REG_H = 34;              // the region label strip, outside the block; two lines
+const SHEET_NOMINAL_W = 297;   // 375px viewport, for deciding what a label fits in
+
+function sectionWeights() {
+  const out = {};
+  for (const sec of MCAT_SECTIONS)
+    out[sec.id] = TOPICS.filter(t => t.mcat === sec.id).reduce((n, t) => n + t.w, 0);
+  return out;
+}
+
+// Rows of { weight, height (units), cols: [{ sec, x, w, tiles }] }.
+function sheetLayout() {
+  const secW  = sectionWeights();
+  const total = MCAT_SECTIONS.reduce((n, s) => n + secW[s.id], 0);
+  return SHEET_ROWS.map(row => {
+    const weight = row.reduce((n, id) => n + secW[id], 0);
+    const height = 100 * weight / total;          // units of block width
+    let x = 0;
+    const cols = row.map(id => {
+      const w = 100 * secW[id] / weight;
+      const topics = TOPICS.filter(t => t.mcat === id && t.w > 0);
+      // Squarified in the same units, so the aspect ratios it optimises are the
+      // real ones on screen and not a nominal width's idea of them.
+      const boxes = squarify(topics.map(t => ({ item: t, value: t.w })), x, 0, w, height * SHEET_ASPECT);
+      const col = { sec: MCAT_SECTIONS.find(sc => sc.id === id), x, w,
+                    tiles: boxes.map(b => ({ topic: b.item, x: b.x, y: b.y, w: b.w, h: b.h })) };
+      x += w;
+      return col;
+    });
+    return { weight, height, cols };
+  });
 }
 
 // How full a tile is: the same courseCredit() the coverage sum uses, so the map
@@ -6238,122 +6341,157 @@ function mapSkillTopics() {
   return TOPICS.filter(t => t.w === 0);
 }
 
-const MAP_GAP = 2;
-
-// TILE_NAMES, tightened where a 51px tile can't hold the timeline's version.
-// "Physics I" needs 50px of the 39 a one-percent tile leaves after its padding.
+// TILE_NAMES, tightened where a small parcel can't hold the timeline's version.
 const MAP_NAMES = { physics: 'Phys I', physics2: 'Phys II' };
 const mapName = t => MAP_NAMES[t.id] || TILE_NAMES[t.id] || t.name;
 
-// ── COVERED AND HELD, ON THE SAME TILE ────────────────────────────────────────
-// Two truths, one visual. The HEIGHT of a tile's fill is what your coursework
-// covers. The COLOUR of that fill is whether there is evidence you still hold
-// it: the brighter green means practised recently enough to count, and a small
-// dot in the corner carries the states a fill can't — fading, faded, and not
-// yet checked. The held layer adds no figure to the map.
+// ── COVERED AND HELD, ON THE SAME PARCEL ──────────────────────────────────────
+// Two truths, one visual, and neither is a number. The parcel's TEXTURE is what
+// your coursework covers: dotted paper is ahead of you, a diagonal hatch is a
+// class you are in now and counts half, solid tint is one you finished. A
+// contour knoll in the corner is the practice record — more rings, more
+// recently — and an empty ring is a parcel surveyed but never yet checked.
 //
-// It inherits every gate held has always had. Off entirely until
+// Texture rather than fill height, which is what this used to be. A half-filled
+// parcel at 1% of the exam was four pixels of green, and the hatch reads at any
+// size and without relying on colour at all.
+//
+// Every gate the held layer has always had still holds. Off entirely until
 // freshnessActive() says there is a record worth describing, so a first session
 // never sees it. Never carried by enrollment: heldDisplayState() decides, and a
 // topic that reads fresh only because the student is sitting in the class shows
-// as "not yet checked", never as held. And the language stays that — never
-// "unpinned", never a loss.
+// as not-yet-checked, never as held.
+const HELD_RING = { fresh: 'k3', fading: 'k2', faded: 'k1' };
+
+// Which parcel the next action points at, and why it is that one.
+//
+// This reads getDirectiveTopic() — the same recommender behind "Do this now" on
+// Home. Deliberately: a second one here would eventually disagree with it, and
+// two surfaces telling a student to practise different things is worse than
+// either choice on its own.
+function routeFocus() {
+  if (!S.courses.size) return null;
+  const d = getDirectiveTopic();
+  if (!d || !d.topic.course) return null;
+  const t = d.topic;
+  const course = COURSES.find(c => c.id === t.course);
+  if (!course) return null;
+
+  const taking = S.courseStatus[t.course] === 'in-progress';
+  const f  = freshnessActive() ? topicFreshness(t.id) : null;
+  const st = f ? heldDisplayState(f) : null;
+  const unpractised = !st || st === 'unpinned';
+
+  const practice = unpractised      ? 'Not practised yet.'
+                 : st === 'fresh'   ? 'Practised recently.'
+                 : st === 'fading'  ? 'Practised, but fading.'
+                 :                    'Practised a while back.';
+
+  // Never "haven't practised" when they have — the line has to survive the
+  // student having drilled it this morning.
+  const why = d.reason === 'retention'
+        ? `You covered this ${weeksAgo(d.days)} — worth holding on to.`
+        : taking
+          ? (unpractised ? "The largest parcel you're taking and haven't practised."
+                         : "The largest parcel you're taking.")
+          : (unpractised ? "The largest parcel your courses cover and you haven't practised."
+                         : 'The largest parcel your courses cover.');
+
+  // The concept's line named a course code — "PSYC 111" — and the app has never
+  // collected one, so this says what it actually knows. Where the course and the
+  // topic share a name, as Psychology does, naming both reads as a stutter.
+  const same = course.name.toLowerCase() === t.name.toLowerCase();
+  const counts = `so it counts ${taking ? 'half' : 'whole'}`;
+  return { topic: t, course, why,
+           detail: same
+             ? `<b>${t.name}.</b> ${taking ? 'In progress' : 'Finished'}, ${counts}. ${practice}`
+             : `<b>${t.name}.</b> ${course.name}, ${taking ? 'in progress' : 'finished'}, ${counts}. ${practice}`,
+           n: sessionSize(t.id, null) };
+}
+
 function routeMapHTML(opts) {
   const o = opts || {};
-  const bands = routeMapBands(o.bandPx || MAP_BAND_PX);
+  const rows = sheetLayout();
   const idPrefix = o.idPrefix || 'rt';
+  const chrome = o.sectionLabels !== false;      // region strips, legend, foot
   // The landing card stands in an example student's shoes for S.courses but not
   // for their practice record, so held there would be this visitor's freshness
   // read against someone else's route. Static maps show coverage only.
   const live = !o.static && freshnessActive();
+  // A thumbnail asks for the shape of the exam, not eighteen names in four
+  // letters each; bandPx is how wide that thumbnail is drawn.
+  const blockW = o.bandPx || SHEET_NOMINAL_W;
+  const focus = chrome && !o.static ? routeFocus() : null;
 
-  const body = bands.map(band => {
-    const tiles = band.tiles.map(b => {
+  const band = row => {
+    const parcels = row.cols.map(col => col.tiles.map(b => {
       const t    = b.topic;
       const fill = tileFill(t);
       const cars = t.mcat === 'cars';
       const f    = live && t.course && S.courses.has(t.course) ? topicFreshness(t.id) : null;
       const st   = f ? heldDisplayState(f) : null;
-      const held = st === 'fresh';
-      // One line of 11px type needs about 20px of tile. Below that the tile is
-      // colour and a tooltip; above it, the name; and only a tile with real room
-      // carries a second line.
-      // A thumbnail asks for the shape of the exam, not eighteen topic names in
-      // four letters each. `names:false` turns them off rather than eliding them.
-      const name = o.names !== false && b.h >= 20;
-      const wrap = b.h >= 34;   // room for a second line, so "Acid-Base" need not elide
-      const room = b.h >= 46;
-      const ink  = fill > 0 ? 'var(--ink)' : cars ? 'var(--ink-2)' : 'var(--muted)';
-      const base = cars ? 'rgba(245,158,11,0.09)' : 'rgba(255,255,255,0.03)';
-      // Held brightens the fill and rings the tile. Both, because on a
-      // half-filled tile the fill is only the bottom half, and the ring is what
-      // makes the state read across the whole of it.
-      const wash = held ? 'rgba(77,227,171,0.40)' : 'rgba(29,158,117,0.42)';
-      const ring = held ? 'rgba(77,227,171,0.45)' : 'transparent';
-      const dot  = st && st !== 'fresh' ? FRESH_META[st] : null;
-      // A finished tile is already a filled tile — the word "covered" under it
-      // says what the colour has said. Only the states the fill can't carry on
-      // its own get a word.
-      const sub  = cars ? 'ongoing' : fill === 0.5 ? 'taking' : '';
 
-      // An empty tile is the one place a student who left a class off can say so,
-      // which is the job the retired "Still ahead" grid used to do. It never
-      // invites claiming a class: the tooltip says what the course will cover
-      // when they take it, not what adding it would do to their standing.
+      // Real pixels, for deciding what a name can do in the space it has.
+      const pw = b.w / 100 * blockW;
+      const ph = b.h / 100 * blockW;   // b.h is already in the taller units
+      const label = mapName(t);
+      const needs = label.length * 6.7 + 10;     // 11px semibold, plus the padding
+      const horiz = needs <= pw && ph >= 22;
+      const vert  = !horiz && needs <= ph && pw >= 20;
+      const named = o.names !== false && (horiz || vert);
+      const sub   = cars ? 'ongoing' : fill === 0.5 ? 'taking' : fill === 0 ? 'ahead' : '';
+      const room  = !vert && ph >= 34 && sub;
+
+      const tex = cars ? 'pl-water' : fill >= 1 ? 'pl-done' : fill > 0 ? 'pl-take' : 'pl-ahead';
+      const next = focus && focus.topic.id === t.id;
+      const small = Math.min(pw, ph) < 88;
+      const ring = st && st !== 'unpinned' && pw >= 34 && ph >= 34
+        ? ` pl-held ${small ? 'sm ' : ''}${HELD_RING[st]}` : '';
+
+      // An empty parcel is the one place a student who left a class off can say
+      // so. It never invites claiming a class: the tooltip says what the course
+      // will cover when they take it, not what adding it would do to standing.
       const course = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
-      // Two taps, two questions. An empty tile asks "did you take this?"; a tile
-      // with a held state answers "where do I stand on it?" with the same detail
-      // line the timeline opens.
-      const pick   = fill === 0 && course && !o.static;
+      const pick   = fill === 0 && course && !o.static && !cars;
       const tell   = !!f && !pick;
       const tip    = pick ? `Covered when you take ${course.name}`
                    : f    ? f.why.replace(/<[^>]+>/g, '').replace(/"/g, '&quot;')
                    :        t.name;
       const tag    = pick || tell ? 'button' : 'div';
-      const click  = pick ? `go('courses')` : tell ? `toggleMapTile('${t.id}')` : '';
-      const attrs  = tag === 'button'
-        ? ` onclick="${click}" aria-expanded="${S._mapOpen === t.id}" style="border:1px solid ${ring};font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;box-sizing:border-box;`
-        : ` style="border:1px solid ${ring};box-sizing:border-box;`;
+      const click  = pick ? ` onclick="go('courses')"` : tell ? ` onclick="toggleMapTile('${t.id}')"` : '';
+      const expand = tell ? ` aria-expanded="${S._mapOpen === t.id}"` : '';
 
-      return `<div style="position:absolute;left:${b.left.toFixed(3)}%;top:${Math.round(b.top)}px;width:${b.width.toFixed(3)}%;height:${Math.round(b.h)}px;box-sizing:border-box;padding:0 ${MAP_GAP}px ${MAP_GAP}px 0;">
-          <${tag} title="${tip}"${attrs}position:absolute;inset:0 ${MAP_GAP}px ${MAP_GAP}px 0;border-radius: var(--r-ctl);overflow:hidden;background:${base};padding:0;">
-            <!-- The fill is at its true height in the markup, not left at zero
-                 for JavaScript to supply. Every surface that renders a map is
-                 then correct on paint — the landing card, the share card, a
-                 print — and the reveal animation is the one thing that resets
-                 it to zero and plays it back up. -->
-            <div class="map-fill" data-fill="${Math.round(fill * 100)}" style="position:absolute;left:0;right:0;bottom:0;height:${Math.round(fill * 100)}%;background:${wash};transition:height 1s var(--ease);"></div>
-            ${dot ? `<span style="position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-radius: var(--r-pill);box-sizing:border-box;background:${dot.hollow ? 'transparent' : dot.color};border:1px solid ${dot.color};"></span>` : ''}
-            <!-- 2px of horizontal padding, not 3: a held tile carries a 1px ring
-                 inside its own box, and those two pixels were what pushed
-                 "Genetics" — one unbreakable word on a three-percent tile — over
-                 the edge the moment a student practised it. -->
-            ${name ? `<div style="position:absolute;inset:0;padding:3px 2px;display:flex;flex-direction:column;justify-content:flex-start;gap:1px;overflow:hidden;">
-              <!-- 600, not 700, and a hair of negative tracking: "Genetics" is
-                   one unbreakable word and a three-percent tile gives it about
-                   51px. At 700 it needed 52 and broke to "Genetic" / "s". Words
-                   wrap only at spaces and hyphens — never mid-word. -->
-              <span style="font-size: var(--fs-11);font-weight:600;letter-spacing:-0.01em;color:${ink};line-height:1.1;overflow:hidden;${wrap ? '' : 'text-overflow:ellipsis;white-space:nowrap;'}">${mapName(t)}</span>
-              ${room && sub ? `<span style="font-size: var(--fs-11);color:${cars ? 'var(--amber)' : 'var(--muted)'};line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sub}</span>` : ''}
-            </div>` : ''}
-          </${tag}>
-        </div>`;
-    }).join('');
+      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}${vert ? ' pl-vert' : ''}" title="${tip}"${click}${expand}
+          style="left:${b.x.toFixed(3)}%;top:${(b.y / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;width:${b.w.toFixed(3)}%;height:${(b.h / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;">
+          ${named ? `<span class="pl-name">${label}</span>${room ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}${next && ph >= 46 ? '<span class="pl-flag">next</span>' : ''}
+        </${tag}>`;
+    }).join('')).join('');
 
-    return `
-      <div style="margin-bottom:${o.sectionLabels === false ? 4 : 10}px;">
-        ${o.sectionLabels === false ? '' : `<div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;"><span style="display:inline-flex;color:var(--green);">${sectionIcon(band.sec.id)}</span>${band.sec.short}</div>`}
-        <div style="position:relative;height:${band.height}px;">${tiles}</div>
-      </div>`;
-  }).join('');
+    const strip = chrome
+      ? `<div class="reg-row">${row.cols.map(c => `<div class="reg" style="width:${c.w.toFixed(3)}%;">${SHEET_REG[c.sec.id]}</div>`).join('')}</div>`
+      : '';
+    // aspect-ratio keeps the two bands summing to a square whatever the width,
+    // which is the whole basis of the scale key below.
+    return `${strip}<div class="band" style="aspect-ratio:100/${(row.height * SHEET_ASPECT).toFixed(3)};">${parcels}</div>`;
+  };
 
-  const skills = o.sectionLabels === false ? [] : mapSkillTopics();
+  const block = rows.map(band).join('');
+  if (!chrome) return `<div id="${idPrefix}-map" style="max-width:${blockW}px;">${block}</div>`;
+
+  const cov  = coverage(S.courses, true);
+  const year = S.year ? `Your route, ${S.year} year` : 'Your route';
+  const skills = mapSkillTopics();
   const foot = skills.length
-    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:2px 0 0;">${skills.map(t => t.name).join(' and ')} ${skills.length === 1 ? 'is' : 'are'} tested as a skill across the sections rather than as a share of their own, so ${skills.length === 1 ? 'it has' : 'they have'} no tile.</p>`
+    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:8px 0 0;">${skills.map(t => t.name).join(' and ')} ${skills.length === 1 ? 'is' : 'are'} tested as a skill across the sections rather than as a share of their own, so ${skills.length === 1 ? 'it has' : 'they have'} no parcel.</p>`
     : '';
-
   const detail = live && S._mapOpen ? freshDetailHTML(S._mapOpen) : '';
-  return `<div id="${idPrefix}-map">${body}${detail}${o.legend === false ? '' : mapLegendHTML(live)}${foot}</div>`;
+
+  return `<div id="${idPrefix}-map"><div class="sheet"><div class="sheet-in">
+      <div class="sheet-title"><i>${year}</i><b><small>about</small>${Math.round(cov / 5) * 5}%<small>covered</small></b></div>
+      ${block}
+      ${o.legend === false ? '' : mapLegendHTML(live)}
+      <div class="sheet-foot"><span class="one" style="width:${(Math.sqrt(SHEET_ASPECT) * 10).toFixed(3)}%;"></span>This square is 1% of the exam.</div>
+    </div></div>${detail}${foot}</div>`;
 }
 
 // A map needs a key. Three states, in the order a route fills them.
@@ -6363,21 +6501,17 @@ function toggleMapTile(tid) {
 }
 
 function mapLegendHTML(live) {
-  // Squares, not dots: the half-filled swatch is the one that has to read, and
-  // a gradient across 10px of circle does not.
-  const swatch = (bg, border) => `<span style="display:inline-block;width:10px;height:10px;border-radius:var(--r-ctl);box-sizing:border-box;background:${bg};${border ? 'border:1px solid ' + border + ';' : ''}vertical-align:-1px;margin-right:4px;"></span>`;
-  const item = (sw, label) => `<span style="white-space:nowrap;">${sw}${label}</span>`;
-  const pip = st => `<span style="display:inline-block;width:8px;height:8px;border-radius: var(--r-pill);box-sizing:border-box;background:${FRESH_META[st].hollow ? 'transparent' : FRESH_META[st].color};border:1px solid ${FRESH_META[st].color};vertical-align:0;margin-right:4px;"></span>`;
-  const row = inner => `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size: var(--fs-11);color:var(--faint);margin:4px 0 8px;">${inner}</div>`;
-  // The second row arrives with the held layer and not before, so a student who
+  // The key is drawn with the same classes the parcels are, so it cannot drift
+  // from what is on the sheet: change a texture and the key changes with it.
+  const item = (cls, label) => `<span><span class="sw ${cls}"></span>${label}</span>`;
+  // The held rows arrive with the held layer and not before, so a student who
   // has never practised is never handed a key to something they cannot see.
-  return row(`${item(swatch('rgba(29,158,117,0.42)'), 'finished — counts whole')}
-        ${item(swatch('linear-gradient(to top, rgba(29,158,117,0.42) 50%, rgba(255,255,255,0.05) 50%)'), 'taking — counts half')}
-        ${item(swatch('rgba(255,255,255,0.05)', 'rgba(255,255,255,0.12)'), 'still ahead')}`)
-    + (live ? row(`${item(swatch('rgba(77,227,171,0.40)', 'rgba(77,227,171,0.45)'), 'practiced recently')}
-        ${item(pip('fading'), 'fading')}
-        ${item(pip('faded'), 'faded')}
-        ${item(pip('unpinned'), 'not yet checked')}`) : '');
+  return `<div class="sheet-legend">
+      ${item('pl-done', 'Finished course')}
+      ${item('pl-take', 'Taking now, counts half')}
+      ${live ? item('pl-done pl-held k2', 'Practised; more rings, more recently') : ''}
+      ${item('pl-ahead', 'Still ahead')}
+    </div>`;
 }
 
 // ── SECTIONED MAP (reveal screen) ─────────────────────────────────────────────
@@ -6424,7 +6558,7 @@ function coveredTileHTML(t, live, open) {
           </div>`;
   // Fill, not outline: earned ground is solid. The border slot stays (transparent)
   // so covered and locked tiles keep identical box metrics.
-  const box = `background:rgba(29,158,117,0.15);border:1px solid transparent;${TILE_BOX}`;
+  const box = `background:var(--green-wash-2);border:1px solid transparent;${TILE_BOX}`;
   if (!f) return `<div style="${box}">${inner}</div>`;
   return `<button onclick="toggleFresh('${t.id}')" aria-expanded="${open === t.id}" title="${f.why.replace(/"/g, '&quot;')}"
           style="${box}text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;${open === t.id ? 'box-shadow:0 0 0 1px var(--line-2);' : ''}">${inner}</button>`;
@@ -6566,7 +6700,7 @@ function sectionBalanceHTML(opts) {
           <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-13);color:var(--ink-2);min-width:0;"><span style="display:inline-flex;color:var(--green);">${sectionIcon(x.id)}</span>${x.short}</span>
           <span style="font-size: var(--fs-13);font-weight:700;color:${sec[x.id] > 0 ? 'var(--green-bright)' : 'var(--faint)'};flex-shrink:0;">${sec[x.id]}%</span>
         </div>
-        <div style="height:3px;background:rgba(255,255,255,0.06);border-radius: var(--r-pill);overflow:hidden;">
+        <div style="height:3px;background:var(--wash-2);border-radius: var(--r-pill);overflow:hidden;">
           <div class="sec-bar-fill" data-w="${sec[x.id]}" style="height:100%;width:0%;background:var(--green);border-radius: var(--r-pill);transition:width 1.2s ease;"></div>
         </div>
       </div>`).join('');
@@ -6674,7 +6808,7 @@ function getTopicInsight() {
   if (!withCrunch.length) return '';
   const { topic, desc } = withCrunch[0];
   return `
-    <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius: var(--r-ctl);padding:16px 16px;margin-bottom:16px;">
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius: var(--r-ctl);padding:16px 16px;margin-bottom:16px;">
       <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">You just practiced</div>
       <div style="font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">${topic.name}</div>
       <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.5;">${desc}</p>
@@ -6902,7 +7036,6 @@ function topicFreshness(tid) {
   // never tagged simply drops out of the sentence, and the line still explains
   // itself from the practice record alone.
   const when   = termLabel(courseTerm(topic.course));
-  const lower  = s => s.charAt(0).toLowerCase() + s.slice(1);
 
   let state, why;
   if (days === null) {
@@ -7098,9 +7231,9 @@ function freshDetailHTML(tid) {
   // Held ground gets no action — nothing to fix is not a reason to ask for work.
   const n = repinCount(tid);
   const action = st === 'fresh' ? '' : `
-          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.35);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
+          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
   return `
-        <div style="margin-top:8px;background:rgba(255,255,255,0.03);border:1px solid color-mix(in srgb, ${m.color} 27%, transparent);border-radius: var(--r-ctl);padding:12px 12px;">
+        <div style="margin-top:8px;background:var(--wash);border:1px solid color-mix(in srgb, ${m.color} 27%, transparent);border-radius: var(--r-ctl);padding:12px 12px;">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
             <span style="width:7px;height:7px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1.5px solid ${m.color};"></span>
             <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${f.topic.name}</span>
@@ -7379,7 +7512,7 @@ function screenPace() {
 
       ${units.map(u => {
         const on = (u.topicId + '|' + u.subId) === currentKey;
-        return `<button class="topic-pick-btn" style="${on ? 'border-color:rgba(167,139,250,0.5);background:rgba(167,139,250,0.08);' : ''}" onclick="setPaceUnit('${courseId}', ${u.week}, '${u.topicId}', '${u.subId}')">
+        return `<button class="topic-pick-btn" style="${on ? 'border-color:var(--violet-line);background:var(--violet-wash);' : ''}" onclick="setPaceUnit('${courseId}', ${u.week}, '${u.topicId}', '${u.subId}')">
           <span style="flex:1;text-align:left;">
             <span class="tp-name" style="color:${on ? 'var(--violet)' : 'var(--ink)'};">${u.label}</span>
             <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${on ? (fromSyl ? 'Where your syllabus puts you' : 'What we assumed you\'re on') : u.topic.name}</span>
@@ -7668,7 +7801,7 @@ function briefCardHTML() {
   const body = `
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">${sub}</p>
 
-      <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:16px;">
+      <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:16px;">
         <!-- Rounded like the Route pill two inches above it. Raw, this read
              "28% covered" beside "Route · 30%" on one screen. -->
         ${stat(Math.round(b.coverage / 5) * 5 + '%', 'covered')}
@@ -7730,12 +7863,9 @@ function aboutCoverage(n) {
   return `about ${v}%`;
 }
 
-// The same phrase opening a sentence. One rounding rule, two positions — never
-// a second place where the figure could be rounded differently.
-function aboutCoverageCap(n) {
-  const s = aboutCoverage(n);
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
+// A topic name mid-sentence. Module scope because two screens need it: the
+// freshness detail line and the Route's focus sentence.
+const lower = s => s.charAt(0).toLowerCase() + s.slice(1);
 
 // Everything the card says, or null when there is nothing honest to say.
 function termSnapshot(now = new Date()) {
@@ -8030,7 +8160,7 @@ function screenExamPlan() {
       ? `<span style="color:var(--green-bright);font-size: var(--fs-13);font-weight:700;flex-shrink:0;">✓</span>`
       : `<span style="color:var(--dim);font-size: var(--fs-13);flex-shrink:0;">${isToday ? '→' : ''}</span>`;
     return `
-      <div style="display:flex;align-items:center;gap:12px;padding:12px 12px;border-radius: var(--r-ctl);margin-bottom:4px;${isToday ? 'background:rgba(245,179,106,0.09);border:1px solid rgba(245,179,106,0.28);' : 'border:1px solid transparent;'}">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 12px;border-radius: var(--r-ctl);margin-bottom:4px;${isToday ? 'background:var(--amber-wash);border:1px solid var(--amber-line);' : 'border:1px solid transparent;'}">
         <div style="width:74px;flex-shrink:0;font-size: var(--fs-11);font-weight:600;color:${isToday ? 'var(--amber)' : 'var(--faint)'};">${isToday ? 'Today' : date}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size: var(--fs-13);font-weight:600;color:${isToday ? 'var(--ink)' : 'var(--ink-2)'};line-height:1.35;">${u ? u.label : '—'}</div>
@@ -8074,7 +8204,7 @@ function screenMidterm() {
     const c = COURSES.find(x => x.id === cid);
     if (!c) return '';
     const on = d.courseId === cid;
-    return `<button class="topic-pick-btn" style="${on ? 'border-color:rgba(245,179,106,0.5);background:rgba(245,179,106,0.08);' : ''}" onclick="mtPickCourse('${cid}')">
+    return `<button class="topic-pick-btn" style="${on ? 'border-color:var(--amber-line);background:var(--amber-wash);' : ''}" onclick="mtPickCourse('${cid}')">
       <span class="tp-name" style="color:${on ? 'var(--amber)' : 'var(--ink)'};">${c.name}</span>
       <span class="tp-arrow" style="color:${on ? 'var(--amber)' : 'var(--faint)'};">${on ? '✓' : ''}</span>
     </button>`;
@@ -8105,7 +8235,7 @@ function screenMidterm() {
         ${units.map(u => {
           const key = u.subId + '|' + u.topicId;
           const on = d.subIds.indexOf(key) !== -1;
-          return `<button class="topic-pick-btn" style="${on ? 'border-color:rgba(245,179,106,0.5);background:rgba(245,179,106,0.08);' : ''}" onclick="mtToggleUnit('${key}')">
+          return `<button class="topic-pick-btn" style="${on ? 'border-color:var(--amber-line);background:var(--amber-wash);' : ''}" onclick="mtToggleUnit('${key}')">
             <span style="flex:1;text-align:left;">
               <span class="tp-name" style="color:${on ? 'var(--amber)' : 'var(--ink)'};">${u.label}</span>
               <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${u.count} question${u.count !== 1 ? 's' : ''}</span>
@@ -8119,7 +8249,7 @@ function screenMidterm() {
         <p class="label" style="margin-top:20px;margin-bottom:8px;">When is it</p>
         <input type="date" id="mt-date" value="${d.date}" min="${isoDate()}"
                onchange="mtSetDate(this.value)"
-               style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:8px;">
+               style="width:100%;background:var(--surface);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:8px;">
         ${d.date && days !== null && days < 0
           ? `<p style="font-size: var(--fs-13);color:var(--amber);margin-bottom:12px;">That date has already passed — pick a day from today onward.</p>`
           : d.date && days !== null
@@ -8136,7 +8266,7 @@ function screenMidterm() {
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:12px;">Separate from any exam. When the term started, so Today can lead with what your classes are covering this week.${S.semStart && semesterWeek() ? ` You're in week ${semesterWeek()}.` : ''}</p>
       <input type="date" id="sem-date" value="${S.semStart || ''}" max="${isoDate()}"
              onchange="mtSetSemester(this.value)"
-             style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:8px;">
+             style="width:100%;background:var(--surface);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:8px;">
       ${S.semStart ? `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);cursor:pointer;font-family:inherit;display:flex;align-items:center;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="mtSetSemester('')">Clear semester</button>` : '<div style="height:10px;"></div>'}
 
       ${(() => {
@@ -8150,7 +8280,7 @@ function screenMidterm() {
       <p class="label" id="syllabus-section" style="margin-bottom:8px;">Your syllabus</p>
       <p class="p-note">Waypoint paces your classes from a typical schedule. Give it the real one and it maps your actual weeks onto MCAT topics instead.</p>
       ${live.map(c => `
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius: var(--r-ctl);padding:12px 12px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius: var(--r-ctl);padding:12px 12px;margin-bottom:8px;">
           <span style="font-size: var(--fs-13);color:var(--ink);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;">${c.name}</span>
           ${syllabusEntryHTML(c.id)}
         </div>`).join('')}`;
@@ -8700,7 +8830,7 @@ function unmappedCourses() {
 
 // ── Screens ───────────────────────────────────────────────────────────────────
 
-const SYL_CARD = 'background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius: var(--r-ctl);';
+const SYL_CARD = 'background:var(--surface);border:1px solid var(--line);border-radius: var(--r-ctl);';
 
 function syllabusEntryHTML(courseId) {
   const has = !!S.syllabus[courseId];
@@ -8801,7 +8931,7 @@ function sylWeekRowHTML(w, i, units, reason) {
   const open = S.syl.picker === i;
   const chips = w.unitIds.map(id => {
     const u = unitFromId(id);
-    return `<button onclick="sylToggleUnit(${i},'${id}')" title="Remove" style="background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.4);border-radius: var(--r-ctl);min-height:32px;padding:0 8px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--violet-soft);cursor:pointer;-webkit-tap-highlight-color:transparent;">${u ? u.label : id} ×</button>`;
+    return `<button onclick="sylToggleUnit(${i},'${id}')" title="Remove" style="background:var(--violet-wash);border:1px solid var(--violet-line);border-radius: var(--r-ctl);min-height:32px;padding:0 8px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--violet-soft);cursor:pointer;-webkit-tap-highlight-color:transparent;">${u ? u.label : id} ×</button>`;
   }).join('');
 
   return `
@@ -8815,16 +8945,16 @@ function sylWeekRowHTML(w, i, units, reason) {
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
           ${chips}
           ${w.unitIds.length ? '' : weekGapHTML(w)}
-          <button onclick="sylOpenPicker(${i})" aria-expanded="${open}" style="background:none;border:1px dashed rgba(255,255,255,0.18);border-radius: var(--r-ctl);min-height:32px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent;">${open ? 'Done' : (w.unitIds.length ? 'Change' : 'Add')}</button>
+          <button onclick="sylOpenPicker(${i})" aria-expanded="${open}" style="background:none;border:1px dashed var(--line-2);border-radius: var(--r-ctl);min-height:32px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent;">${open ? 'Done' : (w.unitIds.length ? 'Change' : 'Add')}</button>
         </div>
         ${open ? `
-          <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);">
             ${unitGroupsHTML(units).map(g => `
               <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);line-height:1.4;margin:12px 0 6px;">${g.heading}</p>
               <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 ${g.units.map(u => {
                   const on = w.unitIds.indexOf(u.id) !== -1;
-                  return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'rgba(167,139,250,0.16)' : 'transparent'};border:1px solid ${on ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.1)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--violet-soft)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
+                  return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'var(--violet-wash)' : 'transparent'};border:1px solid ${on ? 'var(--violet)' : 'var(--line-2)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--violet-soft)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
                 }).join('')}
               </div>`).join('')}
           </div>` : ''}
@@ -9010,7 +9140,7 @@ function screenSyllabus() {
       ${d.error ? `<p style="font-size: var(--fs-13);color:var(--amber);margin-bottom:12px;">${d.error}</p>` : ''}
 
       ${sylLooksPartial(weeks) ? `
-        <div style="${SYL_CARD}border-color:rgba(244,180,138,0.3);padding:12px 16px;margin-bottom:12px;">
+        <div style="${SYL_CARD}border-color:var(--amber-line);padding:12px 16px;margin-bottom:12px;">
           <p style="font-size: var(--fs-13);color:var(--amber);line-height:1.55;margin:0;">Looks like this might be part of the schedule — ${d.method === 'camera'
             ? 'add the rest with “Add another page,”'
             : 'add the rest and read it again,'} or fill the gaps below.</p>
@@ -9050,7 +9180,7 @@ function screenSyllabus() {
                onchange="sylPickPhoto(this)">` : '';
 
   const shootBtn = (label) => `
-        <button onclick="document.getElementById('syl-cam').click()" style="width:100%;box-sizing:border-box;background:rgba(45,184,138,0.10);border:1px solid rgba(45,184,138,0.35);border-radius: var(--r-ctl);padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--green-bright);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
+        <button onclick="document.getElementById('syl-cam').click()" style="width:100%;box-sizing:border-box;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--green-bright);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           ${label}
         </button>`;
@@ -9075,8 +9205,8 @@ function screenSyllabus() {
             <div style="width:72px;">
               <div style="position:relative;">
                 <img src="data:image/jpeg;base64,${p.base64}" alt="Page ${i + 1}"
-                     style="width:72px;height:94px;object-fit:cover;border-radius: var(--r-ctl);border:1px solid rgba(255,255,255,0.12);display:block;background:var(--surface);">
-                <span style="position:absolute;top:4px;left:4px;background:rgba(10,11,16,0.82);border-radius: var(--r-ctl);padding:4px 8px;font-size: var(--fs-11);font-weight:700;color:var(--ink);">${i + 1}</span>
+                     style="width:72px;height:94px;object-fit:cover;border-radius: var(--r-ctl);border:1px solid var(--line-2);display:block;background:var(--surface);">
+                <span style="position:absolute;top:4px;left:4px;background:var(--scrim);border-radius: var(--r-ctl);padding:4px 8px;font-size: var(--fs-11);font-weight:700;color:var(--ink);">${i + 1}</span>
               </div>
               <button onclick="sylRemovePage(${i})" aria-label="Remove page ${i + 1}" style="width:72px;background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--faint);cursor:pointer;-webkit-tap-highlight-color:transparent;">Remove</button>
             </div>`).join('')}
@@ -9090,7 +9220,7 @@ function screenSyllabus() {
       ` : d.file ? `
         <div style="${SYL_CARD}padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
           <span style="display:flex;align-items:center;gap:8px;min-width:0;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4A2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span style="min-width:0;">
               <span style="display:block;font-size: var(--fs-13);color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.file.name)}</span>
               <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${(d.file.size / 1048576).toFixed(1)}MB · ready to read</span>
@@ -9100,7 +9230,7 @@ function screenSyllabus() {
         </div>
       ` : `
         ${camera ? shootBtn('Take a photo of it') : ''}
-        <button onclick="document.getElementById('syl-file').click()" style="width:100%;box-sizing:border-box;background:none;border:1px dashed rgba(255,255,255,0.18);border-radius: var(--r-ctl);padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
+        <button onclick="document.getElementById('syl-file').click()" style="width:100%;box-sizing:border-box;background:none;border:1px dashed var(--line-2);border-radius: var(--r-ctl);padding:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Upload the PDF
         </button>
@@ -9111,7 +9241,7 @@ function screenSyllabus() {
         <p style="text-align:center;font-size: var(--fs-11);color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:12px;">or paste it</p>
         <textarea id="syl-text" oninput="sylPasteInput(this)" rows="9" spellcheck="false"
           placeholder="Week 1: Muscle structure and contraction&#10;Week 2: Cardiac cycle&#10;Week 3: Midterm exam&#10;…"
-          style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);line-height:1.5;resize:vertical;margin-bottom:12px;-webkit-appearance:none;">${esc(d.text || '')}</textarea>
+          style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);line-height:1.5;resize:vertical;margin-bottom:12px;-webkit-appearance:none;">${esc(d.text || '')}</textarea>
       `}
 
       <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-bottom:16px;">Waypoint reads your syllabus and keeps the schedule in your account. ${pages.length ? 'The photos aren\'t stored on our servers.' : 'The syllabus itself isn\'t stored on our servers.'}</p>
@@ -9215,7 +9345,7 @@ function claimHTML() {
   const top = items[0];
   const more = items.length > 1 ? ` <span style="color:var(--muted);">(+${items.length - 1} more in progress)</span>` : '';
   return `
-      <button onclick="go('courses')" style="width:100%;text-align:left;background:rgba(245,179,106,0.06);border:1px solid rgba(245,179,106,0.22);border-radius: var(--r-card);padding:12px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
+      <button onclick="go('courses')" style="width:100%;text-align:left;background:var(--amber-wash);border:1px solid var(--amber-line);border-radius: var(--r-card);padding:12px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
         <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">In progress</div>
         <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.5;margin:0;">You're taking <strong style="color:var(--ink);">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:var(--amber);">+${top.delta}%</strong> coverage →</p>
       </button>`;
@@ -9436,17 +9566,15 @@ function screenBrief() {
     <div class="screen">
       <div class="brief-topbar">
         <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
-          <div style="width:30px;height:30px;background:rgba(29,158,117,0.15);border-radius: var(--r-ctl);display:flex;align-items:center;justify-content:center;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="9"/>
-              <polyline points="12 8 12 12 14.5 14.5"/>
-              <circle cx="12" cy="12" r="1.2" fill="#1D9E75" stroke="none"/>
+          <div style="width:30px;height:30px;background:var(--green-wash-2);border-radius: var(--r-ctl);display:flex;align-items:center;justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/>
             </svg>
           </div>
           <span class="disp" style="font-size: var(--fs-15);font-weight:600;color:var(--ink);">Waypoint</span>
         </button>
         <div style="display:flex;align-items:center;gap:12px;">
-          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.28);border-radius: var(--r-pill);cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;margin:-12px 0;font-family:inherit;font-size: var(--fs-13);font-weight:700;color:var(--green-bright);-webkit-tap-highlight-color:transparent;">Route · ${covPill}%</button>` : ''}
+          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-pill);cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;margin:-12px 0;font-family:inherit;font-size: var(--fs-13);font-weight:700;color:var(--green-bright);-webkit-tap-highlight-color:transparent;">Route · ${covPill}%</button>` : ''}
           ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size: var(--fs-13);font-weight:600;">${S.streak}</span></div>` : ''}
           <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
@@ -9481,10 +9609,8 @@ function screenLanding() {
     <div class="screen" style="padding-top:32px;padding-bottom:48px;">
       <div class="app-brand">
         <div class="app-brand-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="9"/>
-            <polyline points="12 8 12 12 14.5 14.5"/>
-            <circle cx="12" cy="12" r="1.2" fill="#1D9E75" stroke="none"/>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/>
           </svg>
         </div>
         <span class="app-brand-name">Waypoint</span>
@@ -9512,7 +9638,7 @@ function screenLanding() {
            can recompute what they were shown. It used to lead with the
            percentage and three section bars; it leads with the map now, because
            that is what the product is. -->
-      <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius: var(--r-card);padding:16px;margin-bottom:32px;">
+      <div style="background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px;margin-bottom:32px;">
         <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">Example — seven courses in</div>
         <div style="font-size: var(--fs-17);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.01em;margin-bottom:12px;">${territoryLine(ex.cov)}</div>
         ${ex.map}
@@ -9557,7 +9683,7 @@ function screenAbout() {
 
       <p style="font-size: var(--fs-15);color:var(--green-bright);font-weight:600;margin-top:4px;">— Drew</p>
 
-      <div style="margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);font-size: var(--fs-13);color:var(--faint);line-height:1.6;">Free · nothing to buy · a premed side project. Built with care between shifts.</div>
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--line);font-size: var(--fs-13);color:var(--faint);line-height:1.6;">Free · nothing to buy · a premed side project. Built with care between shifts.</div>
     </div>`;
 }
 
@@ -9577,11 +9703,11 @@ function screenSettings() {
         </button>
       </div>
 
-      <button onclick="openAbout()" style="width:100%;text-align:left;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.18);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:inherit;">
+      <button onclick="openAbout()" style="width:100%;text-align:left;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:inherit;">
         <span><span style="display:block;font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">What is Waypoint?</span><span style="font-size: var(--fs-13);color:var(--faint);">Why I built it, and how it helps — from the maker.</span></span>
         <span style="color:var(--green);font-size: var(--fs-20);flex-shrink:0;">→</span>
       </button>
-<button onclick="openSources()" style="width:100%;text-align:left;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.18);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:inherit;">
+<button onclick="openSources()" style="width:100%;text-align:left;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:inherit;">
         <span><span style="display:block;font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">Where these numbers come from</span><span style="font-size: var(--fs-13);color:var(--faint);">Sources for every figure, and the working behind Waypoint's own estimates.</span></span>
         <span style="color:var(--green);font-size: var(--fs-20);flex-shrink:0;">→</span>
       </button>
@@ -9610,13 +9736,13 @@ function screenSettings() {
       ${S.semStart ? `
         <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Started ${S.semStart}${semesterWeek() ? ` — you're in week ${semesterWeek()}` : ''}. Home leads with what your classes typically cover this week.</p>
         <input type="date" id="sem-start-edit" value="${S.semStart}"
-               style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius: var(--r-ctl);padding:12px 12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:12px;">
+               style="width:100%;background:var(--surface);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px 12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:12px;">
         <button class="btn btn-primary" onclick="saveSemesterStart(document.getElementById('sem-start-edit').value)">Update start date</button>
         <button class="btn btn-ghost" onclick="clearSemesterStart()">Clear semester</button>
       ` : `
         <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Tell Waypoint when your semester started and Home will lead with what your classes are covering this week.</p>
         <input type="date" id="sem-start-edit" value="${isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 21))}" max="${isoDate()}"
-               style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius: var(--r-ctl);padding:12px 12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:12px;">
+               style="width:100%;background:var(--surface);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px 12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:12px;">
         <button class="btn btn-primary" onclick="saveSemesterStart(document.getElementById('sem-start-edit').value)">Sync my semester</button>
       `}
 
@@ -9683,7 +9809,7 @@ function accountSectionHTML() {
     <p class="p-note">Your junior-year self will want this record. Add an email and Waypoint keeps your route safe across devices — no password to remember.</p>
     ${note}
     <input type="email" id="auth-email" placeholder="you@school.edu" autocomplete="email"
-           style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:12px;">
+           style="width:100%;background:var(--surface);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);margin-bottom:12px;">
     <button class="btn btn-primary" ${syncState.status === 'working' ? 'disabled' : ''}
             onclick="sendMagicLink(document.getElementById('auth-email').value)">Email me a sign-in link</button>
     <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin-top:8px;">Optional — it's what carries your route to a new phone, a new laptop, and next semester.</p>`;
@@ -9751,8 +9877,8 @@ function courseTopicsBreakdown(courseId) {
   // A skill course has no percentage to total, and "0% of the MCAT" under a
   // class a student is taking reads as a verdict on the class.
   const foot = isSkillCourse(courseId)
-    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;border-top:1px solid rgba(255,255,255,0.08);margin-top:4px;padding-top:4px;">${STATS_NOTE}</p>`
-    : `<div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--green-bright);font-weight:700;border-top:1px solid rgba(255,255,255,0.08);margin-top:4px;padding-top:4px;"><span>${ts.length > 1 ? 'Together' : 'On the MCAT'}</span><span>${total}% of the MCAT</span></div>`;
+    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;border-top:1px solid var(--line);margin-top:4px;padding-top:4px;">${STATS_NOTE}</p>`
+    : `<div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--green-bright);font-weight:700;border-top:1px solid var(--line);margin-top:4px;padding-top:4px;"><span>${ts.length > 1 ? 'Together' : 'On the MCAT'}</span><span>${total}% of the MCAT</span></div>`;
   return `${rows}${foot}${noteHTML}`;
 }
 
@@ -9792,10 +9918,10 @@ function breakdownHTML() {
     return { sec, items, secTotal, secCredited: Math.round(secCredited) };
   });
   const mark = state =>
-    state === 'done'    ? `<span class="bd-mark" style="background:rgba(29,158,117,0.16);color:var(--green-bright);">✓</span>`
-    : state === 'partial' ? `<span class="bd-mark" style="background:rgba(245,179,106,0.16);color:var(--amber);">½</span>`
-    : state === 'ongoing' ? `<span class="bd-mark" style="background:rgba(245,158,11,0.14);color:var(--amber);">~</span>`
-    : `<span class="bd-mark" style="background:rgba(255,255,255,0.05);color:var(--faint);">·</span>`;
+    state === 'done'    ? `<span class="bd-mark" style="background:var(--green-wash-2);color:var(--green-bright);">✓</span>`
+    : state === 'partial' ? `<span class="bd-mark" style="background:var(--amber-wash);color:var(--amber);">½</span>`
+    : state === 'ongoing' ? `<span class="bd-mark" style="background:var(--amber-wash);color:var(--amber);">~</span>`
+    : `<span class="bd-mark" style="background:var(--wash-2);color:var(--faint);">·</span>`;
   const wColor = state => state === 'done' ? 'var(--green-bright)' : state === 'partial' ? 'var(--amber)' : state === 'ongoing' ? 'var(--muted)' : 'var(--muted)';
 
   return `
@@ -9815,12 +9941,12 @@ function breakdownHTML() {
             </div>`).join('')}
         </div>`).join('')}
 
-      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius: var(--r-card);padding:16px 16px;margin-top:4px;">
+      <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:16px 16px;margin-top:4px;">
         <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--ink-2);margin-bottom:8px;"><span>Course content covered</span><strong style="color:var(--green-bright);">${cov}%</strong></div>
         <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);"><span>Max from courses</span><span>77%</span></div>
         <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);"><span>CARS — a reading skill built all along</span><span>23% here · 53 of 230 questions</span></div>
         <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-top:12px;">✓ done · ½ taking now (counts half until you finish) · · not yet · ~ ongoing.</p>
-        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.6;margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">These weights are Waypoint's own estimate, built from AAMC's content outline and the standard scope of each course — a typical course load, not a survey of students. <button onclick="openSources()" class="link-btn" style="font-size:var(--fs-11);min-height:0;text-decoration:underline;">Where these numbers come from →</button></p>
+        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.6;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">These weights are Waypoint's own estimate, built from AAMC's content outline and the standard scope of each course — a typical course load, not a survey of students. <button onclick="openSources()" class="link-btn" style="font-size:var(--fs-11);min-height:0;text-decoration:underline;">Where these numbers come from →</button></p>
       </div>
     </div>`;
 }
@@ -9948,8 +10074,8 @@ function screenExplain() {
       : `Your biggest single piece is <strong style="color:var(--ink-2);">${top.course.name}</strong>, worth ${top.full}% of MCAT content. You're taking it now, so ${covPoints(top.full / 2)} of that counts until you mark it done.`;
 
   const mark = credit => credit === 1
-    ? `<span class="bd-mark" style="background:rgba(29,158,117,0.16);color:var(--green-bright);">✓</span>`
-    : `<span class="bd-mark" style="background:rgba(245,179,106,0.16);color:var(--amber);">½</span>`;
+    ? `<span class="bd-mark" style="background:var(--green-wash-2);color:var(--green-bright);">✓</span>`
+    : `<span class="bd-mark" style="background:var(--amber-wash);color:var(--amber);">½</span>`;
 
   const rows = g => g.rows.map(r => `
             <div class="bd-row">
@@ -9993,7 +10119,7 @@ function screenExplain() {
           ${rows(g)}
         </div>`).join('')}
 
-      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius: var(--r-card);padding:16px;margin-bottom:4px;">
+      <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:16px;margin-bottom:4px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size: var(--fs-15);color:var(--ink);"><span>Add them up</span><strong style="color:var(--green-bright);">${covPoints(raw)}%</strong></div>
         ${rounding}
         <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:8px 0 0;">Courses can reach 77% between them. The other 23% is CARS — a reading skill no class teaches.</p>
@@ -10055,7 +10181,7 @@ function sourceWeightRows() {
   return Object.entries(byCourse)
     .sort((a, b) => b[1].w - a[1].w)
     .map(([id, v]) => `
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);">
         <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${label(id)}
           <span style="display:block;font-size: var(--fs-11);color:var(--faint);line-height:1.4;">${v.names.join(' · ')}</span></span>
         <span style="font-size: var(--fs-13);font-weight:700;color:var(--green-bright);flex-shrink:0;">${v.w}%</span>
@@ -10089,12 +10215,12 @@ function screenSources() {
 
       ${h("Waypoint's coverage weights")}
       ${p(`Derived from the two AAMC figures above, not estimated: each section's question count times each discipline's share of it, totalled across the exam, over 230. Check any line with a calculator.`)}
-      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;overflow-x:auto;">
-        <div style="display:flex;justify-content:space-between;gap:12px;font-size: var(--fs-11);color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.07);">
+      <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;overflow-x:auto;">
+        <div style="display:flex;justify-content:space-between;gap:12px;font-size: var(--fs-11);color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);padding-bottom:8px;border-bottom:1px solid var(--line);">
           <span>Discipline</span><span style="flex-shrink:0;">Questions · share · weight</span>
         </div>
         ${DERIVATION.map(d => `
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);">
             <span style="font-size: var(--fs-13);color:var(--ink-2);">${d.label}</span>
             <span style="font-size: var(--fs-13);color:var(--muted);flex-shrink:0;">${d.q} · ${d.pct}% · <strong style="color:var(--green-bright);">${d.w}</strong></span>
           </div>`).join('')}
@@ -10104,7 +10230,7 @@ function screenSources() {
       ${p(`<strong style="color:var(--ink-2);">Still Waypoint's judgment:</strong> the split of a discipline across courses and topics. AAMC publishes no course-level breakdown, so intro biology's 19 becoming Bio I 9 and Bio II 10, or general chemistry's 9 becoming Gen Chem I 7 and Gen Chem II 2, is ours — and the part to argue with.`)}
       ${p(`<strong style="color:var(--ink-2);">Statistics.</strong> ${STATS_NOTE}`)}
       ${p(`Your percentage is the share of this content your coursework covers — not the share of questions you would answer correctly, and never a predicted score. The table below groups these weights by class; it is not the exam's four equal quarters, because several disciplines span more than one section.`)}
-      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;">
+      <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;">
         ${sourceWeightRows()}
         <div style="display:flex;justify-content:space-between;padding-top:12px;font-size: var(--fs-13);color:var(--ink-2);"><span>Total</span><strong style="color:var(--green-bright);">${total}%</strong></div>
       </div>
@@ -10556,16 +10682,30 @@ function screenReveal() {
   // #route-map keeps its name the way #cov-num used to: the first-reveal
   // animation finds it there.
   const head = cov > 0 ? `      <p class="label">Your route</p>
-      <h1 style="margin:0 0 4px;"><button onclick="go('explain')" title="See how this map is built" style="display:block;width:100%;background:none;border:none;padding:0;margin:0;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
-        <span id="reveal-subhead" style="display:block;font-family:inherit;font-size: var(--fs-24);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.02em;">${subhead}</span>
-      </button></h1>
-      <button onclick="go('explain')" class="link-btn" style="min-height:0;padding:2px 0 12px;line-height:1.4;">${aboutCoverageCap(cov)} of the MCAT&nbsp;covered&nbsp;&rarr;</button>` : `      <p class="label">Your route</p>
+      <h1 style="margin:0 0 8px;"><span id="reveal-subhead" style="display:block;font-family:inherit;font-size: var(--fs-24);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.02em;">${subhead}</span></h1>
+      <!-- The figure moved onto the sheet's own title rail, where it labels the
+           thing it measures instead of floating above it. That is a better
+           answer to "back, but not the hero" than a line of text was: the rail
+           is where a plat says what it is of, and the subhead here can go back
+           to explaining the model rather than repeating the number. -->
+      <p class="p-note" style="max-width:34ch;margin-bottom:14px;">Courses you've finished or are taking now, weighed by how much of the MCAT they cover. <button onclick="go('explain')" class="link-btn" style="min-height:0;padding:0;text-decoration:underline;text-underline-offset:3px;">How it's measured</button></p>` : `      <p class="label">Your route</p>
       <h2 style="margin-bottom:4px;">${headline}</h2>
       <p id="reveal-subhead" style="font-size: var(--fs-15);margin-bottom:22px;">${subhead}</p>`;
 
   // The map itself, always — an empty route still shows the exam it is a map of,
   // which is the one thing a student with no courses yet should see.
-  const map = `      <div style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>`;
+  // The sheet, and directly under it the parcel it points at. The map used to
+  // end in a dead end — an unfilled parcel opened the course list and that was
+  // the only way out of it. Naming the next parcel, saying why it is that one,
+  // and offering the session turns reading the map into doing something about
+  // it, which is the whole reason a student opened this screen.
+  const focus = routeFocus();
+  const map = `      <div style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>
+      ${focus ? `<p class="focus">${focus.detail}</p>
+      <div style="margin-top:18px;">
+        <button class="btn btn-primary" onclick="startQuickLog('${focus.topic.id}', null)">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>
+        <p class="focus-why">${focus.why}</p>
+      </div>` : ''}`;
 
   // Still one link under the number, but it now leads to the student's own
   // derivation rather than to the methodology. The methodology is one further
@@ -10655,12 +10795,12 @@ function screenQuestion() {
       <div class="q-meta">
         <span class="q-count">${S.quickLog ? (S.quickLog.repin ? (S.quickLog.repin === 'unpinned' ? 'Check' : 'Re-pin') : 'Quick check') : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
         <div style="display:flex;gap:8px;align-items:center;">
-          <span style="font-size: var(--fs-11);font-weight:600;background:rgba(255,255,255,0.07);color:var(--muted);padding:4px 8px;border-radius: var(--r-ctl);letter-spacing:var(--track-caps);">MCAT-style</span>
+          <span style="font-size: var(--fs-11);font-weight:600;background:var(--wash-2);color:var(--muted);padding:4px 8px;border-radius: var(--r-ctl);letter-spacing:var(--track-caps);">MCAT-style</span>
           <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicObj.disp : ''}</span>
         </div>
       </div>
 
-      ${S.quickLog && S.quickLog.subtopicFallback ? `<div style="font-size: var(--fs-13);color:var(--muted);background:rgba(255,255,255,0.03);border-radius: var(--r-ctl);padding:8px 12px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06);">Not enough subtopic questions yet — showing all ${TOPICS.find(t=>t.id===S.quickLog.topicId)?.name||''} questions.</div>` : ''}
+      ${S.quickLog && S.quickLog.subtopicFallback ? `<div style="font-size: var(--fs-13);color:var(--muted);background:var(--wash);border-radius: var(--r-ctl);padding:8px 12px;margin-bottom:12px;border:1px solid var(--line);">Not enough subtopic questions yet — showing all ${TOPICS.find(t=>t.id===S.quickLog.topicId)?.name||''} questions.</div>` : ''}
       ${q.topic === 'cars' ? `<p style="font-size: var(--fs-13);color:var(--muted);margin-bottom:8px;line-height:1.5;font-style:italic;">CARS is a reading skill that develops across all of premed — here's one while you're in practice mode.</p>` : ''}
       ${q.passage ? `<div class="cars-passage">${q.passage}</div>` : ''}
       <p class="q-stem">${q.stem}</p>
@@ -10679,15 +10819,15 @@ function screenQuestion() {
       </div>
 
       ${answered ? `
-        <div id="q-reveal" class="reveal-banner ${S.answered === q.ans ? 'ok' : 'no'}"><span class="rb-badge">${S.answered === q.ans ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4DE3AB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F08060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'}</span><span>${S.answered === q.ans ? 'Correct' : 'Not quite'}</span></div>
+        <div id="q-reveal" class="reveal-banner ${S.answered === q.ans ? 'ok' : 'no'}"><span class="rb-badge">${S.answered === q.ans ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4A2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9E3B22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'}</span><span>${S.answered === q.ans ? 'Correct' : 'Not quite'}</span></div>
         <div class="explanation${S.answered !== q.ans ? ' wrong' : ''}">${q.exp}</div>
         ${TOPIC_SKILL[q.topic] ? `
-        <div style="background:rgba(255,255,255,0.04);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
+        <div style="background:var(--wash);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
           <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">Skill trained</div>
           <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.5;margin:0;">${TOPIC_SKILL[q.topic]}</p>
         </div>` : ''}
         ${(q.twist || TWISTS[q.id]) ? `
-        <div style="background:rgba(139,92,246,0.10);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
+        <div style="background:var(--violet-wash);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
           <div style="font-size: var(--fs-11);font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">The MCAT Twist</div>
           <p style="font-size: var(--fs-13);color:var(--violet-soft);line-height:1.55;margin:0;">${q.twist || TWISTS[q.id]}</p>
         </div>` : ''}
@@ -10738,7 +10878,7 @@ function getRetentionHTML(sessionAnswers) {
             <div style="font-size: var(--fs-13);color:var(--ink-2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${topic.name}</div>
             <div style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${total}×</div>
             <div style="font-size: var(--fs-13);font-weight:600;color:${color};width:34px;text-align:right;flex-shrink:0;">${pct}%</div>
-            <div style="width:52px;height:4px;background:rgba(255,255,255,0.07);border-radius: var(--r-pill);overflow:hidden;flex-shrink:0;">
+            <div style="width:52px;height:4px;background:var(--wash-2);border-radius: var(--r-pill);overflow:hidden;flex-shrink:0;">
               <div style="width:${pct}%;height:100%;background:${color};border-radius: var(--r-pill);"></div>
             </div>
           </div>`;
@@ -10752,7 +10892,7 @@ function remindOnceHTML() {
   if (S.remindAsked) return '';
   if (S.sessionHistory.length < 3) return '';
   return `
-    <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius: var(--r-card);padding:16px 16px;margin-bottom:16px;">
+    <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:16px 16px;margin-bottom:16px;">
       <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 12px;">Three sessions in. Want a daily nudge on your calendar?</p>
       <button class="btn btn-share" style="margin:0;" id="reminder-btn" onclick="S.remindAsked=1;save();setReminder(this);">Set a daily reminder</button>
       <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;justify-content:center;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="S.remindAsked=1;save();render();">No thanks</button>
@@ -11081,7 +11221,7 @@ function screenQuickLog() {
     // "All of X" is the whole-topic row — the only one offered when a topic has
     // no tagged subtopics, and a catch-all underneath when it does.
     const all = `
-      <button class="topic-pick-btn"${subs.length ? ' style="border-color:rgba(255,255,255,0.05);opacity:0.7;"' : ''} onclick="startQuickLog('${t.id}', null)">
+      <button class="topic-pick-btn"${subs.length ? ' style="border-color:var(--line);opacity:0.7;"' : ''} onclick="startQuickLog('${t.id}', null)">
         <span style="flex:1;text-align:left;">
           <span class="tp-name"${subs.length ? ' style="color:var(--faint);"' : ''}>All of ${t.name}</span>
           <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${sessionSize(t.id, null)} question${sessionSize(t.id, null) !== 1 ? 's' : ''}</span>
@@ -11487,63 +11627,93 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// The same map, painted. One layout function serves the screen and the canvas,
+// The same sheet, painted. One layout function serves the screen and the canvas,
 // so a share card can never show a different exam from the one the student was
 // looking at when they tapped share. Returns the y it finished at.
-function paintRouteMap(ctx, x, y, w, bandPx) {
-  const bands = routeMapBands(bandPx, w);
-  const gap = 6;
+//
+// The block is square here too, so the areas a reader compares on a shared card
+// are the same areas they compared in the app.
+function paintRouteMap(ctx, x, y, w) {
+  const rows = sheetLayout();
+  const regH = Math.round(w * REG_H / SHEET_NOMINAL_W);
   let cy = y;
-  bands.forEach(band => {
-    ctx.textAlign = 'left';
-    ctx.fillStyle = tok('--dim');
-    ctx.font = '700 22px "Inter", sans-serif';
-    ctx.fillText(band.sec.short.toUpperCase(), x, cy + 18);
-    cy += 32;
 
-    band.tiles.forEach(b => {
+  // The dotted, hatched and ruled grounds, as canvas patterns.
+  const pattern = (draw, size) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    draw(c.getContext('2d'));
+    return ctx.createPattern(c, 'repeat');
+  };
+  const scale = w / SHEET_NOMINAL_W;
+  const ahead = pattern(p2 => {
+    p2.fillStyle = tok('--bg'); p2.fillRect(0, 0, 6 * scale, 6 * scale);
+    p2.fillStyle = tok('--line-2');
+    p2.beginPath(); p2.arc(0.8 * scale, 0.8 * scale, 0.75 * scale, 0, Math.PI * 2); p2.fill();
+  }, Math.max(4, Math.round(6 * scale)));
+  const take = pattern(p2 => {
+    const n = Math.max(4, Math.round(6 * scale));
+    p2.fillStyle = tok('--bg'); p2.fillRect(0, 0, n, n);
+    p2.strokeStyle = tok('--covered'); p2.lineWidth = n / 2;
+    p2.beginPath(); p2.moveTo(-n, n); p2.lineTo(n, -n); p2.moveTo(0, n * 2); p2.lineTo(n * 2, 0); p2.stroke();
+  }, Math.max(4, Math.round(6 * scale)));
+  const water = pattern(p2 => {
+    const n = Math.max(4, Math.round(6 * scale));
+    p2.fillStyle = tok('--water'); p2.fillRect(0, 0, n, n);
+    p2.fillStyle = tok('--blue-line'); p2.fillRect(0, 0, n, Math.max(1, scale));
+  }, Math.max(4, Math.round(6 * scale)));
+
+  rows.forEach(row => {
+    const bandH = row.height / 100 * w;
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = tok('--ink');
+    ctx.font = `italic 600 ${Math.round(15 * scale)}px "Source Serif 4", Georgia, serif`;
+    row.cols.forEach(col => {
+      const label = col.sec.id === 'cars' ? 'Reading' : col.sec.long.replace(/ &amp; | & /, ' and ');
+      ctx.fillText(label, x + col.x / 100 * w + 6 * scale, cy + regH * 0.72);
+    });
+    cy += regH;
+
+    row.cols.forEach(col => col.tiles.forEach(b => {
       const t  = b.topic;
-      const tx = x + b.left / 100 * w, tw = Math.max(1, b.width / 100 * w - gap);
-      const ty = cy + b.top,           th = Math.max(1, b.h - gap);
+      const tx = x + b.x / 100 * w, tw = b.w / 100 * w;
+      const ty = cy + b.y / 100 * w, th = b.h / 100 * w;
       const fill = tileFill(t);
       const cars = t.mcat === 'cars';
 
       ctx.save();
-      roundRect(ctx, tx, ty, tw, th, 10);
-      ctx.clip();
-      ctx.fillStyle = cars ? 'rgba(245,158,11,0.09)' : 'rgba(255,255,255,0.04)';
+      ctx.beginPath(); ctx.rect(tx, ty, tw, th); ctx.clip();
+      ctx.fillStyle = cars ? water : fill >= 1 ? tok('--covered') : fill > 0 ? take : ahead;
       ctx.fillRect(tx, ty, tw, th);
-      if (fill > 0) {
-        ctx.fillStyle = 'rgba(29,158,117,0.42)';
-        ctx.fillRect(tx, ty + th * (1 - fill), tw, th * fill);
-      }
+      ctx.strokeStyle = tok('--line'); ctx.lineWidth = 1;
+      ctx.strokeRect(tx + 0.5, ty + 0.5, tw - 1, th - 1);
+
       // Canvas has no ellipsis and no wrapping. A name that doesn't fit steps
-      // down one size, and if it still doesn't fit the tile keeps its colour and
-      // says nothing — a clipped half-word is worse than no word.
-      if (th >= 34) {
-        const name = mapName(t);
-        let size = 0;
-        for (const px of [21, 18, 16]) {
-          ctx.font = `600 ${px}px "Inter", sans-serif`;
-          if (ctx.measureText(name).width <= tw - 14) { size = px; break; }
-        }
-        if (size) {
-          ctx.fillStyle = fill > 0 || cars ? tok('--ink') : tok('--muted');
-          ctx.font = `600 ${size}px "Inter", sans-serif`;
-          ctx.fillText(name, tx + 8, ty + 28);
-          if (th >= 62 && (cars || fill === 0.5)) {
-            const sub = cars ? 'ongoing' : 'taking';
-            ctx.font = '500 20px "Inter", sans-serif';
-            if (ctx.measureText(sub).width <= tw - 20) {
-              ctx.fillStyle = cars ? tok('--amber') : tok('--muted');
-              ctx.fillText(sub, tx + 10, ty + 54);
-            }
+      // down one size, and if it still doesn't fit the parcel keeps its texture
+      // and says nothing — a clipped half-word is worse than no word.
+      const name = mapName(t);
+      let size = 0;
+      for (const px of [13, 12, 11]) {
+        ctx.font = `600 ${Math.round(px * scale)}px "Public Sans", sans-serif`;
+        if (ctx.measureText(name).width <= tw - 8 * scale) { size = Math.round(px * scale); break; }
+      }
+      if (size && th >= 20 * scale) {
+        ctx.fillStyle = cars ? tok('--blue') : fill > 0 ? tok('--ink') : tok('--muted');
+        ctx.font = `600 ${size}px "Public Sans", sans-serif`;
+        ctx.fillText(name, tx + 4 * scale, ty + 13 * scale);
+        const sub = cars ? 'ongoing' : fill === 0.5 ? 'taking' : fill === 0 ? 'ahead' : '';
+        if (sub && th >= 34 * scale) {
+          ctx.font = `400 ${Math.round(11 * scale)}px "Public Sans", sans-serif`;
+          if (ctx.measureText(sub).width <= tw - 8 * scale) {
+            ctx.fillStyle = cars ? tok('--blue') : tok('--faint');
+            ctx.fillText(sub, tx + 4 * scale, ty + 26 * scale);
           }
         }
       }
       ctx.restore();
-    });
-    cy += band.height + 12;
+    }));
+    cy += bandH;
   });
   return cy;
 }
@@ -11698,36 +11868,28 @@ async function shareCoverageCard(variant = 'coverage', btn) {
 
   try {
     await Promise.all([
-      document.fonts.load('700 230px "Space Grotesk"'),
-      document.fonts.load('700 200px "Space Grotesk"'),
-      document.fonts.load('700 34px "Space Grotesk"'),
-      document.fonts.load('700 80px "Space Grotesk"'),
-      document.fonts.load('600 38px "Inter"'),
-      document.fonts.load('500 30px "Inter"'),
+      document.fonts.load('700 230px "Public Sans"'),
+      document.fonts.load('700 200px "Public Sans"'),
+      document.fonts.load('700 34px "Public Sans"'),
+      document.fonts.load('700 80px "Public Sans"'),
+      document.fonts.load('600 38px "Public Sans"'),
+      document.fonts.load('500 30px "Public Sans"'),
     ]);
   } catch (e) { /* fonts may not be ready — fall back to default */ }
 
-  // Background
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, tok('--bg'));
-  bg.addColorStop(1, tok('--surface'));
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  const glow = ctx.createRadialGradient(W * 0.82, H * 0.12, 0, W * 0.82, H * 0.12, W * 0.75);
-  glow.addColorStop(0, 'rgba(29,158,117,0.28)');
-  glow.addColorStop(1, 'rgba(29,158,117,0)');
-  ctx.fillStyle = glow;
+  // Background: flat stock. What was a tinted gradient with a green glow over
+  // it is one paper, because a sheet does not light itself.
+  ctx.fillStyle = tok('--bg');
   ctx.fillRect(0, 0, W, H);
 
   // Branding
   ctx.fillStyle = tok('--green');
-  ctx.font = '700 36px "Space Grotesk", sans-serif';
+  ctx.font = '700 36px "Public Sans", sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('Waypoint', 70, 110);
 
   ctx.fillStyle = tok('--muted');
-  ctx.font = '500 28px "Inter", sans-serif';
+  ctx.font = '500 28px "Public Sans", sans-serif';
   ctx.fillText(isTerm ? snap.label : isStreak ? 'My study streak' : 'My MCAT prep route', 70, 152);
 
   // The coverage card is the map now — the same hero the Route shows, painted by
@@ -11742,28 +11904,28 @@ async function shareCoverageCard(variant = 'coverage', btn) {
     // have. A card is where a number travels furthest from its derivation.
     const rounded = Math.round(snap.cov / 5) * 5;
     ctx.fillStyle = tok('--muted');
-    ctx.font = '700 34px "Space Grotesk", sans-serif';
+    ctx.font = '700 34px "Public Sans", sans-serif';
     ctx.fillText(snap.cov > 0 && rounded === 0 ? 'UNDER' : 'ABOUT', W / 2, 400);
     ctx.fillStyle = tok('--ink');
-    ctx.font = '700 200px "Space Grotesk", sans-serif';
+    ctx.font = '700 200px "Public Sans", sans-serif';
     ctx.fillText(`${snap.cov > 0 && rounded === 0 ? 5 : rounded}%`, W / 2, 553);
     ctx.fillStyle = tok('--green');
-    ctx.font = '600 40px "Inter", sans-serif';
+    ctx.font = '600 40px "Public Sans", sans-serif';
     ctx.fillText('of the MCAT covered', W / 2, 610);
   } else if (isStreak) {
-    ctx.font = '700 200px "Space Grotesk", sans-serif';
+    ctx.font = '700 200px "Public Sans", sans-serif';
     ctx.fillText(`🔥 ${streak}`, W / 2, 540);
     ctx.fillStyle = tok('--green');
-    ctx.font = '600 40px "Inter", sans-serif';
+    ctx.font = '600 40px "Public Sans", sans-serif';
     ctx.fillText(streak === 1 ? 'day streak' : 'day streak', W / 2, 605);
   } else {
     // The Route's own order: territory line, then the map. Two lines of room —
     // "Senior-year territory, a year ahead of where you are." is the longest
     // this line ever gets.
-    ctx.font = '700 52px "Space Grotesk", sans-serif';
+    ctx.font = '700 52px "Public Sans", sans-serif';
     wrapCanvasText(ctx, territoryLine(cov), W - 200).slice(0, 2)
       .forEach((line, i) => ctx.fillText(line, W / 2, 252 + i * 62));
-    mapEnd = paintRouteMap(ctx, 70, 348, W - 140, 560);
+    mapEnd = paintRouteMap(ctx, 70, 348, W - 140);
     ctx.textAlign = 'center';
   }
 
@@ -11775,10 +11937,10 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   const cardX2 = cardX1 + cardW + gap;
 
   if (isStreak || isTerm) {
-  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.fillStyle = tok('--wash');
   roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.fill();
   roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.strokeStyle = tok('--line');
   ctx.lineWidth = 2;
   roundRect(ctx, cardX1, cardY, cardW, cardH, cardR); ctx.stroke();
   roundRect(ctx, cardX2, cardY, cardW, cardH, cardR); ctx.stroke();
@@ -11787,59 +11949,59 @@ async function shareCoverageCard(variant = 'coverage', btn) {
     // What the term's finished coursework covers. A term with nothing finished
     // says so with a dash rather than with a zero dressed as a result.
     ctx.fillStyle = tok('--ink');
-    ctx.font = '700 90px "Space Grotesk", sans-serif';
+    ctx.font = '700 90px "Public Sans", sans-serif';
     ctx.fillText(snap.gained > 0 ? `${Math.max(5, Math.round(snap.gained / 5) * 5)}%` : '—', cardX1 + cardW / 2, cardY + 120);
     ctx.fillStyle = tok('--muted');
-    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.font = '500 30px "Public Sans", sans-serif';
     ctx.fillText(snap.gained > 0 ? 'finished this term' : 'still in progress', cardX1 + cardW / 2, cardY + 175);
 
     // Distinct topics practised inside the term. A count, so it needs no
     // rounding and gets none.
     ctx.fillStyle = tok('--ink');
-    ctx.font = '700 90px "Space Grotesk", sans-serif';
+    ctx.font = '700 90px "Public Sans", sans-serif';
     ctx.fillText(String(snap.topics), cardX2 + cardW / 2, cardY + 120);
     ctx.fillStyle = tok('--muted');
-    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.font = '500 30px "Public Sans", sans-serif';
     ctx.fillText(snap.topics === 1 ? 'topic practiced' : 'topics practiced', cardX2 + cardW / 2, cardY + 175);
   } else if (isStreak) {
     // Coverage card. Smaller type than the others because it carries the word
     // that makes it honest — nearest 5, like every percentage that leaves here.
     ctx.fillStyle = tok('--ink');
-    ctx.font = '700 62px "Space Grotesk", sans-serif';
+    ctx.font = '700 62px "Public Sans", sans-serif';
     ctx.fillText(aboutCoverage(cov), cardX1 + cardW / 2, cardY + 115);
     ctx.fillStyle = tok('--muted');
-    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.font = '500 30px "Public Sans", sans-serif';
     ctx.fillText('MCAT covered', cardX1 + cardW / 2, cardY + 175);
 
     // Topics unlocked card
     ctx.fillStyle = tok('--ink');
-    ctx.font = '700 90px "Space Grotesk", sans-serif';
+    ctx.font = '700 90px "Public Sans", sans-serif';
     ctx.fillText(`${myTopics.length}/${totalTopics}`, cardX2 + cardW / 2, cardY + 120);
     ctx.fillStyle = tok('--muted');
-    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.font = '500 30px "Public Sans", sans-serif';
     ctx.fillText('topics unlocked', cardX2 + cardW / 2, cardY + 175);
   } else {
     // Streak card
     ctx.fillStyle = tok('--ink');
-    ctx.font = '700 90px "Space Grotesk", sans-serif';
+    ctx.font = '700 90px "Public Sans", sans-serif';
     ctx.fillText(streak > 0 ? `🔥 ${streak}` : '—', cardX1 + cardW / 2, cardY + 120);
     ctx.fillStyle = tok('--muted');
-    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.font = '500 30px "Public Sans", sans-serif';
     ctx.fillText(streak === 1 ? 'day streak' : 'day streak', cardX1 + cardW / 2, cardY + 175);
 
     // Topics unlocked card
     ctx.fillStyle = tok('--ink');
-    ctx.font = '700 90px "Space Grotesk", sans-serif';
+    ctx.font = '700 90px "Public Sans", sans-serif';
     ctx.fillText(`${myTopics.length}/${totalTopics}`, cardX2 + cardW / 2, cardY + 120);
     ctx.fillStyle = tok('--muted');
-    ctx.font = '500 30px "Inter", sans-serif';
+    ctx.font = '500 30px "Public Sans", sans-serif';
     ctx.fillText('topics unlocked', cardX2 + cardW / 2, cardY + 175);
   }
   }
 
   // Tagline
   ctx.fillStyle = tok('--faint');
-  ctx.font = '500 32px "Inter", sans-serif';
+  ctx.font = '500 32px "Public Sans", sans-serif';
   const taglineText = isTerm
     ? `${snap.label} is on the map. Coursework maps to MCAT content, so a semester finished is exam ground covered.`
     : isStreak
@@ -11852,7 +12014,7 @@ async function shareCoverageCard(variant = 'coverage', btn) {
 
   // Footer
   ctx.fillStyle = tok('--muted');
-  ctx.font = '500 26px "Inter", sans-serif';
+  ctx.font = '500 26px "Public Sans", sans-serif';
   ctx.fillText('Track your own MCAT coverage → waypointmcat.com', W / 2, H - 60);
 
   try {
@@ -11897,35 +12059,28 @@ async function shareTwistCard(btn) {
 
   try {
     await Promise.all([
-      document.fonts.load('700 44px "Space Grotesk"'),
-      document.fonts.load('600 30px "Inter"'),
-      document.fonts.load('400 40px "Inter"'),
-      document.fonts.load('700 30px "Inter"'),
+      document.fonts.load('700 44px "Public Sans"'),
+      document.fonts.load('600 30px "Public Sans"'),
+      document.fonts.load('400 40px "Public Sans"'),
+      document.fonts.load('700 30px "Public Sans"'),
     ]);
   } catch (e) { /* fall back to default fonts */ }
 
-  // Background + purple glow (twist accent)
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, tok('--bg'));
-  bg.addColorStop(1, tok('--surface'));
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  const glow = ctx.createRadialGradient(W * 0.82, H * 0.12, 0, W * 0.82, H * 0.12, W * 0.75);
-  glow.addColorStop(0, 'rgba(139,92,246,0.26)');
-  glow.addColorStop(1, 'rgba(139,92,246,0)');
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  // Background: flat stock, as on the coverage card.
+  ctx.fillStyle = tok('--bg'); ctx.fillRect(0, 0, W, H);
 
   // Branding
   ctx.textAlign = 'left';
   ctx.fillStyle = tok('--green');
-  ctx.font = '700 40px "Space Grotesk", sans-serif';
+  ctx.font = '700 40px "Public Sans", sans-serif';
   ctx.fillText('Waypoint', 72, 108);
   ctx.fillStyle = tok('--violet');
-  ctx.font = '600 30px "Inter", sans-serif';
+  ctx.font = '600 30px "Public Sans", sans-serif';
   ctx.fillText('The MCAT Twist', 72, 152);
   if (d.topic) {
     ctx.textAlign = 'right';
     ctx.fillStyle = tok('--faint');
-    ctx.font = '600 28px "Inter", sans-serif';
+    ctx.font = '600 28px "Public Sans", sans-serif';
     ctx.fillText(d.topic.name.toUpperCase(), W - 72, 120);
   }
 
@@ -11934,7 +12089,7 @@ async function shareTwistCard(btn) {
   let fs = 40, lh = 56, clsLines = [], examLines = [];
   const labelBlock = 60, padTop = 44, padBottom = 34, gap = 44;
   for (const size of [42, 38, 34, 30, 26]) {
-    ctx.font = `400 ${size}px "Inter", sans-serif`;
+    ctx.font = `400 ${size}px "Public Sans", sans-serif`;
     clsLines  = wrapCanvasText(ctx, clsText, innerW);
     examLines = wrapCanvasText(ctx, examText, innerW);
     const h = size * 1.4;
@@ -11952,27 +12107,27 @@ async function shareTwistCard(btn) {
     roundRect(ctx, margin, y, panelW, h, 24); ctx.stroke();
     ctx.textAlign = 'left';
     ctx.fillStyle = labelColor;
-    ctx.font = '700 26px "Inter", sans-serif';
+    ctx.font = '700 26px "Public Sans", sans-serif';
     ctx.fillText(label, margin + 34, y + padTop + 10);
     ctx.fillStyle = textColor;
-    ctx.font = `400 ${fs}px "Inter", sans-serif`;
+    ctx.font = `400 ${fs}px "Public Sans", sans-serif`;
     lines.forEach((line, i) => ctx.fillText(line, margin + 34, y + padTop + labelBlock + i * lh));
     return y + h;
   };
 
   let y = 250;
-  y = drawPanel(y, 'IN CLASS', tok('--muted'), clsLines, tok('--ink-2'), 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.09)');
-  y = drawPanel(y + gap, 'ON THE MCAT', tok('--violet'), examLines, tok('--violet-soft'), 'rgba(139,92,246,0.10)', 'rgba(139,92,246,0.4)');
+  y = drawPanel(y, 'IN CLASS', tok('--muted'), clsLines, tok('--ink-2'), tok('--wash'), tok('--line'));
+  y = drawPanel(y + gap, 'ON THE MCAT', tok('--violet'), examLines, tok('--violet-soft'), tok('--violet-wash'), tok('--violet-line'));
 
   // Tagline
   ctx.textAlign = 'center';
   ctx.fillStyle = tok('--muted');
-  ctx.font = '600 34px "Inter", sans-serif';
+  ctx.font = '600 34px "Public Sans", sans-serif';
   ctx.fillText('The gap no one tells premeds about.', W / 2, Math.min(y + 90, H - 150));
 
   // Footer
   ctx.fillStyle = tok('--muted');
-  ctx.font = '500 26px "Inter", sans-serif';
+  ctx.font = '500 26px "Public Sans", sans-serif';
   ctx.fillText('See the twist on every topic → waypointmcat.com', W / 2, H - 64);
 
   try {
@@ -12130,22 +12285,25 @@ function animateCoverageRing(force) {
   const map = document.getElementById('route-map');
   if (!map) { ringAnimKey = null; return; }
 
-  const fills = [...map.querySelectorAll('.map-fill')];
-  const key = S.screen + ':' + fills.map(f => f.dataset.fill).join(',');
+  // The sheet fills in a band at a time. There is no fill height to grow any
+  // more — a parcel's state is its texture, and texture cannot be half-drawn
+  // without lying about coverage on the way up — so the reveal is the sheet
+  // being drawn: each band fades in, top to bottom, the way a plat is read.
+  const bands = [...map.querySelectorAll('.band, .reg-row')];
+  const key = S.screen + ':' + bands.length + ':' +
+              [...map.querySelectorAll('.pl')].map(p => p.className).join(',');
   if (!force && key === ringAnimKey) return;
   ringAnimKey = key;
 
-  const land = () => fills.forEach(f => { f.style.height = f.dataset.fill + '%'; });
-  if (reducedMotion()) { fills.forEach(f => { f.style.transition = 'none'; }); land(); return; }
+  const land = () => bands.forEach(b => { b.style.opacity = ''; b.style.transition = ''; });
+  if (reducedMotion()) { land(); return; }
 
-  // Filled tiles come in biggest first, so the shape of the exam reads before
-  // the detail does. Everything is on screen inside a second.
-  const order = fills.filter(f => +f.dataset.fill > 0)
-                     .sort((a, b) => b.parentElement.offsetHeight - a.parentElement.offsetHeight);
-  fills.forEach(f => { f.style.height = '0%'; });
+  bands.forEach(b => { b.style.opacity = '0'; });
   requestAnimationFrame(() => {
-    order.forEach((f, i) => setTimeout(() => { f.style.height = f.dataset.fill + '%'; },
-                                       Math.min(i * 45, 700)));
+    bands.forEach((b, i) => {
+      b.style.transition = 'opacity 0.42s var(--ease) ' + (i * 0.09).toFixed(2) + 's';
+      b.style.opacity = '1';
+    });
   });
 }
 
