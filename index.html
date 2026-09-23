@@ -89,7 +89,7 @@
     --violet:      #574092;   /* Psych & Soc, and the Twist */
     --violet-soft: #6F58AC;
     --amber:       #8E5630;   /* exams, warnings, in-progress, contour rings */
-    --blue:        #2E6F96;   /* CARS */
+    --blue:        #2A668A;   /* CARS — solved against the water tint, not paper */
     --water:       #D9E7EF;   /* the tint CARS is ruled over */
     --red:         #9E3B22;
 
@@ -727,6 +727,79 @@
     margin-bottom: 16px;
   }
   .map-grid > div { overflow-wrap: normal; word-break: normal; hyphens: none; }
+
+  /* ── THE SHEET ────────────────────────────────────────────────────────────
+     The map is a survey plat now: a double-ruled sheet, regions named in the
+     serif, and parcels whose texture — not whose fill height — says what you
+     have covered. Texture beats height because a half-filled tile at 1% of the
+     exam is four pixels of green, and because hatching still reads when the
+     colour does not. */
+  .sheet { border: 1px solid var(--ink); padding: 4px; background: var(--bg); }
+  .sheet-in { border: 1px solid var(--ink); padding: 9px; }
+  .sheet-title {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-bottom: 7px; margin-bottom: 9px; border-bottom: 1px solid var(--line-2);
+  }
+  .sheet-title i { font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-size: var(--fs-13); color: var(--ink); }
+  .sheet-title b { font-weight: 600; font-size: var(--fs-13); color: var(--ink); white-space: nowrap; }
+  .sheet-title b small { font-weight: 400; color: var(--faint); font-size: var(--fs-11); margin: 0 var(--s-1); }
+
+  .reg {
+    font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-weight: 600;
+    font-size: var(--fs-13); color: var(--ink); line-height: 1;
+    padding: 5px 6px 4px; min-width: 0;
+    overflow: hidden;
+  }
+  .reg small { font-family: inherit; font-style: normal; font-weight: 400; font-size: var(--fs-11); color: var(--faint); margin-left: var(--s-1); }
+  .reg-row { display: flex; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .band { position: relative; box-shadow: inset 0 0 0 1px var(--line-2); }
+
+  /* A parcel. No radius anywhere — a sheet is drawn with a straight edge. */
+  .pl {
+    position: absolute; box-sizing: border-box; overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--line);
+    padding: 3px 4px; text-align: left; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.pl { border: 0; cursor: pointer; }
+  .pl-name { font-size: var(--fs-11); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; color: var(--ink); display: block; }
+  .pl-sub  { font-size: var(--fs-11); font-weight: 400; color: var(--faint); line-height: 1.1; display: block; margin-top: 1px; }
+  .pl-vert { writing-mode: vertical-rl; padding: 4px 3px; }
+
+  /* The three states, as texture. */
+  .pl-ahead { background: radial-gradient(circle, var(--line-2) 0.6px, transparent 0.9px) 0 0 / 6px 6px, var(--bg); }
+  .pl-ahead .pl-name { font-weight: 400; color: var(--muted); }
+  .pl-done  { background: var(--covered); }
+  .pl-take  { background: repeating-linear-gradient(135deg, var(--covered) 0 3px, var(--bg) 3px 6px); }
+  /* CARS is water: ruled, tinted, and never filled by a course. */
+  .pl-water { background: repeating-linear-gradient(0deg, var(--blue-line) 0 1px, transparent 1px 6px), var(--water); }
+  .pl-water .pl-name { color: var(--blue); }
+  .pl-water .pl-sub  { color: var(--blue); }
+
+  /* Practice, as a contour knoll in the corner: more rings, more recently.
+     The mask literal means "keep this pixel", not a colour. */
+  .pl-held::after {
+    content: ""; position: absolute; right: 2px; bottom: 2px;
+    width: 26px; height: 26px; pointer-events: none;
+    background: repeating-radial-gradient(circle at 50% 50%, transparent 0 2.8px, var(--amber) 2.8px 3.9px);
+    -webkit-mask-image: radial-gradient(circle, var(--ink) 0 var(--k, 8px), transparent calc(var(--k, 8px) + 1px));
+    mask-image: radial-gradient(circle, var(--ink) 0 var(--k, 8px), transparent calc(var(--k, 8px) + 1px));
+  }
+  .k1 { --k: 6px; } .k2 { --k: 9px; } .k3 { --k: 12px; }
+  /* On a small parcel the knoll is drawn at half size so it reads as a mark
+     rather than as a lid over the name. */
+  .pl-held.sm::after { width: 15px; height: 15px; }
+  .pl-held.sm.k1 { --k: 3px; } .pl-held.sm.k2 { --k: 5px; } .pl-held.sm.k3 { --k: 7px; }
+
+  .sheet-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 10px; font-size: var(--fs-11); line-height: 1.3; color: var(--ink-2); }
+  .sheet-legend > span { display: flex; gap: 7px; align-items: flex-start; }
+  .sw { width: 16px; height: 12px; flex: none; margin-top: 1px; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .sw.pl-held::after { width: 16px; height: 16px; right: -3px; bottom: -3px; }
+  .sheet-foot { display: flex; align-items: center; gap: var(--s-2); margin-top: 10px; border-top: 1px solid var(--line-2); padding-top: 8px;
+                font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-size: var(--fs-13); color: var(--muted); }
+  /* Exactly one percent of the drawn map: the parcel block is a square, so a
+     tenth of its width is a hundredth of its area. Not an approximation. */
+  .sheet-foot .one { aspect-ratio: 1; flex: none; box-sizing: border-box; border: 1px solid var(--ink); background: var(--bg); }
 
   /* On-track card */
   .info-card {
@@ -6227,8 +6300,6 @@ function squarify(items, x, y, w, h) {
 // tile still clears 51px wide — enough for its own name — including
 // Stoichiometry, one percent of the exam and the smallest tile there is. Taller
 // bands buy nothing (the narrow tiles stay 51px) and cost a viewport.
-const MAP_BAND_PX = 360;
-const MAP_NOMINAL_W = 340;   // the width the aspect ratios are computed against
 
 // One band per section, height proportional to the section's share of the exam,
 // with the section's topics squarified inside it. Widths come back as
@@ -6238,20 +6309,62 @@ const MAP_NOMINAL_W = 340;   // the width the aspect ratios are computed against
 // A topic AAMC gives no share to (Research methods, weight 0) has an area of
 // zero, and zero is the honest area. Rather than floor it into a sliver that
 // means nothing, it is left off the map and named underneath it.
-function routeMapBands(bandPx = MAP_BAND_PX, nominalW = MAP_NOMINAL_W) {
-  const totalW = TOPICS.reduce((n, t) => n + t.w, 0);
-  return MCAT_SECTIONS.map(sec => {
-    const topics = TOPICS.filter(t => t.mcat === sec.id);
-    const weight = topics.reduce((n, t) => n + t.w, 0);
-    const height = Math.round(bandPx * weight / totalW);
-    const boxes  = squarify(topics.filter(t => t.w > 0).map(t => ({ item: t, value: t.w })),
-                            0, 0, nominalW, height);
-    return { sec, weight, height,
-             tiles: boxes.map(b => ({ topic: b.item,
-                                      left:  b.x / nominalW * 100,
-                                      width: b.w / nominalW * 100,
-                                      top: b.y, h: b.h })) };
-  }).filter(b => b.tiles.length);
+// ── THE SHEET ────────────────────────────────────────────────────────────────
+// Two rows, four regions, and every parcel's AREA is its share of the exam.
+//
+// The concept this is built from drew the four regions as equal quadrants, and
+// they are not equal: Bio & Biochem is 32% of the exam, Chem & Physics 20%,
+// Psych & Soc 25%, CARS 23%. Equal squares would have said otherwise, and the
+// scale key at the foot would have been decorative. So the rows are weighted by
+// what they hold (52 / 48) and each row's columns by theirs, which makes every
+// region's rectangle exactly its own percentage of the block.
+//
+// Everything below works in one unit: percent of the block's width. The block
+// is kept square by CSS (the two bands' aspect ratios sum to 1), so one unit
+// across equals one unit down, and a parcel of area 100 unit² is 1% of a
+// 10,000 unit² exam. That is what lets the foot say "this square is 1% of the
+// exam" and be exactly right at any viewport rather than at one nominal width.
+const SHEET_ROWS = [['bb', 'cp'], ['ps', 'cars']];
+// The regions as a plat would name them. Not sec.long, which is AAMC's full
+// title and three words too long for a 20%-wide column.
+const SHEET_REG = {
+  bb:   'Biology and biochemistry',
+  cp:   'Chemistry and physics',
+  ps:   'Psychology and sociology',
+  cars: 'Reading <small>CARS</small>',
+};
+const SHEET_ASPECT = 1.85;     // block height / block width — swept: 17 of 18 parcels keep a horizontal name
+const REG_H = 34;              // the region label strip, outside the block; two lines
+const SHEET_NOMINAL_W = 297;   // 375px viewport, for deciding what a label fits in
+
+function sectionWeights() {
+  const out = {};
+  for (const sec of MCAT_SECTIONS)
+    out[sec.id] = TOPICS.filter(t => t.mcat === sec.id).reduce((n, t) => n + t.w, 0);
+  return out;
+}
+
+// Rows of { weight, height (units), cols: [{ sec, x, w, tiles }] }.
+function sheetLayout() {
+  const secW  = sectionWeights();
+  const total = MCAT_SECTIONS.reduce((n, s) => n + secW[s.id], 0);
+  return SHEET_ROWS.map(row => {
+    const weight = row.reduce((n, id) => n + secW[id], 0);
+    const height = 100 * weight / total;          // units of block width
+    let x = 0;
+    const cols = row.map(id => {
+      const w = 100 * secW[id] / weight;
+      const topics = TOPICS.filter(t => t.mcat === id && t.w > 0);
+      // Squarified in the same units, so the aspect ratios it optimises are the
+      // real ones on screen and not a nominal width's idea of them.
+      const boxes = squarify(topics.map(t => ({ item: t, value: t.w })), x, 0, w, height * SHEET_ASPECT);
+      const col = { sec: MCAT_SECTIONS.find(sc => sc.id === id), x, w,
+                    tiles: boxes.map(b => ({ topic: b.item, x: b.x, y: b.y, w: b.w, h: b.h })) };
+      x += w;
+      return col;
+    });
+    return { weight, height, cols };
+  });
 }
 
 // How full a tile is: the same courseCredit() the coverage sum uses, so the map
@@ -6267,122 +6380,109 @@ function mapSkillTopics() {
   return TOPICS.filter(t => t.w === 0);
 }
 
-const MAP_GAP = 2;
-
-// TILE_NAMES, tightened where a 51px tile can't hold the timeline's version.
-// "Physics I" needs 50px of the 39 a one-percent tile leaves after its padding.
+// TILE_NAMES, tightened where a small parcel can't hold the timeline's version.
 const MAP_NAMES = { physics: 'Phys I', physics2: 'Phys II' };
 const mapName = t => MAP_NAMES[t.id] || TILE_NAMES[t.id] || t.name;
 
-// ── COVERED AND HELD, ON THE SAME TILE ────────────────────────────────────────
-// Two truths, one visual. The HEIGHT of a tile's fill is what your coursework
-// covers. The COLOUR of that fill is whether there is evidence you still hold
-// it: the brighter green means practised recently enough to count, and a small
-// dot in the corner carries the states a fill can't — fading, faded, and not
-// yet checked. The held layer adds no figure to the map.
+// ── COVERED AND HELD, ON THE SAME PARCEL ──────────────────────────────────────
+// Two truths, one visual, and neither is a number. The parcel's TEXTURE is what
+// your coursework covers: dotted paper is ahead of you, a diagonal hatch is a
+// class you are in now and counts half, solid tint is one you finished. A
+// contour knoll in the corner is the practice record — more rings, more
+// recently — and an empty ring is a parcel surveyed but never yet checked.
 //
-// It inherits every gate held has always had. Off entirely until
+// Texture rather than fill height, which is what this used to be. A half-filled
+// parcel at 1% of the exam was four pixels of green, and the hatch reads at any
+// size and without relying on colour at all.
+//
+// Every gate the held layer has always had still holds. Off entirely until
 // freshnessActive() says there is a record worth describing, so a first session
 // never sees it. Never carried by enrollment: heldDisplayState() decides, and a
 // topic that reads fresh only because the student is sitting in the class shows
-// as "not yet checked", never as held. And the language stays that — never
-// "unpinned", never a loss.
+// as not-yet-checked, never as held.
+const HELD_RING = { fresh: 'k3', fading: 'k2', faded: 'k1' };
+
 function routeMapHTML(opts) {
   const o = opts || {};
-  const bands = routeMapBands(o.bandPx || MAP_BAND_PX);
+  const rows = sheetLayout();
   const idPrefix = o.idPrefix || 'rt';
+  const chrome = o.sectionLabels !== false;      // region strips, legend, foot
   // The landing card stands in an example student's shoes for S.courses but not
   // for their practice record, so held there would be this visitor's freshness
   // read against someone else's route. Static maps show coverage only.
   const live = !o.static && freshnessActive();
+  // A thumbnail asks for the shape of the exam, not eighteen names in four
+  // letters each; bandPx is how wide that thumbnail is drawn.
+  const blockW = o.bandPx || SHEET_NOMINAL_W;
 
-  const body = bands.map(band => {
-    const tiles = band.tiles.map(b => {
+  const band = row => {
+    const parcels = row.cols.map(col => col.tiles.map(b => {
       const t    = b.topic;
       const fill = tileFill(t);
       const cars = t.mcat === 'cars';
       const f    = live && t.course && S.courses.has(t.course) ? topicFreshness(t.id) : null;
       const st   = f ? heldDisplayState(f) : null;
-      const held = st === 'fresh';
-      // One line of 11px type needs about 20px of tile. Below that the tile is
-      // colour and a tooltip; above it, the name; and only a tile with real room
-      // carries a second line.
-      // A thumbnail asks for the shape of the exam, not eighteen topic names in
-      // four letters each. `names:false` turns them off rather than eliding them.
-      const name = o.names !== false && b.h >= 20;
-      const wrap = b.h >= 34;   // room for a second line, so "Acid-Base" need not elide
-      const room = b.h >= 46;
-      const ink  = fill > 0 ? 'var(--ink)' : cars ? 'var(--ink-2)' : 'var(--muted)';
-      const base = cars ? 'var(--water)' : 'var(--wash)';
-      // Held brightens the fill and rings the tile. Both, because on a
-      // half-filled tile the fill is only the bottom half, and the ring is what
-      // makes the state read across the whole of it.
-      const wash = held ? 'var(--covered)' : 'var(--green-wash-2)';
-      const ring = held ? 'var(--green-line)' : 'transparent';
-      const dot  = st && st !== 'fresh' ? FRESH_META[st] : null;
-      // A finished tile is already a filled tile — the word "covered" under it
-      // says what the colour has said. Only the states the fill can't carry on
-      // its own get a word.
-      const sub  = cars ? 'ongoing' : fill === 0.5 ? 'taking' : '';
 
-      // An empty tile is the one place a student who left a class off can say so,
-      // which is the job the retired "Still ahead" grid used to do. It never
-      // invites claiming a class: the tooltip says what the course will cover
-      // when they take it, not what adding it would do to their standing.
+      // Real pixels, for deciding what a name can do in the space it has.
+      const pw = b.w / 100 * blockW;
+      const ph = b.h / 100 * blockW;   // b.h is already in the taller units
+      const label = mapName(t);
+      const needs = label.length * 6.7 + 10;     // 11px semibold, plus the padding
+      const horiz = needs <= pw && ph >= 22;
+      const vert  = !horiz && needs <= ph && pw >= 20;
+      const named = o.names !== false && (horiz || vert);
+      const sub   = cars ? 'ongoing' : fill === 0.5 ? 'taking' : fill === 0 ? 'ahead' : '';
+      const room  = !vert && ph >= 34 && sub;
+
+      const tex = cars ? 'pl-water' : fill >= 1 ? 'pl-done' : fill > 0 ? 'pl-take' : 'pl-ahead';
+      const small = Math.min(pw, ph) < 88;
+      const ring = st && st !== 'unpinned' && pw >= 34 && ph >= 34
+        ? ` pl-held ${small ? 'sm ' : ''}${HELD_RING[st]}` : '';
+
+      // An empty parcel is the one place a student who left a class off can say
+      // so. It never invites claiming a class: the tooltip says what the course
+      // will cover when they take it, not what adding it would do to standing.
       const course = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
-      // Two taps, two questions. An empty tile asks "did you take this?"; a tile
-      // with a held state answers "where do I stand on it?" with the same detail
-      // line the timeline opens.
-      const pick   = fill === 0 && course && !o.static;
+      const pick   = fill === 0 && course && !o.static && !cars;
       const tell   = !!f && !pick;
       const tip    = pick ? `Covered when you take ${course.name}`
                    : f    ? f.why.replace(/<[^>]+>/g, '').replace(/"/g, '&quot;')
                    :        t.name;
       const tag    = pick || tell ? 'button' : 'div';
-      const click  = pick ? `go('courses')` : tell ? `toggleMapTile('${t.id}')` : '';
-      const attrs  = tag === 'button'
-        ? ` onclick="${click}" aria-expanded="${S._mapOpen === t.id}" style="border:1px solid ${ring};font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;box-sizing:border-box;`
-        : ` style="border:1px solid ${ring};box-sizing:border-box;`;
+      const click  = pick ? ` onclick="go('courses')"` : tell ? ` onclick="toggleMapTile('${t.id}')"` : '';
+      const expand = tell ? ` aria-expanded="${S._mapOpen === t.id}"` : '';
 
-      return `<div style="position:absolute;left:${b.left.toFixed(3)}%;top:${Math.round(b.top)}px;width:${b.width.toFixed(3)}%;height:${Math.round(b.h)}px;box-sizing:border-box;padding:0 ${MAP_GAP}px ${MAP_GAP}px 0;">
-          <${tag} title="${tip}"${attrs}position:absolute;inset:0 ${MAP_GAP}px ${MAP_GAP}px 0;border-radius: var(--r-ctl);overflow:hidden;background:${base};padding:0;">
-            <!-- The fill is at its true height in the markup, not left at zero
-                 for JavaScript to supply. Every surface that renders a map is
-                 then correct on paint — the landing card, the share card, a
-                 print — and the reveal animation is the one thing that resets
-                 it to zero and plays it back up. -->
-            <div class="map-fill" data-fill="${Math.round(fill * 100)}" style="position:absolute;left:0;right:0;bottom:0;height:${Math.round(fill * 100)}%;background:${wash};transition:height 1s var(--ease);"></div>
-            ${dot ? `<span style="position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-radius: var(--r-pill);box-sizing:border-box;background:${dot.hollow ? 'transparent' : dot.color};border:1px solid ${dot.color};"></span>` : ''}
-            <!-- 2px of horizontal padding, not 3: a held tile carries a 1px ring
-                 inside its own box, and those two pixels were what pushed
-                 "Genetics" — one unbreakable word on a three-percent tile — over
-                 the edge the moment a student practised it. -->
-            ${name ? `<div style="position:absolute;inset:0;padding:3px 2px;display:flex;flex-direction:column;justify-content:flex-start;gap:1px;overflow:hidden;">
-              <!-- 600, not 700, and a hair of negative tracking: "Genetics" is
-                   one unbreakable word and a three-percent tile gives it about
-                   51px. At 700 it needed 52 and broke to "Genetic" / "s". Words
-                   wrap only at spaces and hyphens — never mid-word. -->
-              <span style="font-size: var(--fs-11);font-weight:600;letter-spacing:-0.01em;color:${ink};line-height:1.1;overflow:hidden;${wrap ? '' : 'text-overflow:ellipsis;white-space:nowrap;'}">${mapName(t)}</span>
-              ${room && sub ? `<span style="font-size: var(--fs-11);color:${cars ? 'var(--amber)' : 'var(--muted)'};line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${sub}</span>` : ''}
-            </div>` : ''}
-          </${tag}>
-        </div>`;
-    }).join('');
+      return `<${tag} class="pl ${tex}${ring}${vert ? ' pl-vert' : ''}" title="${tip}"${click}${expand}
+          style="left:${b.x.toFixed(3)}%;top:${(b.y / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;width:${b.w.toFixed(3)}%;height:${(b.h / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;">
+          ${named ? `<span class="pl-name">${label}</span>${room ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}
+        </${tag}>`;
+    }).join('')).join('');
 
-    return `
-      <div style="margin-bottom:${o.sectionLabels === false ? 4 : 10}px;">
-        ${o.sectionLabels === false ? '' : `<div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;"><span style="display:inline-flex;color:var(--green);">${sectionIcon(band.sec.id)}</span>${band.sec.short}</div>`}
-        <div style="position:relative;height:${band.height}px;">${tiles}</div>
-      </div>`;
-  }).join('');
+    const strip = chrome
+      ? `<div class="reg-row">${row.cols.map(c => `<div class="reg" style="width:${c.w.toFixed(3)}%;">${SHEET_REG[c.sec.id]}</div>`).join('')}</div>`
+      : '';
+    // aspect-ratio keeps the two bands summing to a square whatever the width,
+    // which is the whole basis of the scale key below.
+    return `${strip}<div class="band" style="aspect-ratio:100/${(row.height * SHEET_ASPECT).toFixed(3)};">${parcels}</div>`;
+  };
 
-  const skills = o.sectionLabels === false ? [] : mapSkillTopics();
+  const block = rows.map(band).join('');
+  if (!chrome) return `<div id="${idPrefix}-map" style="max-width:${blockW}px;">${block}</div>`;
+
+  const cov  = coverage(S.courses, true);
+  const year = S.year ? `Your route, ${S.year} year` : 'Your route';
+  const skills = mapSkillTopics();
   const foot = skills.length
-    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:2px 0 0;">${skills.map(t => t.name).join(' and ')} ${skills.length === 1 ? 'is' : 'are'} tested as a skill across the sections rather than as a share of their own, so ${skills.length === 1 ? 'it has' : 'they have'} no tile.</p>`
+    ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:8px 0 0;">${skills.map(t => t.name).join(' and ')} ${skills.length === 1 ? 'is' : 'are'} tested as a skill across the sections rather than as a share of their own, so ${skills.length === 1 ? 'it has' : 'they have'} no parcel.</p>`
     : '';
-
   const detail = live && S._mapOpen ? freshDetailHTML(S._mapOpen) : '';
-  return `<div id="${idPrefix}-map">${body}${detail}${o.legend === false ? '' : mapLegendHTML(live)}${foot}</div>`;
+
+  return `<div id="${idPrefix}-map"><div class="sheet"><div class="sheet-in">
+      <div class="sheet-title"><i>${year}</i><b><small>about</small>${Math.round(cov / 5) * 5}%<small>covered</small></b></div>
+      ${block}
+      ${o.legend === false ? '' : mapLegendHTML(live)}
+      <div class="sheet-foot"><span class="one" style="width:${(Math.sqrt(SHEET_ASPECT) * 10).toFixed(3)}%;"></span>This square is 1% of the exam.</div>
+    </div></div>${detail}${foot}</div>`;
 }
 
 // A map needs a key. Three states, in the order a route fills them.
@@ -6392,21 +6492,17 @@ function toggleMapTile(tid) {
 }
 
 function mapLegendHTML(live) {
-  // Squares, not dots: the half-filled swatch is the one that has to read, and
-  // a gradient across 10px of circle does not.
-  const swatch = (bg, border) => `<span style="display:inline-block;width:10px;height:10px;border-radius:var(--r-ctl);box-sizing:border-box;background:${bg};${border ? 'border:1px solid ' + border + ';' : ''}vertical-align:-1px;margin-right:4px;"></span>`;
-  const item = (sw, label) => `<span style="white-space:nowrap;">${sw}${label}</span>`;
-  const pip = st => `<span style="display:inline-block;width:8px;height:8px;border-radius: var(--r-pill);box-sizing:border-box;background:${FRESH_META[st].hollow ? 'transparent' : FRESH_META[st].color};border:1px solid ${FRESH_META[st].color};vertical-align:0;margin-right:4px;"></span>`;
-  const row = inner => `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size: var(--fs-11);color:var(--faint);margin:4px 0 8px;">${inner}</div>`;
-  // The second row arrives with the held layer and not before, so a student who
+  // The key is drawn with the same classes the parcels are, so it cannot drift
+  // from what is on the sheet: change a texture and the key changes with it.
+  const item = (cls, label) => `<span><span class="sw ${cls}"></span>${label}</span>`;
+  // The held rows arrive with the held layer and not before, so a student who
   // has never practised is never handed a key to something they cannot see.
-  return row(`${item(swatch('var(--green-wash-2)'), 'finished — counts whole')}
-        ${item(swatch('linear-gradient(to top, var(--covered) 50%, var(--wash) 50%)'), 'taking — counts half')}
-        ${item(swatch('var(--wash)', 'var(--line-2)'), 'still ahead')}`)
-    + (live ? row(`${item(swatch('var(--covered)', 'var(--green-line)'), 'practiced recently')}
-        ${item(pip('fading'), 'fading')}
-        ${item(pip('faded'), 'faded')}
-        ${item(pip('unpinned'), 'not yet checked')}`) : '');
+  return `<div class="sheet-legend">
+      ${item('pl-done', 'Finished course')}
+      ${item('pl-take', 'Taking now, counts half')}
+      ${live ? item('pl-done pl-held k2', 'Practised; more rings, more recently') : ''}
+      ${item('pl-ahead', 'Still ahead')}
+    </div>`;
 }
 
 // ── SECTIONED MAP (reveal screen) ─────────────────────────────────────────────
@@ -10585,10 +10681,13 @@ function screenReveal() {
   // #route-map keeps its name the way #cov-num used to: the first-reveal
   // animation finds it there.
   const head = cov > 0 ? `      <p class="label">Your route</p>
-      <h1 style="margin:0 0 4px;"><button onclick="go('explain')" title="See how this map is built" style="display:block;width:100%;background:none;border:none;padding:0;margin:0;text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
-        <span id="reveal-subhead" style="display:block;font-family:inherit;font-size: var(--fs-24);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.02em;">${subhead}</span>
-      </button></h1>
-      <button onclick="go('explain')" class="link-btn" style="min-height:0;padding:2px 0 12px;line-height:1.4;">${aboutCoverageCap(cov)} of the MCAT&nbsp;covered&nbsp;&rarr;</button>` : `      <p class="label">Your route</p>
+      <h1 style="margin:0 0 8px;"><span id="reveal-subhead" style="display:block;font-family:inherit;font-size: var(--fs-24);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.02em;">${subhead}</span></h1>
+      <!-- The figure moved onto the sheet's own title rail, where it labels the
+           thing it measures instead of floating above it. That is a better
+           answer to "back, but not the hero" than a line of text was: the rail
+           is where a plat says what it is of, and the subhead here can go back
+           to explaining the model rather than repeating the number. -->
+      <p class="p-note" style="max-width:34ch;margin-bottom:14px;">Courses you've finished or are taking now, weighed by how much of the MCAT they cover. <button onclick="go('explain')" class="link-btn" style="min-height:0;padding:0;text-decoration:underline;text-underline-offset:3px;">How it's measured</button></p>` : `      <p class="label">Your route</p>
       <h2 style="margin-bottom:4px;">${headline}</h2>
       <p id="reveal-subhead" style="font-size: var(--fs-15);margin-bottom:22px;">${subhead}</p>`;
 
@@ -11516,63 +11615,93 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// The same map, painted. One layout function serves the screen and the canvas,
+// The same sheet, painted. One layout function serves the screen and the canvas,
 // so a share card can never show a different exam from the one the student was
 // looking at when they tapped share. Returns the y it finished at.
-function paintRouteMap(ctx, x, y, w, bandPx) {
-  const bands = routeMapBands(bandPx, w);
-  const gap = 6;
+//
+// The block is square here too, so the areas a reader compares on a shared card
+// are the same areas they compared in the app.
+function paintRouteMap(ctx, x, y, w) {
+  const rows = sheetLayout();
+  const regH = Math.round(w * REG_H / SHEET_NOMINAL_W);
   let cy = y;
-  bands.forEach(band => {
-    ctx.textAlign = 'left';
-    ctx.fillStyle = tok('--dim');
-    ctx.font = '700 22px "Public Sans", sans-serif';
-    ctx.fillText(band.sec.short.toUpperCase(), x, cy + 18);
-    cy += 32;
 
-    band.tiles.forEach(b => {
+  // The dotted, hatched and ruled grounds, as canvas patterns.
+  const pattern = (draw, size) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    draw(c.getContext('2d'));
+    return ctx.createPattern(c, 'repeat');
+  };
+  const scale = w / SHEET_NOMINAL_W;
+  const ahead = pattern(p2 => {
+    p2.fillStyle = tok('--bg'); p2.fillRect(0, 0, 6 * scale, 6 * scale);
+    p2.fillStyle = tok('--line-2');
+    p2.beginPath(); p2.arc(0.8 * scale, 0.8 * scale, 0.75 * scale, 0, Math.PI * 2); p2.fill();
+  }, Math.max(4, Math.round(6 * scale)));
+  const take = pattern(p2 => {
+    const n = Math.max(4, Math.round(6 * scale));
+    p2.fillStyle = tok('--bg'); p2.fillRect(0, 0, n, n);
+    p2.strokeStyle = tok('--covered'); p2.lineWidth = n / 2;
+    p2.beginPath(); p2.moveTo(-n, n); p2.lineTo(n, -n); p2.moveTo(0, n * 2); p2.lineTo(n * 2, 0); p2.stroke();
+  }, Math.max(4, Math.round(6 * scale)));
+  const water = pattern(p2 => {
+    const n = Math.max(4, Math.round(6 * scale));
+    p2.fillStyle = tok('--water'); p2.fillRect(0, 0, n, n);
+    p2.fillStyle = tok('--blue-line'); p2.fillRect(0, 0, n, Math.max(1, scale));
+  }, Math.max(4, Math.round(6 * scale)));
+
+  rows.forEach(row => {
+    const bandH = row.height / 100 * w;
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = tok('--ink');
+    ctx.font = `italic 600 ${Math.round(15 * scale)}px "Source Serif 4", Georgia, serif`;
+    row.cols.forEach(col => {
+      const label = col.sec.id === 'cars' ? 'Reading' : col.sec.long.replace(/ &amp; | & /, ' and ');
+      ctx.fillText(label, x + col.x / 100 * w + 6 * scale, cy + regH * 0.72);
+    });
+    cy += regH;
+
+    row.cols.forEach(col => col.tiles.forEach(b => {
       const t  = b.topic;
-      const tx = x + b.left / 100 * w, tw = Math.max(1, b.width / 100 * w - gap);
-      const ty = cy + b.top,           th = Math.max(1, b.h - gap);
+      const tx = x + b.x / 100 * w, tw = b.w / 100 * w;
+      const ty = cy + b.y / 100 * w, th = b.h / 100 * w;
       const fill = tileFill(t);
       const cars = t.mcat === 'cars';
 
       ctx.save();
-      roundRect(ctx, tx, ty, tw, th, 10);
-      ctx.clip();
-      ctx.fillStyle = cars ? tok('--water') : tok('--wash');
+      ctx.beginPath(); ctx.rect(tx, ty, tw, th); ctx.clip();
+      ctx.fillStyle = cars ? water : fill >= 1 ? tok('--covered') : fill > 0 ? take : ahead;
       ctx.fillRect(tx, ty, tw, th);
-      if (fill > 0) {
-        ctx.fillStyle = tok('--covered');
-        ctx.fillRect(tx, ty + th * (1 - fill), tw, th * fill);
-      }
+      ctx.strokeStyle = tok('--line'); ctx.lineWidth = 1;
+      ctx.strokeRect(tx + 0.5, ty + 0.5, tw - 1, th - 1);
+
       // Canvas has no ellipsis and no wrapping. A name that doesn't fit steps
-      // down one size, and if it still doesn't fit the tile keeps its colour and
-      // says nothing — a clipped half-word is worse than no word.
-      if (th >= 34) {
-        const name = mapName(t);
-        let size = 0;
-        for (const px of [21, 18, 16]) {
-          ctx.font = `600 ${px}px "Public Sans", sans-serif`;
-          if (ctx.measureText(name).width <= tw - 14) { size = px; break; }
-        }
-        if (size) {
-          ctx.fillStyle = fill > 0 || cars ? tok('--ink') : tok('--muted');
-          ctx.font = `600 ${size}px "Public Sans", sans-serif`;
-          ctx.fillText(name, tx + 8, ty + 28);
-          if (th >= 62 && (cars || fill === 0.5)) {
-            const sub = cars ? 'ongoing' : 'taking';
-            ctx.font = '500 20px "Public Sans", sans-serif';
-            if (ctx.measureText(sub).width <= tw - 20) {
-              ctx.fillStyle = cars ? tok('--amber') : tok('--muted');
-              ctx.fillText(sub, tx + 10, ty + 54);
-            }
+      // down one size, and if it still doesn't fit the parcel keeps its texture
+      // and says nothing — a clipped half-word is worse than no word.
+      const name = mapName(t);
+      let size = 0;
+      for (const px of [13, 12, 11]) {
+        ctx.font = `600 ${Math.round(px * scale)}px "Public Sans", sans-serif`;
+        if (ctx.measureText(name).width <= tw - 8 * scale) { size = Math.round(px * scale); break; }
+      }
+      if (size && th >= 20 * scale) {
+        ctx.fillStyle = cars ? tok('--blue') : fill > 0 ? tok('--ink') : tok('--muted');
+        ctx.font = `600 ${size}px "Public Sans", sans-serif`;
+        ctx.fillText(name, tx + 4 * scale, ty + 13 * scale);
+        const sub = cars ? 'ongoing' : fill === 0.5 ? 'taking' : fill === 0 ? 'ahead' : '';
+        if (sub && th >= 34 * scale) {
+          ctx.font = `400 ${Math.round(11 * scale)}px "Public Sans", sans-serif`;
+          if (ctx.measureText(sub).width <= tw - 8 * scale) {
+            ctx.fillStyle = cars ? tok('--blue') : tok('--faint');
+            ctx.fillText(sub, tx + 4 * scale, ty + 26 * scale);
           }
         }
       }
       ctx.restore();
-    });
-    cy += band.height + 12;
+    }));
+    cy += bandH;
   });
   return cy;
 }
@@ -11784,7 +11913,7 @@ async function shareCoverageCard(variant = 'coverage', btn) {
     ctx.font = '700 52px "Public Sans", sans-serif';
     wrapCanvasText(ctx, territoryLine(cov), W - 200).slice(0, 2)
       .forEach((line, i) => ctx.fillText(line, W / 2, 252 + i * 62));
-    mapEnd = paintRouteMap(ctx, 70, 348, W - 140, 560);
+    mapEnd = paintRouteMap(ctx, 70, 348, W - 140);
     ctx.textAlign = 'center';
   }
 
@@ -12144,22 +12273,25 @@ function animateCoverageRing(force) {
   const map = document.getElementById('route-map');
   if (!map) { ringAnimKey = null; return; }
 
-  const fills = [...map.querySelectorAll('.map-fill')];
-  const key = S.screen + ':' + fills.map(f => f.dataset.fill).join(',');
+  // The sheet fills in a band at a time. There is no fill height to grow any
+  // more — a parcel's state is its texture, and texture cannot be half-drawn
+  // without lying about coverage on the way up — so the reveal is the sheet
+  // being drawn: each band fades in, top to bottom, the way a plat is read.
+  const bands = [...map.querySelectorAll('.band, .reg-row')];
+  const key = S.screen + ':' + bands.length + ':' +
+              [...map.querySelectorAll('.pl')].map(p => p.className).join(',');
   if (!force && key === ringAnimKey) return;
   ringAnimKey = key;
 
-  const land = () => fills.forEach(f => { f.style.height = f.dataset.fill + '%'; });
-  if (reducedMotion()) { fills.forEach(f => { f.style.transition = 'none'; }); land(); return; }
+  const land = () => bands.forEach(b => { b.style.opacity = ''; b.style.transition = ''; });
+  if (reducedMotion()) { land(); return; }
 
-  // Filled tiles come in biggest first, so the shape of the exam reads before
-  // the detail does. Everything is on screen inside a second.
-  const order = fills.filter(f => +f.dataset.fill > 0)
-                     .sort((a, b) => b.parentElement.offsetHeight - a.parentElement.offsetHeight);
-  fills.forEach(f => { f.style.height = '0%'; });
+  bands.forEach(b => { b.style.opacity = '0'; });
   requestAnimationFrame(() => {
-    order.forEach((f, i) => setTimeout(() => { f.style.height = f.dataset.fill + '%'; },
-                                       Math.min(i * 45, 700)));
+    bands.forEach((b, i) => {
+      b.style.transition = 'opacity 0.42s var(--ease) ' + (i * 0.09).toFixed(2) + 's';
+      b.style.opacity = '1';
+    });
   });
 }
 
