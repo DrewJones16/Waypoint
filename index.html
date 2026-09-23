@@ -791,6 +791,17 @@
   .pl-held.sm::after { width: 15px; height: 15px; }
   .pl-held.sm.k1 { --k: 3px; } .pl-held.sm.k2 { --k: 5px; } .pl-held.sm.k3 { --k: 7px; }
 
+  /* The parcel the next action points at. A dashed claim line, the way a plat
+     marks the lot under discussion. */
+  .pl-next { outline: 1.5px dashed var(--green); outline-offset: -3px; }
+  .pl-flag { position: absolute; left: 4px; bottom: 3px; font-size: var(--fs-11); font-weight: 600; color: var(--green); }
+
+  /* Under the sheet: which parcel, why it is that one, and the way in. */
+  .focus { margin: 14px 0 0; padding-left: 10px; border-left: 2px solid var(--green);
+           font-size: var(--fs-13); line-height: 1.45; color: var(--ink-2); }
+  .focus b { color: var(--ink); font-weight: 600; }
+  .focus-why { text-align: center; font-size: var(--fs-13); color: var(--faint); margin: 9px 0 0; line-height: 1.35; }
+
   .sheet-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 10px; font-size: var(--fs-11); line-height: 1.3; color: var(--ink-2); }
   .sheet-legend > span { display: flex; gap: 7px; align-items: flex-start; }
   .sw { width: 16px; height: 12px; flex: none; margin-top: 1px; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line-2); }
@@ -6402,6 +6413,52 @@ const mapName = t => MAP_NAMES[t.id] || TILE_NAMES[t.id] || t.name;
 // as not-yet-checked, never as held.
 const HELD_RING = { fresh: 'k3', fading: 'k2', faded: 'k1' };
 
+// Which parcel the next action points at, and why it is that one.
+//
+// This reads getDirectiveTopic() — the same recommender behind "Do this now" on
+// Home. Deliberately: a second one here would eventually disagree with it, and
+// two surfaces telling a student to practise different things is worse than
+// either choice on its own.
+function routeFocus() {
+  if (!S.courses.size) return null;
+  const d = getDirectiveTopic();
+  if (!d || !d.topic.course) return null;
+  const t = d.topic;
+  const course = COURSES.find(c => c.id === t.course);
+  if (!course) return null;
+
+  const taking = S.courseStatus[t.course] === 'in-progress';
+  const f  = freshnessActive() ? topicFreshness(t.id) : null;
+  const st = f ? heldDisplayState(f) : null;
+  const unpractised = !st || st === 'unpinned';
+
+  const practice = unpractised      ? 'Not practised yet.'
+                 : st === 'fresh'   ? 'Practised recently.'
+                 : st === 'fading'  ? 'Practised, but fading.'
+                 :                    'Practised a while back.';
+
+  // Never "haven't practised" when they have — the line has to survive the
+  // student having drilled it this morning.
+  const why = d.reason === 'retention'
+        ? `You covered this ${weeksAgo(d.days)} — worth holding on to.`
+        : taking
+          ? (unpractised ? "The largest parcel you're taking and haven't practised."
+                         : "The largest parcel you're taking.")
+          : (unpractised ? "The largest parcel your courses cover and you haven't practised."
+                         : 'The largest parcel your courses cover.');
+
+  // The concept's line named a course code — "PSYC 111" — and the app has never
+  // collected one, so this says what it actually knows. Where the course and the
+  // topic share a name, as Psychology does, naming both reads as a stutter.
+  const same = course.name.toLowerCase() === t.name.toLowerCase();
+  const counts = `so it counts ${taking ? 'half' : 'whole'}`;
+  return { topic: t, course, why,
+           detail: same
+             ? `<b>${t.name}.</b> ${taking ? 'In progress' : 'Finished'}, ${counts}. ${practice}`
+             : `<b>${t.name}.</b> ${course.name}, ${taking ? 'in progress' : 'finished'}, ${counts}. ${practice}`,
+           n: sessionSize(t.id, null) };
+}
+
 function routeMapHTML(opts) {
   const o = opts || {};
   const rows = sheetLayout();
@@ -6414,6 +6471,7 @@ function routeMapHTML(opts) {
   // A thumbnail asks for the shape of the exam, not eighteen names in four
   // letters each; bandPx is how wide that thumbnail is drawn.
   const blockW = o.bandPx || SHEET_NOMINAL_W;
+  const focus = chrome && !o.static ? routeFocus() : null;
 
   const band = row => {
     const parcels = row.cols.map(col => col.tiles.map(b => {
@@ -6435,6 +6493,7 @@ function routeMapHTML(opts) {
       const room  = !vert && ph >= 34 && sub;
 
       const tex = cars ? 'pl-water' : fill >= 1 ? 'pl-done' : fill > 0 ? 'pl-take' : 'pl-ahead';
+      const next = focus && focus.topic.id === t.id;
       const small = Math.min(pw, ph) < 88;
       const ring = st && st !== 'unpinned' && pw >= 34 && ph >= 34
         ? ` pl-held ${small ? 'sm ' : ''}${HELD_RING[st]}` : '';
@@ -6452,9 +6511,9 @@ function routeMapHTML(opts) {
       const click  = pick ? ` onclick="go('courses')"` : tell ? ` onclick="toggleMapTile('${t.id}')"` : '';
       const expand = tell ? ` aria-expanded="${S._mapOpen === t.id}"` : '';
 
-      return `<${tag} class="pl ${tex}${ring}${vert ? ' pl-vert' : ''}" title="${tip}"${click}${expand}
+      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}${vert ? ' pl-vert' : ''}" title="${tip}"${click}${expand}
           style="left:${b.x.toFixed(3)}%;top:${(b.y / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;width:${b.w.toFixed(3)}%;height:${(b.h / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;">
-          ${named ? `<span class="pl-name">${label}</span>${room ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}
+          ${named ? `<span class="pl-name">${label}</span>${room ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}${next && ph >= 46 ? '<span class="pl-flag">next</span>' : ''}
         </${tag}>`;
     }).join('')).join('');
 
@@ -7027,7 +7086,6 @@ function topicFreshness(tid) {
   // never tagged simply drops out of the sentence, and the line still explains
   // itself from the practice record alone.
   const when   = termLabel(courseTerm(topic.course));
-  const lower  = s => s.charAt(0).toLowerCase() + s.slice(1);
 
   let state, why;
   if (days === null) {
@@ -7855,12 +7913,9 @@ function aboutCoverage(n) {
   return `about ${v}%`;
 }
 
-// The same phrase opening a sentence. One rounding rule, two positions — never
-// a second place where the figure could be rounded differently.
-function aboutCoverageCap(n) {
-  const s = aboutCoverage(n);
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
+// A topic name mid-sentence. Module scope because two screens need it: the
+// freshness detail line and the Route's focus sentence.
+const lower = s => s.charAt(0).toLowerCase() + s.slice(1);
 
 // Everything the card says, or null when there is nothing honest to say.
 function termSnapshot(now = new Date()) {
@@ -10693,7 +10748,18 @@ function screenReveal() {
 
   // The map itself, always — an empty route still shows the exam it is a map of,
   // which is the one thing a student with no courses yet should see.
-  const map = `      <div style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>`;
+  // The sheet, and directly under it the parcel it points at. The map used to
+  // end in a dead end — an unfilled parcel opened the course list and that was
+  // the only way out of it. Naming the next parcel, saying why it is that one,
+  // and offering the session turns reading the map into doing something about
+  // it, which is the whole reason a student opened this screen.
+  const focus = routeFocus();
+  const map = `      <div style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>
+      ${focus ? `<p class="focus">${focus.detail}</p>
+      <div style="margin-top:18px;">
+        <button class="btn btn-primary" onclick="startQuickLog('${focus.topic.id}', null)">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>
+        <p class="focus-why">${focus.why}</p>
+      </div>` : ''}`;
 
   // Still one link under the number, but it now leads to the student's own
   // derivation rather than to the methodology. The methodology is one further
