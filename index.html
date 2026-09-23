@@ -10703,7 +10703,7 @@ function screenReveal() {
   const map = `      <div style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>
       ${focus ? `<p class="focus">${focus.detail}</p>
       <div style="margin-top:18px;">
-        <button class="btn btn-primary" onclick="startQuickLog('${focus.topic.id}', null)">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>
+        <button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>
         <p class="focus-why">${focus.why}</p>
       </div>` : ''}`;
 
@@ -11278,6 +11278,22 @@ function screenQuickLogDone() {
     </div>`;
   }
 
+  // Two vocabularies, because there were two doors in. "Logged" belongs to the
+  // after-class log — you are recording something you already did. A session
+  // started from the Route was offered as practice, so it ends as practice, and
+  // it ends back on the map it was launched from.
+  if (ql && ql.fromRoute) {
+    return `
+    <div class="screen">
+      <p class="label">Practised</p>
+      <h2 style="margin-bottom:4px;">${topic ? topic.name : 'Topic'} practised.</h2>
+      <p style="font-size: var(--fs-15);margin-bottom:20px;">${correct}/${total} correct. Your route knows about this one now.</p>
+
+      <button class="btn btn-primary" onclick="go('reveal')">Back to my route</button>
+      <button class="btn btn-ghost" onclick="go('quicklog')">Practise another topic</button>
+    </div>`;
+  }
+
   return `
     <div class="screen">
       <p class="label">Logged</p>
@@ -11464,6 +11480,17 @@ function startQuickLog(topicId, subtopicId, leadQId, opts) {
 
 // Semester Sync's "Drill" is the intended daily ritual, so unlike an ad-hoc quick
 // log it counts toward the streak and session history. Same question flow either way.
+// The Route's button says "Practice", so what it starts has to count as
+// practice: the streak, the history and the words on the way out. Without the
+// streakEligible flag it counted for nothing and ended on the after-class log's
+// copy, which is the one loop the Route exists to close.
+//
+// fromRoute rides on S.quickLog, which is transient — no storage shape changes.
+function startRouteFocus(topicId) {
+  startQuickLog(topicId, null);
+  if (S.quickLog) { S.quickLog.streakEligible = true; S.quickLog.fromRoute = true; }
+}
+
 function startWeekDrill(topicId, subtopicId) {
   startQuickLog(topicId, subtopicId);
   if (S.quickLog) S.quickLog.streakEligible = true;
