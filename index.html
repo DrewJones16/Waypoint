@@ -10768,7 +10768,15 @@ function screenReveal() {
     : 'Practice from what you know →';
   // First reveal puts the account ask directly under this button, and with no
   // margin the two touched.
-  const cta = `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} ${first ? 'style="margin-bottom:16px;"' : ''} onclick="startSession()">${ctaLabel}</button>`;
+  // One action on the screen. The focus button under the sheet already starts a
+  // session and its count comes from sessionSize(), so this was the same offer
+  // with a different number on it — on a first reveal the two sat one above the
+  // other saying 5 and 4.
+  //
+  // It stays as the fallback, because the focus button is not always there: a
+  // route with every candidate dismissed has no next parcel, and that student
+  // still needs a way in.
+  const cta = focus ? '' : `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} ${first ? 'style="margin-bottom:16px;"' : ''} onclick="startSession()">${ctaLabel}</button>`;
 
   // "Share my progress" waits for progress: the same two sessions held waits for
   // (practiceSessions). Four questions in, there is a route to look at but no
