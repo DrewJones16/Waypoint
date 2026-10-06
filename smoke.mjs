@@ -133,6 +133,26 @@ for (const variant of VARIANTS) {
       for (const f of seen) failures.push(`${where}  ${screen}: ${f}`);
     }
 
+    // With practice on, the loop has to actually close. The flag's promise is
+    // not "the questions are still in the file" — it is that a student can
+    // reach one from the navigation as it now stands.
+    if (variant.label === 'PRACTICE=true' && state.name !== 'cleared') {
+      await page.evaluate(() => window.go('reveal'));
+      await page.waitForTimeout(400);
+      const pressed = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('.btn-primary')].find(x => /^Practice /.test(x.innerText));
+        if (!b) return 'no focus button on the Route';
+        b.click();
+        return null;
+      });
+      await page.waitForTimeout(400);
+      const landed = await page.evaluate(() => S.screen);
+      const asked  = await page.evaluate(() => !!document.querySelector('.ans-btn'));
+      if (pressed) failures.push(`${where}  focus button: ${pressed}`);
+      else if (landed !== 'question' || !asked)
+        failures.push(`${where}  focus button: landed on "${landed}"${asked ? '' : ' with no answer options'}, expected a question`);
+    }
+
     await ctx.close();
   }
 }
