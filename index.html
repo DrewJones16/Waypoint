@@ -6752,11 +6752,13 @@ function parcelDetailHTML(tid) {
           <a href="${href}" target="_blank" rel="noopener" onclick="trackStudyLink('${href.includes('khan') ? 'khan' : 'aamc'}','${tid}')"
              style="display:block;font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;padding:7px 0;">${label}</a>${note || ''}`;
 
-  const khanLines = khan.length
-    ? (cars
-        ? line('Work through Khan Academy\'s CARS practice', khan[0].url)
-        : khan.map(u => line(`Watch the ${lower(u.title)} lessons on Khan Academy`, u.url)).join(''))
-    : '';
+  // The unit's own title, as Khan prints it, then where it is. The template it
+  // replaces — "Watch the ${title} lessons on Khan Academy" — read as a
+  // template: "Watch the cells lessons", "Watch the processing the environment
+  // lessons". Lowercasing a proper unit name turned a heading into a fragment,
+  // and the same sentence over and over turned ten real destinations into one
+  // repeated gesture. A title and its place is how a person would say it.
+  const khanLines = khan.map(u => line(`${u.title}, on Khan Academy`, u.url)).join('');
 
   // The search string is shown, not just copied: a student whose clipboard is
   // blocked can still select it, and seeing it is how they learn the deck is
