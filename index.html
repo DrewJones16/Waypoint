@@ -6779,7 +6779,7 @@ function parcelDetailHTML(tid) {
     : '';
 
   return `
-        <div style="margin-top:10px;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;">
+        <div id="parcel-detail" style="margin-top:10px;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;">
           <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;">
             <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${t.name}</span>
             <span style="font-size: var(--fs-11);color:var(--faint);white-space:nowrap;">${t.w}% of the exam</span>
@@ -6842,8 +6842,18 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitS
 
 // A map needs a key. Three states, in the order a route fills them.
 function toggleMapTile(tid) {
-  S._mapOpen = (S._mapOpen === tid) ? null : tid;
+  const opening = S._mapOpen !== tid;
+  S._mapOpen = opening ? tid : null;
   render();
+  // The panel renders under the sheet, which is above the button that opens
+  // it and above any parcel low on the map — so on a phone it can open
+  // entirely off-screen. Bring it to the reader rather than making them hunt.
+  if (opening) {
+    const panel = document.getElementById('parcel-detail');
+    if (panel && panel.scrollIntoView) {
+      panel.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    }
+  }
 }
 
 function mapLegendHTML(live) {
