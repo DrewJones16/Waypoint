@@ -61,8 +61,6 @@
     --green-line:  rgba(42,95,62,0.40);
     --amber-wash:  rgba(142,86,48,0.10);
     --amber-line:  rgba(142,86,48,0.38);
-    --violet-wash: rgba(87,64,146,0.10);
-    --violet-line: rgba(87,64,146,0.38);
     --blue-wash:   rgba(46,111,150,0.10);
     --blue-line:   rgba(46,111,150,0.38);
     --red-wash:    rgba(158,59,34,0.10);
@@ -88,8 +86,6 @@
 
     /* The other three sections of the exam, plus the colour of a wrong answer.
        --amber doubles as the contour colour the practice rings are drawn in. */
-    --violet:      #574092;   /* Psych & Soc, and the Twist */
-    --violet-soft: #6F58AC;
     --amber:       #8E5630;   /* exams, warnings, in-progress, contour rings */
     --blue:        #2A668A;   /* CARS — solved against the water tint, not paper */
     --water:       #D9E7EF;   /* the tint CARS is ruled over */
@@ -620,8 +616,8 @@
 
   /* Retention nudge card */
   .nudge-card {
-    background: var(--violet-wash);
-    border: 1px solid var(--violet-line);
+    background: var(--green-wash);
+    border: 1px solid var(--green-line);
     border-radius: var(--r-ctl);
     padding: 12px 16px;
     margin-bottom: 16px;
@@ -629,7 +625,7 @@
   .nudge-card .nudge-label {
     font-size: var(--fs-11);
     font-weight: 700;
-    color: var(--violet);
+    color: var(--green);
     margin-bottom: 4px;
   }
   .nudge-card p {
@@ -648,8 +644,8 @@
     cursor: pointer;
     border: none;
   }
-  .nudge-btn-primary { background: var(--violet); color: var(--bg); }
-  .nudge-btn-primary:hover { background: var(--violet); }
+  .nudge-btn-primary { background: var(--green); color: var(--bg); }
+  .nudge-btn-primary:hover { background: var(--green); }
   .nudge-btn-ghost { background: transparent; color: var(--faint); border: 1px solid var(--line-2) !important; }
   .nudge-btn-ghost:hover { color: var(--muted); }
 
@@ -1368,7 +1364,7 @@
       </div>
       <div class="dt-sec-row">
         <span class="dt-sec-name">Psych &amp; Soc</span><span class="dt-sec-pct" data-secpct="ps">0%</span>
-        <div class="dt-sec-track"><div class="dt-sec-fill" data-secfill="ps" style="background:var(--violet)"></div></div>
+        <div class="dt-sec-track"><div class="dt-sec-fill" data-secfill="ps" style="background:var(--green)"></div></div>
       </div>
     </div>
 
@@ -1380,7 +1376,7 @@
 
   <div class="dt-foot">
     <div class="dt-foot-line">Your classes are <em>already</em> MCAT prep.</div>
-    <button onclick="openAbout()" style="background:none;border:none;color:var(--muted);font-size: var(--fs-13);font-weight:600;cursor:pointer;font-family:inherit;padding:12px 0 0;text-align:left;-webkit-tap-highlight-color:transparent;">What is Waypoint? →</button>
+    <button onclick="openAbout()" style="background:none;border:none;color:var(--muted);font-size: var(--fs-13);font-weight:600;cursor:pointer;font-family:inherit;padding:12px 0 0;text-align:left;-webkit-tap-highlight-color:transparent;">What is Waypoint?</button>
   </div>
 </aside>
 
@@ -1416,7 +1412,7 @@ const DONE_FIRST_YEARS = ['junior', 'senior'];
 const REQ_META = {
   required:    { short:'Required',    color:'var(--green-bright)', bg:'var(--green-wash-2)' },
   recommended: { short:'Recommended', color:'var(--amber)', bg:'var(--amber-wash)' },
-  mcat:        { short:'MCAT-tested', color:'var(--violet)', bg:'var(--violet-wash)' },
+  mcat:        { short:'MCAT-tested', color:'var(--green)', bg:'var(--green-wash)' },
 };
 function courseReqNote(id) {
   if (id === 'biochem') return 'Strongly recommended and increasingly required — finish it before the MCAT (it\'s heavily tested).';
@@ -7175,7 +7171,7 @@ function topicFreshness(tid) {
           : days < FRESH.fadeDays[key]  ? 'fading'
           :                               'faded';
     const practiced = lastPracticedPhrase(days, iso);
-    why = (when ? `Took this ${when} · ${lower(practiced)}` : practiced)
+    why = (when ? `Took this ${when}, ${lower(practiced)}` : practiced)
         + (strong ? ' Strong here — holds longer.' : '');
   }
   return { tid, topic, state, days, strong, when, why, courseName };
@@ -7275,7 +7271,7 @@ function freshnessLineHTML() {
   [['fading', f.fading], ['faded', f.faded], ['unpinned', f.unchecked]].forEach(([st, list]) => {
     if (list.length) parts.push(`<span style="color:${FRESH_META[st].color};">${list.length} ${FRESH_META[st].word}</span>`);
   });
-  const sep = `<span style="color:var(--dim);"> · </span>`;
+  const sep = `<span style="color:var(--dim);">, </span>`;
   return `
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 ${parts.length ? '3px' : '12px'};">
         <strong style="color:var(--ink-2);">${head}</strong>${parts.length ? sep + parts.join(sep) : '.'}
@@ -7634,9 +7630,9 @@ function screenPace() {
 
       ${units.map(u => {
         const on = (u.topicId + '|' + u.subId) === currentKey;
-        return `<button class="topic-pick-btn" style="${on ? 'border-color:var(--violet-line);background:var(--violet-wash);' : ''}" onclick="setPaceUnit('${courseId}', ${u.week}, '${u.topicId}', '${u.subId}')">
+        return `<button class="topic-pick-btn" style="${on ? 'border-color:var(--green-line);background:var(--green-wash);' : ''}" onclick="setPaceUnit('${courseId}', ${u.week}, '${u.topicId}', '${u.subId}')">
           <span style="flex:1;text-align:left;">
-            <span class="tp-name" style="color:${on ? 'var(--violet)' : 'var(--ink)'};">${u.label}</span>
+            <span class="tp-name" style="color:${on ? 'var(--green)' : 'var(--ink)'};">${u.label}</span>
             <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${on ? (fromSyl ? 'Where your syllabus puts you' : 'What we assumed you\'re on') : u.topic.name}</span>
           </span>
           <span class="tp-arrow" style="color:${on ? 'var(--green)' : 'var(--faint)'};">${on ? '✓' : CHEVRON}</span>
@@ -9032,7 +9028,7 @@ function unitGroupsHTML(units) {
     .sort((a, b) => order.indexOf(a) - order.indexOf(b))
     .map(code => {
       const cat = CONTENT_MAP.find(c => c.code === code);
-      return { heading: `${code} · ${cat ? cat.title : ''}`, units: byCode.get(code) };
+      return { heading: `${code}${cat ? ': ' + cat.title : ''}`, units: byCode.get(code) };
     });
   if (loose.length) groups.push({ heading: 'Also in this course', units: loose });
   return groups;
@@ -9053,7 +9049,7 @@ function sylWeekRowHTML(w, i, units, reason) {
   const open = S.syl.picker === i;
   const chips = w.unitIds.map(id => {
     const u = unitFromId(id);
-    return `<button onclick="sylToggleUnit(${i},'${id}')" title="Remove" style="background:var(--violet-wash);border:1px solid var(--violet-line);border-radius: var(--r-ctl);min-height:32px;padding:0 8px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--violet-soft);cursor:pointer;-webkit-tap-highlight-color:transparent;">${u ? u.label : id} ×</button>`;
+    return `<button onclick="sylToggleUnit(${i},'${id}')" title="Remove" style="background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);min-height:32px;padding:0 8px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent;">${u ? u.label : id} ×</button>`;
   }).join('');
 
   return `
@@ -9076,7 +9072,7 @@ function sylWeekRowHTML(w, i, units, reason) {
               <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 ${g.units.map(u => {
                   const on = w.unitIds.indexOf(u.id) !== -1;
-                  return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'var(--violet-wash)' : 'transparent'};border:1px solid ${on ? 'var(--violet)' : 'var(--line-2)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--violet-soft)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
+                  return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'var(--green-wash)' : 'transparent'};border:1px solid ${on ? 'var(--green)' : 'var(--line-2)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--muted)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
                 }).join('')}
               </div>`).join('')}
           </div>` : ''}
@@ -9171,7 +9167,7 @@ function screenSyllabus() {
 
       ${next ? `
         <div style="${SYL_CARD}padding:16px 16px;margin-bottom:12px;">
-          <p style="font-size: var(--fs-11);font-weight:700;color:var(--violet);margin:0 0 4px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
+          <p style="font-size: var(--fs-11);font-weight:700;color:var(--green);margin:0 0 4px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
           <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.5;margin:0 0 4px;font-weight:600;">${esc(next.row.label) || 'Week ' + next.row.week}</p>
           <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0 0 12px;">${next.row.unitIds.map(id => { const u = unitFromId(id); return u ? u.label : id; }).join(', ')}</p>
           <button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="syllabusStartWeek('${next.row.unitIds[0]}')">Start ${next.now ? 'this week' : 'week ' + next.row.week}'s 5</button>
@@ -9553,7 +9549,7 @@ function todayPick(skip = null) {
     // When it came from their syllabus, say so in their words. "Your syllabus
     // has X this week" is checkable against the paper on their desk; "your
     // class is covering it now" is our inference either way.
-    return { label: 'This week in class', accent: 'var(--violet)',
+    return { label: 'This week in class', accent: 'var(--green)',
              title: wk.subLabel, n: sessionSize(wk.topic.id, wk.subId),
              reason: wk.syllabusLabel
                ? `Your syllabus has <strong style="color:var(--ink-2);">${esc(wk.syllabusLabel)}</strong> this week.`
@@ -9630,11 +9626,11 @@ function doneForTodayHTML() {
     const { cls, exam } = splitTwist(d.text);
     const twistBody = `
           <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 0 8px;"><strong style="color:var(--ink-2);">In class:</strong> ${cls}</p>
-          ${exam ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;"><strong style="color:var(--violet);">On the MCAT:</strong> ${exam}</p>` : ''}`;
-    return card('var(--violet)', kicker, `${d.topic ? d.topic.name : 'Your'} — the MCAT twist`,
+          ${exam ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;"><strong style="color:var(--green);">On the MCAT:</strong> ${exam}</p>` : ''}`;
+    return card('var(--green)', kicker, `${d.topic ? d.topic.name : 'Your'} — the MCAT twist`,
                 twistBody, '', { titleSize: 'var(--fs-17)' }) + keepGoingLink;
   }
-  return card('var(--violet)', kicker, 'That\'s today\'s ground covered.',
+  return card('var(--green)', kicker, 'That\'s today\'s ground covered.',
               `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;">Come back tomorrow and the week keeps building.</p>`,
               '', { titleSize: 'var(--fs-17)' }) + keepGoingLink;
 }
@@ -9801,7 +9797,7 @@ function screenAbout() {
       ${para(`Here's the honest origin story. I wanted to start getting ready for the MCAT early — not cram, just build a real foundation while the material was actually in front of me in class. But everywhere I looked, the advice was the same: <em style="color:var(--muted);">"It's too early. Wait until junior year."</em>`)}
       ${para(`I understand why people say that — you shouldn't be grinding full-length practice exams as a sophomore. But "just wait" never sat right with me. I'm already taking Bio. I'm already taking Chem. That <strong style="color:var(--ink);">is</strong> MCAT material. It felt wrong to ignore an advantage sitting right in front of me — and I really believe that if I learn this stuff a little more deeply the first time, junior year becomes review instead of panic.`)}
       ${para(`So Waypoint is the tool I wished existed.`)}
-      ${para(`It maps the classes you're already taking onto the MCAT, so you can see honestly how much of the exam your coursework already covers. It shows you how the MCAT will bend what your professor is teaching — because the exam tests the <em style="color:var(--violet-soft);">consequence</em>, not just the definition — and it lets you practice that gap a few minutes at a time, on the exact topics you're in right now.`)}
+      ${para(`It maps the classes you're already taking onto the MCAT, so you can see honestly how much of the exam your coursework already covers. It shows you how the MCAT will bend what your professor is teaching — because the exam tests the <em style="color:var(--muted);">consequence</em>, not just the definition — and it lets you practice that gap a few minutes at a time, on the exact topics you're in right now.`)}
       ${para(`It's not a cram tool, and it's not trying to replace the big question banks you'll use junior year. It's for the two years <em style="color:var(--muted);">before</em> that — the stretch where you're motivated but everyone tells you there's nothing to do yet. The goal is simple: by the time you open a prep book, a good chunk of it already feels familiar, and you never had to do a panic death-march to get there. Mostly, I want the whole thing to feel a little less scary and a little more in your control.`)}
       ${para(`A few honest things, because trust matters to me. I'm a student, not a company. I build this between classes, EMT shifts, and my work as an RBT — it's a side project, not a startup trying to sell you anything. The coverage numbers come from the real AAMC exam weighting and a standard premed course sequence, and I say so plainly inside the app; they're a typical course load, not a survey of students. It's free and there's nothing to buy. Signing in with your email keeps your route safe — your courses, your coverage, and every session you've done — and lets it follow you from your laptop to your phone.`)}
       ${para(`I just needed this to exist. I hope it helps.`)}
@@ -9912,7 +9908,7 @@ function lastSyncedLabel() {
 function accountSectionHTML() {
   const s = authSession();
   const tone = syncState.status === 'error' ? 'var(--amber)'
-             : syncState.status === 'sent'  ? 'var(--violet)' : 'var(--green-bright)';
+             : syncState.status === 'sent'  ? 'var(--green)' : 'var(--green-bright)';
   const note = syncState.message
     ? `<p style="font-size: var(--fs-13);color:${tone};line-height:1.55;margin:-4px 0 12px;">${syncState.message}</p>` : '';
 
@@ -10116,7 +10112,7 @@ function screenCoverage() {
       <div style="font-size: var(--fs-13);color:var(--faint);line-height:1.6;margin-bottom:24px;">
         <p style="margin:0 0 8px;"><strong style="color:var(--green-bright);">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
         <p style="margin:0 0 8px;"><strong style="color:var(--amber);">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
-        <p style="margin:0;"><strong style="color:var(--violet);">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
+        <p style="margin:0;"><strong style="color:var(--green);">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
         <p style="font-size: var(--fs-11);color:var(--faint);margin:8px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
       </div>
 
@@ -11107,7 +11103,7 @@ function acctPromptHTML(surface) {
   const cta = surface === 'reveal' ? 'Save my route' : 'Save my progress';
 
   const st   = acctOwns(surface) ? syncState.status : 'idle';
-  const tone = st === 'error' ? 'var(--amber)' : st === 'sent' ? 'var(--violet)' : 'var(--green-bright)';
+  const tone = st === 'error' ? 'var(--amber)' : st === 'sent' ? 'var(--green)' : 'var(--green-bright)';
   const note = st !== 'idle' && syncState.message
     ? `<p class="acct-note" style="color:${tone};">${esc(syncState.message)}</p>` : '';
 
