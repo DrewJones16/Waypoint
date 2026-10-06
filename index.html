@@ -6498,10 +6498,32 @@ const HELD_RING = { fresh: 'k3', fading: 'k2', faded: 'k1' };
 // Home. Deliberately: a second one here would eventually disagree with it, and
 // two surfaces telling a student to practise different things is worse than
 // either choice on its own.
+// Which parcel to point at when there is no practice record to go on.
+//
+// Three tiers, largest first within each. A class you are in now is the one
+// where studying alongside it pays twice. Failing that, the biggest thing your
+// classes have already covered, which is review. Failing that, the biggest
+// thing still ahead, which is a preview — and for a student with no courses
+// yet, the only honest suggestion there is.
+function nextParcel() {
+  const byWeight = (a, b) => b.w - a.w;
+  const weighted = TOPICS.filter(t => t.w > 0 && t.course);
+  const taking = weighted.filter(t => S.courses.has(t.course) && S.courseStatus[t.course] === 'in-progress');
+  if (taking.length) return { topic: taking.sort(byWeight)[0], kind: 'taking' };
+  const covered = weighted.filter(t => S.courses.has(t.course));
+  if (covered.length) return { topic: covered.sort(byWeight)[0], kind: 'covered' };
+  const ahead = weighted.filter(t => !S.courses.has(t.course));
+  if (ahead.length) return { topic: ahead.sort(byWeight)[0], kind: 'ahead' };
+  return null;
+}
+
 function routeFocus() {
   if (!S.courses.size) return null;
-  const d = getDirectiveTopic();
-  if (!d || !d.topic.course) return null;
+  // With practice on, the recommender that drives it still chooses; with
+  // practice off there is no record to recommend from, so weight and state do.
+  const pick = PRACTICE ? getDirectiveTopic() : nextParcel();
+  const d = pick && (pick.topic ? pick : { topic: pick });
+  if (!d || !d.topic || !d.topic.course) return null;
   const t = d.topic;
   const course = COURSES.find(c => c.id === t.course);
   if (!course) return null;
@@ -6531,8 +6553,9 @@ function routeFocus() {
   // Never "haven't practised" when they have — the line has to survive the
   // student having drilled it this morning.
   const why = !PRACTICE
-        ? (taking ? "The largest parcel you're taking now."
-                  : 'The largest parcel your courses cover.')
+        ? (d.kind === 'taking'  ? "The largest class you're taking now. Study it alongside the class."
+         : d.kind === 'covered' ? 'The largest parcel your classes have covered. Review it when you start prep.'
+         :                        'The largest parcel still ahead of you. Preview it if you like.')
         : d.reason === 'retention'
           ? `You covered this ${weeksAgo(d.days)} — worth holding on to.`
           : taking
@@ -10916,7 +10939,9 @@ function screenReveal() {
   const map = `      <div class="rt-sheet" style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>`;
   const focusBlock = focus ? `      <p class="focus">${focus.detail}</p>
       <div style="margin-top:18px;margin-bottom:8px;">
-        ${PRACTICE ? `<button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>` : ''}
+        ${PRACTICE
+          ? `<button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>`
+          : `<button class="btn btn-primary" onclick="toggleMapTile('${focus.topic.id}')">Study ${lower(focus.topic.name)}</button>`}
         <p class="focus-why">${focus.why}</p>
       </div>` : '';
 
