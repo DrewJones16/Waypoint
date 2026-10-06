@@ -92,6 +92,27 @@ const ORIGIN = `http://127.0.0.1:${server.address().port}`;
 // A request this test cut off is not a finding; a real one is.
 const BLOCKED_NOISE = /net::ERR_(FAILED|BLOCKED|ABORTED|CONNECTION|NAME_NOT_RESOLVED|CERT)/i;
 
+// ── The words have to match the product ─────────────────────────────────────
+// Waypoint shows where a student stands and where to go and learn each part.
+// It does not run the studying any more, so nothing on screen may promise that
+// it does. Checked against rendered text rather than source, because what a
+// student reads is the only version that counts.
+const PROMISES = /\b(practice|practise|practised|practising|practicing|questions?|streak|drills?|spaced repetition)\b/i;
+
+// Two exceptions, each for a reason, each as narrow as it can be.
+function allowedLine(line) {
+  // 1. AAMC's exam composition. "The MCAT is 230 questions", "59 questions
+  //    each", the Questions column of the derivation — these are the inputs to
+  //    every percentage the map draws, and Sources exists to show that
+  //    arithmetic. They promise nothing; they are the denominator. Only
+  //    admitted where the sentence is plainly about the exam's own structure.
+  if (/question/i.test(line) && /\b(230|59|53|AAMC|count|share of questions|Questions)\b/.test(line)) return true;
+  // 2. The study panel sending a student to someone else's practice, and the
+  //    line saying we are not affiliated with them.
+  if (/Practise reading here|CARS practice|not affiliated with Khan Academy/i.test(line)) return true;
+  return false;
+}
+
 const failures = [];
 const browser = await chromium.launch();
 
@@ -130,6 +151,16 @@ for (const variant of VARIANTS) {
       const text = await page.evaluate(() => (document.getElementById('app')?.innerText || '').trim().length)
                              .catch(() => 0);
       if (text < 20) seen.push(`renders ${text} characters`);
+
+      // With practice off, nothing on screen may promise practice.
+      if (variant.label !== 'PRACTICE=true') {
+        const lines = await page.evaluate(() => (document.getElementById('app')?.innerText || '').split('\n'))
+                                .catch(() => []);
+        for (const line of lines) {
+          const t = line.trim();
+          if (t && PROMISES.test(t) && !allowedLine(t)) seen.push(`promises practice: "${t.slice(0, 90)}"`);
+        }
+      }
       for (const f of seen) failures.push(`${where}  ${screen}: ${f}`);
     }
 
