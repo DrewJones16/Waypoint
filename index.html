@@ -1556,6 +1556,94 @@ const GENERIC_COURSES = COURSES.map(c => ({
   covers: TOPICS.filter(t => t.course === c.id).map(t => t.id),
 }));
 
+// ── BYU ─────────────────────────────────────────────────────────────────────
+// One school, for one validation season. A BYU premed does not see "Biology I
+// and II" on their schedule; they see BIO 130, CELL 305, CHEM 351. Making them
+// guess how their classes translate is the guess Waypoint exists to remove.
+//
+// SOURCE: BYU Pre-Professional Advisement, "Preparing for Medical School:
+// Coursework" (ppa.byu.edu/premedical-coursework), for which courses premeds
+// take and how the advising page pairs a lecture with its lab. Every code,
+// title and "still offered" CONFIRMED against the current university catalog
+// (catalog.byu.edu), course by course. Retrieved 2026-10-06.
+//
+// Titles are the catalog's, not the advising page's, where the two differ —
+// the catalog writes "Organic Chemistry 1", not "Organic Chemistry I". Two
+// further mismatches are recorded in this commit's message rather than
+// smoothed over here.
+//
+// A lecture and its lab are ONE row, the way the advising page lists them:
+// "CHEM 106 & 107". A lab adds no MCAT content of its own, so no row's topics
+// depend on whether its lab is taken.
+//
+// TODO(Drew): covers: [] is not "this course teaches nothing". It is "nobody
+// who has taken it has said yet". Which MCAT ground a course actually reaches
+// is a judgement only a BYU student can make, and a guess here would put a
+// wrong claim on somebody's map — the one thing this app is built not to do.
+// Each empty row carries the question it is waiting on. `npm run check`
+// prints the table, and every unanswered row with it, on every run.
+const BYU_COURSES = [
+  // ── Biology ──────────────────────────────────────────────────────────────
+  // Three intro courses, one need. The advising page treats them as
+  // alternatives, so the picker will too.
+  { id:'bio130',   code:'BIO 130',          title:'Biology',                              section:'Biology',   alt:'intro-bio',
+    covers: [], todo:'Does BIO 130 cover cell biology, genetics and molecular biology at MCAT depth?' },
+  { id:'cell120',  code:'CELL 120',         title:'Science of Biology',                   section:'Biology',   alt:'intro-bio',
+    covers: [], todo:'Same question for CELL 120: cell biology, genetics, molecular biology?' },
+  { id:'mmbio121', code:'MMBIO 121',        title:'General Biology: Health and Disease',  section:'Biology',   alt:'intro-bio',
+    covers: [], todo:'Does MMBIO 121 reach cell biology at MCAT depth, or only survey it?' },
+
+  { id:'mmbio240', code:'MMBIO 240 & 241',  title:'Molecular Biology & Lab',              section:'Biology',
+    covers: [], todo:'Molecular biology, and cell biology too?' },
+
+  // Two genetics courses; PWS 340 is the one the advising page names.
+  { id:'pws275',   code:'PWS 275',          title:'Genetics and Reproduction',            section:'Biology',   alt:'genetics',
+    covers: [], todo:'Does PWS 275 cover genetics the way PWS 340 does?' },
+  { id:'pws340',   code:'PWS 340',          title:'Genetics',                             section:'Biology',   alt:'genetics',
+    covers: ['genetics'] },
+
+  { id:'cell305',  code:'CELL 305',         title:'Human Physiology',                     section:'Biology',
+    covers: [], todo:'Physiology, certainly. Does CELL 305 also cover neuroscience?' },
+  { id:'cell220',  code:'CELL 220',         title:'Human Anatomy',                        section:'Biology',
+    covers: [], todo:'Does anatomy reach any MCAT content category, or none?' },
+  { id:'mmbio221', code:'MMBIO 221 & 222',  title:'General Microbiology & Lab',           section:'Biology',
+    covers: [], todo:'Does microbiology reach any MCAT content category, or none?' },
+  { id:'neuro205', code:'NEURO 205',        title:'Neurobiology',                         section:'Biology',
+    covers: [], todo:'Is NEURO 205 the neuroscience course premeds actually take?' },
+
+  // ── Chemistry ────────────────────────────────────────────────────────────
+  // Acid-base is the open question. Waypoint's generic catalog puts it in the
+  // first semester; the BYU catalog describes it in both 105 and 106, and
+  // where it is really taught decides which course gets it. Not copied from
+  // the generic placement, which would be inventing an answer.
+  { id:'chem105',  code:'CHEM 105',         title:'General College Chemistry 1 with Lab', section:'Chemistry',
+    covers: [], todo:'Atomic structure, bonding, stoichiometry — and is acid-base in 105 or 106?' },
+  { id:'chem106',  code:'CHEM 106 & 107',   title:'General College Chemistry 2 & Lab',    section:'Chemistry',
+    covers: [], todo:'Thermodynamics, and acid-base if it is not in 105.' },
+  { id:'chem351',  code:'CHEM 351',         title:'Organic Chemistry 1',                  section:'Chemistry',
+    covers: ['orgo'] },
+  { id:'chem352',  code:'CHEM 352 & 353',   title:'Organic Chemistry 2 & Lab',            section:'Chemistry',
+    covers: ['orgo2'] },
+  { id:'chem481',  code:'CHEM 481',         title:'Biochemistry',                         section:'Chemistry',
+    covers: ['biochem'] },
+
+  // ── Physics ──────────────────────────────────────────────────────────────
+  { id:'phscs105', code:'PHSCS 105 & 107',  title:'General Physics 1 & Lab',              section:'Physics',
+    covers: ['physics'] },
+  { id:'phscs106', code:'PHSCS 106 & 108',  title:'General Physics 2 & Lab',              section:'Physics',
+    covers: ['physics2'] },
+
+  // ── Social sciences ──────────────────────────────────────────────────────
+  { id:'psych111', code:'PSYCH 111',        title:'Introduction to Psychological Science', section:'Social sciences',
+    covers: ['psych'] },
+  { id:'soc111',   code:'SOC 111',          title:'Introductory Sociology',               section:'Social sciences',
+    covers: ['soc'] },
+
+  // ── Statistics ───────────────────────────────────────────────────────────
+  { id:'stat121',  code:'STAT 121',         title:'Principles of Statistics',             section:'Statistics',
+    covers: [], todo:'Is STAT 121 the statistics course premeds take?' },
+].map(c => ({ ...c, name: c.code }));
+
 const CATALOGS = {
   generic: {
     id: 'generic',
@@ -1565,6 +1653,13 @@ const CATALOGS = {
     // its own.
     source: 'Derived from COURSES and TOPICS.',
     courses: GENERIC_COURSES,
+  },
+  byu: {
+    id: 'byu',
+    name: 'BYU',
+    source: 'BYU Pre-Professional Advisement premed coursework; codes and titles from catalog.byu.edu.',
+    retrieved: '2026-10-06',
+    courses: BYU_COURSES,
   },
 };
 

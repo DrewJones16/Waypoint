@@ -235,6 +235,36 @@ function printStudyLinks(source) {
   }
 }
 
+// ── The BYU catalog, printed for review ─────────────────────────────────────
+// Same reason as the study links: a table of somebody else's course codes is
+// only as good as the last time a person read it, and the rows still waiting
+// on an answer have to be impossible to forget.
+function byuRows(source) {
+  const block = /const BYU_COURSES = \[([\s\S]*?)\n\]\.map\(/.exec(source);
+  if (!block) return null;
+  return block[1].split(/\n  \{ /).slice(1).map(chunk => ({
+    id:     (/id:'([^']+)'/.exec(chunk) || [])[1],
+    code:   (/code:'([^']+)'/.exec(chunk) || [])[1],
+    title:  (/title:'([^']+)'/.exec(chunk) || [])[1],
+    covers: ((/covers: \[([^\]]*)\]/.exec(chunk) || [, ''])[1].match(/'([^']+)'/g) || []).map(x => x.slice(1, -1)),
+    todo:   (/todo:'([^']+)'/.exec(chunk) || [])[1] || null,
+  }));
+}
+
+function printCatalog(source) {
+  const rows = byuRows(source);
+  if (!rows) return;
+  const when = (/retrieved: '([\d-]+)'/.exec(source) || [])[1];
+  console.log(`\nBYU catalog — ${rows.length} rows, codes and titles confirmed against catalog.byu.edu${when ? ' on ' + when : ''}:`);
+  for (const r of rows)
+    console.log('  ' + (r.code || '?').padEnd(16) + (r.covers.length ? r.covers.join(' ') : '—'));
+  const open = rows.filter(r => !r.covers.length);
+  if (open.length) {
+    console.log(`\nTODO(Drew) — ${open.length} BYU rows have no topics yet, so they add nothing to a BYU student's coverage:`);
+    for (const r of open) console.log(`  ${(r.code || '?').padEnd(16)} ${r.todo || 'no question recorded'}`);
+  }
+}
+
 let failed = 0;
 const ok = (n, c, x = '') => { console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? '  — ' + x : ''}`); if (!c) failed++; };
 
@@ -276,7 +306,30 @@ console.log('');
   ok('the study links carry the date they were opened', !!checked, checked ? checked[1] : 'KHAN_CHECKED is missing or malformed');
 }
 
+// A `covers` entry that names no real topic is silent: the course simply
+// covers nothing, and a BYU student's map is quietly short by that much.
+console.log('');
+{
+  const rows = byuRows(src) || [];
+  const tblock = /const TOPICS = \[([\s\S]*?)\n\];/.exec(src);
+  const topicIds = new Set(((tblock ? tblock[1] : '').match(/id:'([a-z0-9-]+)'/g) || []).map(x => x.slice(4, -1)));
+  const bad = [];
+  const ids = new Set();
+  const dupes = [];
+  for (const r of rows) {
+    if (ids.has(r.id)) dupes.push(r.id); else ids.add(r.id);
+    for (const c of r.covers) if (!topicIds.has(c)) bad.push(`${r.code} → ${c}`);
+  }
+  ok('every BYU row covers real topics', rows.length > 0 && bad.length === 0,
+     rows.length === 0 ? 'no BYU rows parsed' : bad.length ? bad.join('; ') : `${rows.length} rows`);
+  ok('every BYU course id is its own', dupes.length === 0, dupes.length ? dupes.join(', ') : '');
+  // An empty row that says nothing about why is a row nobody will ever fill.
+  const silent = rows.filter(r => !r.covers.length && !r.todo).map(r => r.code);
+  ok('every unanswered BYU row carries its question', silent.length === 0, silent.join(', '));
+}
+
 printStudyLinks(src);
+printCatalog(src);
 
 console.log(`\n${failed ? failed + ' FAILED' : 'all clear'} — ${found.length} findings in ${FILE}`);
 process.exit(failed ? 1 : 0);
