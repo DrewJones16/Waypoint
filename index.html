@@ -2187,6 +2187,121 @@ const CONTENT_MAP = [
 // this student's Orgo I teaches spectroscopy where plenty teach it in Orgo II.
 // The syllabus resolves which half a given student actually covers. That
 // judgment is Waypoint's; the tags underneath it are AAMC's.
+// ── WHERE TO STUDY IT ────────────────────────────────────────────────────────
+// Waypoint shows a student where they stand. These say where to go and learn
+// each part, in tools they already have for free.
+//
+// One switch per source. Khan's MCAT course was built with AAMC and funded
+// through 2026; the signs point to it continuing, but a source that goes away
+// should cost one line here, not a rewrite. With a source off, every panel
+// still reads correctly — it simply has one fewer line.
+const STUDY_SOURCES = { khan: true, anking: true };
+
+// AAMC's official prep, linked once for the whole app rather than per parcel:
+// it is a shop and a question bank, not a lesson on a topic.
+const AAMC_PREP_URL = 'https://students-residents.aamc.org/prepare-mcat-exam/prepare-mcat-exam';
+
+// ── Khan Academy, by foundational concept ───────────────────────────────────
+// Khan built its MCAT course with AAMC, around AAMC's ten foundational
+// concepts — the same ten CONTENT_MAP already records on every category. So a
+// category's Khan link is DERIVED from its concept rather than written out
+// thirty-one times: ten URLs to check instead of thirty-one to get wrong.
+//
+// SOURCE: Khan Academy's MCAT course, khanacademy.org/test-prep/mcat.
+// UNVERIFIED as written — the build machine cannot reach khanacademy.org, so
+// these slugs come from knowledge of the course and not from opening them.
+// `npm run check` prints every one for review; open each before shipping.
+// The two least certain are concepts 9 and 10, whose units have been renamed
+// at least once.
+const KHAN_UNITS = {
+  1:  { title: 'Biomolecules',              url: 'https://www.khanacademy.org/test-prep/mcat/biomolecules' },
+  2:  { title: 'Cells',                     url: 'https://www.khanacademy.org/test-prep/mcat/cells' },
+  3:  { title: 'Organ systems',             url: 'https://www.khanacademy.org/test-prep/mcat/organ-systems' },
+  4:  { title: 'Physical processes',        url: 'https://www.khanacademy.org/test-prep/mcat/physical-processes' },
+  5:  { title: 'Chemical processes',        url: 'https://www.khanacademy.org/test-prep/mcat/chemical-processes' },
+  6:  { title: 'Processing the environment', url: 'https://www.khanacademy.org/test-prep/mcat/processing-the-environment' },
+  7:  { title: 'Behavior',                  url: 'https://www.khanacademy.org/test-prep/mcat/behavior' },
+  8:  { title: 'Individuals and society',   url: 'https://www.khanacademy.org/test-prep/mcat/individuals-and-society' },
+  9:  { title: 'Social inequality',         url: 'https://www.khanacademy.org/test-prep/mcat/social-inequality' },
+  10: { title: 'Social inequality',         url: 'https://www.khanacademy.org/test-prep/mcat/social-inequality' },
+};
+const KHAN_CARS = { title: 'Critical analysis and reasoning', url: 'https://www.khanacademy.org/test-prep/mcat/critical-analysis-and-reasoning-skill' };
+const KHAN_COURSE = 'https://www.khanacademy.org/test-prep/mcat';
+
+// ── The AnKing MCAT deck, by AAMC content category ──────────────────────────
+// TODO(Drew): every value below is null and must stay null until the real tag
+// string is copied out of the deck. A wrong tag finds nothing and says nothing
+// about it, which is worse than showing no Anki line at all — so a guess here
+// is not a shortcut, it is a silent dead end.
+//
+// To fill these: in Anki, open Browse and expand the AnKing deck's tag tree
+// under its AAMC Content Outline branch. Copy each tag EXACTLY, including
+// case, separators and any numeric prefixes, and paste it beside its code.
+//
+// The 31 needed, in order:
+//   1A 1B 1C 1D   2A 2B 2C   3A 3B   4A 4B 4C 4D 4E   5A 5B 5C 5D 5E
+//   6A 6B 6C   7A 7B 7C   8A 8B 8C   9A 9B   10A
+const ANKING_TAGS = {
+  '1A': null, '1B': null, '1C': null, '1D': null,
+  '2A': null, '2B': null, '2C': null,
+  '3A': null, '3B': null,
+  '4A': null, '4B': null, '4C': null, '4D': null, '4E': null,
+  '5A': null, '5B': null, '5C': null, '5D': null, '5E': null,
+  '6A': null, '6B': null, '6C': null,
+  '7A': null, '7B': null, '7C': null,
+  '8A': null, '8B': null, '8C': null,
+  '9A': null, '9B': null,
+  '10A': null,
+};
+
+// Which AAMC categories a parcel covers.
+//
+// Derived, not written: AAMC_UNITS already carries, for all 140 units of the
+// outline, both the Waypoint topic it belongs to and its category code. That
+// is the reviewed link between the map and AAMC's structure, and reusing it
+// means this cannot drift from the thing the coverage model is built on.
+//
+// Two topics AAMC_UNITS does not reach, and why:
+//   orgo2  — AAMC does not split organic chemistry into a first and second
+//            course; Waypoint splits by class. So Org. chem II studies the
+//            same categories as Org. chem I.
+//   research — Research methods is a Scientific Inquiry and Reasoning Skill,
+//            tested across the sections rather than as a content category. It
+//            has no weight and no parcel, so it has no panel either.
+function topicCategories(topicId) {
+  if (topicId === 'cars') return ['CARS'];
+  const id = topicId === 'orgo2' ? 'orgo' : topicId;
+  const codes = new Set();
+  for (const u of AAMC_UNITS) if (u.topic === id && u.codes) {
+    for (const c of String(u.codes).split(/[ ,]+/)) if (c) codes.add(c);
+  }
+  const order = CONTENT_MAP.map(c => c.code);
+  return [...codes].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+}
+
+// The Khan units a parcel's categories fall under, de-duplicated — several
+// categories in one concept are one lesson unit, not three.
+function khanUnitsFor(codes) {
+  if (!STUDY_SOURCES.khan) return [];
+  if (codes.includes('CARS')) return [KHAN_CARS];
+  const out = [];
+  for (const code of codes) {
+    const cat = CONTENT_MAP.find(c => c.code === code);
+    const unit = cat && KHAN_UNITS[cat.concept];
+    if (unit && !out.some(u => u.url === unit.url)) out.push(unit);
+  }
+  return out;
+}
+
+// The Anki browser search for a parcel: its categories' tags, joined with or.
+// Null while the tags are unconfirmed, which is what keeps the panel honest.
+function ankingSearchFor(codes) {
+  if (!STUDY_SOURCES.anking || codes.includes('CARS')) return null;
+  const tags = codes.map(c => ANKING_TAGS[c]).filter(Boolean);
+  if (!tags.length) return null;
+  return tags.map(t => `tag:"${t}"`).join(' or ');
+}
+
 const AAMC_UNITS = [
   { name:"Amino Acids", topic:'orgo', sub:'amino-acids', disc:'BC OC', codes:'1A' },
   { name:"Protein Structure", topic:'mol-bio', sub:'protein-structure', disc:'BIO BC OC', codes:'1A' },

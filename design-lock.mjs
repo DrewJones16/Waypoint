@@ -208,6 +208,30 @@ const VIOLATIONS = [
 ];
 
 const src = readFileSync(FILE, 'utf8');
+
+// ── Outbound study links, printed for review ────────────────────────────────
+// Not fetched: this check stays offline, so a flaky network can never redden
+// it and a working one can never green it by accident. The point is that every
+// URL leaving the app passes under a human eye before it ships, and that the
+// Anki tags still waiting on the deck are impossible to forget.
+function printStudyLinks(source) {
+  const urls = [...source.matchAll(/url: '(https:\/\/[^']+)'/g)].map(m => m[1]);
+  const aamc = /AAMC_PREP_URL = '(https:\/\/[^']+)'/.exec(source);
+  const course = /KHAN_COURSE = '(https:\/\/[^']+)'/.exec(source);
+  const all = [...new Set([...urls, course && course[1], aamc && aamc[1]].filter(Boolean))];
+  if (!all.length) return;
+  console.log('\nStudy links — OPEN EACH ONE before shipping; none of these is fetched here:');
+  for (const u of all) console.log('  ' + u);
+
+  const tags = [...source.matchAll(/'(\d+[A-Z])': (null|'[^']*')/g)];
+  const missing = tags.filter(([, , v]) => v === 'null').map(([, c]) => c);
+  if (missing.length) {
+    console.log(`\nTODO(Drew) — ${missing.length} AnKing tags still unconfirmed, so those parcels show no Anki line:`);
+    console.log('  ' + missing.join(' '));
+    console.log('  Copy each from the deck\'s AAMC Content Outline tag tree, exactly as written.');
+  }
+}
+
 let failed = 0;
 const ok = (n, c, x = '') => { console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? '  — ' + x : ''}`); if (!c) failed++; };
 
@@ -234,6 +258,8 @@ for (const t of [...FONT_STEPS, ...RADII, ...SHADOWS, '--ease', '--dur', '--focu
 
 // Spacing: the scale exists and is what the sweep snaps to.
 ok('the space scale is defined', SPACE_STEPS.slice(1).every((n, i) => root.includes(`--s-${i + 1}: ${n}px`)));
+
+printStudyLinks(src);
 
 console.log(`\n${failed ? failed + ' FAILED' : 'all clear'} — ${found.length} findings in ${FILE}`);
 process.exit(failed ? 1 : 0);
