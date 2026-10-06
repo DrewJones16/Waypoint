@@ -1068,6 +1068,8 @@
 
   /* Persistent desktop dashboard rail — sibling of #app, hidden below 1000px */
   .dt-shell { display: none; }
+  /* The Home row went with Today; the rail opens on the Route. */
+  .dt-retired { display: none !important; }
   /* Rail rows that only mean something with practice data. */
   body.no-practice .dt-practice-only { display: none !important; }
   /* Hidden until onboarding is done, at every width. */
@@ -1090,6 +1092,7 @@
     .screen.rt > * { grid-column: 2; min-width: 0; }
     /* Except the sheet, which holds the left one for the whole screen. */
     .screen.rt > .rt-sheet { grid-column: 1; grid-row: 1 / span 99; margin-bottom: 0; }
+    .screen.rt > .rt-bar { grid-column: 1 / -1; }
   }
 
   @media (min-width: 1000px) {
@@ -1257,6 +1260,8 @@
 
     /* On desktop the rail replaces the bottom tab bar */
     .tab-bar { display: none; }
+    /* The rail carries the name and the gear at this width. */
+    .screen.rt > .rt-bar { display: none; }
     #app.has-tabbar .screen { padding-bottom: 48px; }
   }
   /* Course→topic breakdown (expandable rows + breakdown screen) */
@@ -1329,7 +1334,7 @@
   </button>
 
   <nav class="dt-nav">
-    <button class="dt-nav-item" data-nav="brief" onclick="go('brief')">
+    <button class="dt-nav-item dt-retired" data-nav="brief" onclick="go('reveal')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
       <span>Home</span>
     </button>
@@ -1532,32 +1537,6 @@ const ICONS = {
 };
 function sectionIcon(mcat) { return ICONS[mcat] || ''; }
 
-// Bottom tab bar — shown on the main "home base" screens for quick navigation
-const TAB_ICONS = {
-  home:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>`,
-  route: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>`,
-  log:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`,
-  settings: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
-};
-
-const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings', 'midterm', 'pace', 'examplan'];
-
-function tabBarHTML() {
-  // Two destinations, not four. Log is an action (reached from Today), and
-  // Settings is a gear in the topbar — neither is a place you go.
-  const tabs = [
-    { id: 'brief',  label: 'Today', icon: TAB_ICONS.home,
-      match: ['brief', 'complete', 'quicklog', 'quicklog-subtopic', 'quicklogdone'] },
-    { id: 'reveal', label: 'Route', icon: TAB_ICONS.route, match: ['reveal'] },
-  ];
-  return `<div class="tab-bar">
-    ${tabs.map(t => `
-      <button class="tab-item ${t.match.includes(S.screen) ? 'active' : ''}" onclick="go('${t.id}')">
-        ${t.icon}
-        <span>${t.label}</span>
-      </button>`).join('')}
-  </div>`;
-}
 
 // ── THE MCAT TWIST ─ professor-vs-MCAT framing for every question ────────────
 // Rendered as a purple callout card after the explanation, if the key exists.
@@ -9602,112 +9581,30 @@ function doneForTodayHTML() {
               '', { titleSize: 'var(--fs-17)' }) + keepGoingLink;
 }
 
-function todayCardHTML() {
-  // Every branch below starts a session.
-  if (!PRACTICE) return '';
-  // The weekly read owns the slot on Sunday and Monday — still one card, one action.
-  const brief = briefCardHTML();
-  if (brief) return brief;
 
-  // Today's work is done: the slot becomes the reward rather than another demand.
-  // The Twist is the best thing Waypoint has to say, so it earns the space here
-  // instead of competing with the CTA it used to sit above.
-  const done = doneForTodayHTML();
-  if (done) return done;
-
-  const cta = (label, onclick) =>
-    `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="${onclick}">${label}</button>`;
-  const reason = (text, color) =>
-    `<p style="font-size: var(--fs-13);color:${color};line-height:1.55;margin:0 0 16px;">${text}</p>`;
-
-  if (S.courses.size === 0) {
-    return card('var(--green)', '', 'Add the classes you\'re taking',
-                reason('That\'s all it takes to see your route.', 'var(--faint)'),
-                cta('Choose my courses', "go('courses')"), { tint: 'var(--green-bright)' });
-  }
-
-  // Reached only when the brief owns no slot and today's work is not yet done,
-  // but the exclusion is passed regardless: it costs nothing and closes the
-  // gap for good.
-  const p = todayPick(practicedToday() ? topicsSeenToday() : null);
-  if (!p) {
-    return card('var(--green)', '', 'A session from what you know',
-                reason('Drawn from the courses on your route.', 'var(--faint)'),
-                cta('Start practising', 'startSession()'), { tint: 'var(--green-bright)' });
-  }
-
-  const link = p.link
-    ? `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--faint);cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-bottom:-12px;-webkit-tap-highlight-color:transparent;" onclick="${p.link.onclick}">${p.link.label}</button>`
-    : '';
-  // The button says what happens, with the count the title no longer carries.
-  const n = p.n || sessionSize((p.topic && p.topic.id) || '', null) || 5;
-  return card(p.accent, p.label, p.title, reason(p.reason, 'var(--muted)'),
-              cta(`Practice ${n} ${lower(p.title)} question${n !== 1 ? 's' : ''}`, p.onclick) + link);
+// What Today was still carrying that the Route was not. The syllabus offer and
+// the new-term prompt are about the classes on the map, so they belong under
+// the list of them; the term card is about the term that list is grouped by.
+function routeFootHTML() {
+  const syllabus = liveCourses().length
+    ? (unmappedCourses().length
+      ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
+      : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus</button>`)
+    : (S.courses.size
+      ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking</button>`
+      : '');
+  const sem = S.semStart ? '' : `<button class="link-btn full quiet" onclick="go('pace')">Set your semester start</button>`;
+  const card = termCardHTML();
+  if (!syllabus && !sem && !card) return '';
+  return `      <div class="section-divider"></div>
+      ${card}
+      ${syllabus}
+      ${sem}`;
 }
 
-// Today was one card and three links, with no trace of the thing the product
-// is. This is the student's own sheet at thumbnail size: the shape of the exam,
-// what they have covered of it, and the parcel they are being pointed at —
-// one tap from the Route itself. The figure rides on its title rail, where the
-// sheet keeps it, which is what the Route chip in the topbar was standing in
-// for.
-function todaySheetHTML() {
-  if (!S.courses.size) return '';
-  const cov = coverage(S.courses, true);
-  if (cov <= 0) return '';
-  const year = S.year ? `Your route, ${S.year} year` : 'Your route';
-  return `
-      <button onclick="go('reveal')" aria-label="Your route" style="display:block;width:100%;text-align:left;background:none;border:none;padding:0;margin:0 0 18px;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
-        <span class="sheet" style="display:block;">
-          <span class="sheet-in" style="display:block;">
-            <span class="sheet-title" style="display:flex;"><i>${year}</i><b><small>about</small>${Math.round(cov / 5) * 5}%<small>covered</small></b></span>
-            ${routeMapHTML({ idPrefix: 'today', frame: false, names: false, flat: true })}
-          </span>
-        </span>
-      </button>`;
-}
-
-function screenBrief() {
-  return `
-    <div class="screen">
-      <div class="brief-topbar">
-        <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
-          <div style="display:flex;align-items:center;justify-content:center;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/>
-            </svg>
-          </div>
-          <span class="disp" style="font-size: var(--fs-15);font-weight:600;color:var(--ink);">Waypoint</span>
-        </button>
-        <div style="display:flex;align-items:center;gap:12px;">
-          ${PRACTICE && S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size: var(--fs-13);font-weight:600;">${S.streak}</span></div>` : ''}
-          <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
-          </button>
-        </div>
-      </div>
-
-      ${todaySheetHTML()}
-      ${todayCardHTML()}
-      ${termCardHTML()}
-
-      ${PRACTICE ? `<button class="link-btn full" onclick="go('quicklog')">Practice a specific topic</button>` : ''}
-      <!-- The syllabus offer moved to the foot of the check screen last sprint,
-           and the check screen is one a simple-picker student never sees — which
-           left the word "syllabus" nowhere on the Route or on Home. Same entry,
-           same words, shown only while there is a class left to map, so it goes
-           away by itself once there is nothing to offer. -->
-      ${liveCourses().length
-        ? (unmappedCourses().length
-          ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
-          : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus</button>`)
-        : (S.courses.size
-          ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking</button>`
-          : '')}
-      <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
-    </div>`;
-}
-
+// Today is retired and "brief" routes to the Route. This stays so a direct
+// call from anywhere still paints something real rather than an empty shell.
+function screenBrief() { return screenReveal(); }
 
 function screenLanding() {
   const ex = exampleRoute();
@@ -10787,6 +10684,19 @@ function screenReveal() {
   //
   // #route-map keeps its name the way #cov-num used to: the first-reveal
   // animation finds it there.
+  // The gear lived in Today's topbar. With Today retired and no tab bar, the
+  // Route carries the only chrome the app has left: its name, and the way to
+  // Settings. On desktop the rail already provides both, so this hides there.
+  const bar = `      <div class="brief-topbar rt-bar">
+        <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/></svg>
+          <span class="disp" style="font-size: var(--fs-15);font-weight:600;color:var(--ink);">Waypoint</span>
+        </button>
+        <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
+        </button>
+      </div>`;
+
   const head = cov > 0 ? `      <p class="label">Your route</p>
       <h1 style="margin:0 0 8px;"><span id="reveal-subhead" style="display:block;font-family:inherit;font-size: var(--fs-24);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.02em;">${subhead}</span></h1>
       <!-- The figure moved onto the sheet's own title rail, where it labels the
@@ -10880,9 +10790,10 @@ function screenReveal() {
 
   return `
     <div class="screen rt">
+${bar}
 ${head}
 
-${[map, focusBlock, '      ' + milestone, ring, ...middle].filter(Boolean).join('\n\n')}
+${[map, focusBlock, '      ' + milestone, ring, ...middle, routeFootHTML()].filter(Boolean).join('\n\n')}
 ${tail}
     </div>`;
 }
@@ -11471,7 +11382,12 @@ function trackScreen(screen) {
 // than on something that cannot work.
 const PRACTICE_SCREENS = ['question', 'complete', 'quicklog', 'quicklog-subtopic', 'quicklogdone'];
 
+// Today was a second home for a product with one. With the practice card gone
+// it held a thumbnail of the map, two links and a term card — a smaller copy of
+// the screen beside it. Its survivors moved to the Route, and "brief" now means
+// the Route, so every caller that said "back to Home" still lands somewhere.
 function go(screen) {
+  if (screen === 'brief') screen = 'reveal';
   if (!PRACTICE && PRACTICE_SCREENS.includes(screen)) screen = 'reveal';
   trackScreen(screen);
   if (screen !== 'terms') S._termPage = 0;        // the grid always opens on the recent terms
@@ -12571,13 +12487,9 @@ function render() {
   const pct = progressPct();
   html = (pct === null ? '' : `<div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`) + html;
 
-  const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
-  if (showTabBar) {
-    html += tabBarHTML();
-    el.classList.add('has-tabbar');
-  } else {
-    el.classList.remove('has-tabbar');
-  }
+  // No tab bar. Two tabs that both showed the map was the busyness this
+  // redesign keeps removing; the Route is the product, Settings is a gear.
+  el.classList.remove('has-tabbar');
 
   el.innerHTML = html;
 
@@ -12645,9 +12557,9 @@ window.onunhandledrejection = function(event) {
 try { captureAuthRedirect(); } catch(e) { console.warn('[Waypoint] auth redirect ignored:', e); }
 
 load();
-// Route: returning user with session history → brief; returning without history → reveal; new user → landing
+// Route: anyone with courses lands on the map; a new visitor gets the landing.
 if (S.courses.size > 0) {
-  S.screen = S.sessionHistory.length > 0 ? 'brief' : 'reveal';
+  S.screen = 'reveal';
   if (window.plausible) plausible('app_open');
 }
 // The boot screen is set here rather than through go(), so the funnel's first
