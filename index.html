@@ -694,14 +694,15 @@
   .sheet-title b { font-weight: 600; font-size: var(--fs-13); color: var(--ink); white-space: nowrap; }
   .sheet-title b small { font-weight: 400; color: var(--faint); font-size: var(--fs-11); margin: 0 var(--s-1); }
 
+  /* Lettering on the plan, not a header cell. Boxing these turned the map into
+     a spreadsheet split into bands; the block's neatline is the only outline. */
   .reg {
     font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-weight: 600;
-    font-size: var(--fs-13); color: var(--ink); line-height: 1;
-    padding: 5px 6px 4px; min-width: 0;
-    overflow: hidden;
+    font-size: var(--fs-13); color: var(--ink); line-height: 1.15;
+    padding: 0 6px 5px 1px; min-width: 0;
   }
   .reg small { font-family: inherit; font-style: normal; font-weight: 400; font-size: var(--fs-11); color: var(--faint); margin-left: var(--s-1); }
-  .reg-row { display: flex; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .reg-row { display: flex; align-items: flex-start; }
   .band { position: relative; box-shadow: inset 0 0 0 1px var(--line-2); }
 
   /* A parcel. No radius anywhere — a sheet is drawn with a straight edge. */
@@ -6293,10 +6294,12 @@ function squarify(items, x, y, w, h) {
 // region's rectangle exactly its own percentage of the block.
 //
 // Everything below works in one unit: percent of the block's width. The block
-// is kept square by CSS (the two bands' aspect ratios sum to 1), so one unit
-// across equals one unit down, and a parcel of area 100 unit² is 1% of a
-// 10,000 unit² exam. That is what lets the foot say "this square is 1% of the
-// exam" and be exactly right at any viewport rather than at one nominal width.
+// is not square — SHEET_ASPECT is its height over its width — but its aspect
+// is FIXED, and that is all the scale key needs. A block W wide and
+// W·aspect tall has area W²·aspect, so 1% of it is a square of side
+// W·sqrt(aspect)/10: a constant fraction of the width at every viewport. The
+// key is rendered from that same constant, so it cannot disagree with the
+// block it measures. Verified numerically, not assumed.
 const SHEET_ROWS = [['bb', 'cp'], ['ps', 'cars']];
 // The regions as a plat would name them. Not sec.long, which is AAMC's full
 // title and three words too long for a 20%-wide column.
@@ -6306,7 +6309,24 @@ const SHEET_REG = {
   ps:   'Psychology and sociology',
   cars: 'Reading <small>CARS</small>',
 };
-const SHEET_ASPECT = 1.85;     // block height / block width — swept: 17 of 18 parcels keep a horizontal name
+// 1.85 was swept when labels were estimated from a character count and a parcel
+// either got its full short name or nothing. fitSheetLabels() steps a name down
+// to fit now, so the block no longer has to be tall enough for the worst case.
+//
+// Re-swept at 375px against the two things that actually matter — how far down
+// the button sits, and how many parcels keep a name:
+//
+//   aspect   sheet   named   button y
+//   0.75      442    13/18     742
+//   0.95      505    16/18     804
+//   1.15      567    17/18     866
+//   1.25      597    17/18     897
+//
+// 0.95. Reaching the 440px the plan asks for means 0.75, and five parcels lose
+// their name entirely — too much of the map going quiet to buy 60px. At 0.95
+// the button sits at 804px, inside the first screen-and-a-bit on a 812px phone,
+// which is what the height was being cut for.
+const SHEET_ASPECT = 0.95;     // block height / block width
 const REG_H = 34;              // the region label strip, outside the block; two lines
 const SHEET_NOMINAL_W = 297;   // 375px viewport, for deciding what a label fits in
 
