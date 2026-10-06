@@ -1071,6 +1071,25 @@
   /* Hidden until onboarding is done, at every width. */
   .dt-shell.dt-prelaunch { display: none !important; }
 
+  /* The Route, given the width it has had all along and never used. The sheet
+     takes a column of its own; the headline, the line about the next parcel and
+     the button sit beside it, which is the reading order the concept draws and
+     the one the eye wants — look at the map, then read what to do about it.
+     Below 900px nothing here applies and the screen is unchanged. */
+  @media (min-width: 900px) {
+    #app.app-wide { max-width: 1040px; }
+    .screen.rt {
+      display: grid;
+      grid-template-columns: minmax(0, 560px) minmax(0, 1fr);
+      column-gap: 48px;
+      align-items: start;
+    }
+    /* Everything reads down the right-hand column, in source order. */
+    .screen.rt > * { grid-column: 2; min-width: 0; }
+    /* Except the sheet, which holds the left one for the whole screen. */
+    .screen.rt > .rt-sheet { grid-column: 1; grid-row: 1 / span 99; margin-bottom: 0; }
+  }
+
   @media (min-width: 1000px) {
     /* Reserve the rail's width on the left; #app stays flex-centered in the
        space that remains, so the reading column is anchored to real app chrome
@@ -10757,12 +10776,15 @@ function screenReveal() {
   // and offering the session turns reading the map into doing something about
   // it, which is the whole reason a student opened this screen.
   const focus = routeFocus();
-  const map = `      <div style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>
-      ${focus ? `<p class="focus">${focus.detail}</p>
-      <div style="margin-top:18px;">
+  // The sheet is its own element so the desktop grid can put it in a column of
+  // its own; the block that points at it stays with the prose, which is where
+  // it belongs at both widths.
+  const map = `      <div class="rt-sheet" style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>`;
+  const focusBlock = focus ? `      <p class="focus">${focus.detail}</p>
+      <div style="margin-top:18px;margin-bottom:8px;">
         <button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>
         <p class="focus-why">${focus.why}</p>
-      </div>` : ''}`;
+      </div>` : '';
 
   // Still one link under the number, but it now leads to the student's own
   // derivation rather than to the methodology. The methodology is one further
@@ -10827,10 +10849,10 @@ function screenReveal() {
   const middle = first ? [cta, ask, body] : [ask, body, cta];
 
   return `
-    <div class="screen">
+    <div class="screen rt">
 ${head}
 
-${[map, '      ' + milestone, ring, ...middle].join('\n\n')}
+${[map, focusBlock, '      ' + milestone, ring, ...middle].filter(Boolean).join('\n\n')}
 ${tail}
     </div>`;
 }
@@ -12544,6 +12566,9 @@ function render() {
   if (S._firstReveal && !S._revealAnimated && S.screen === 'reveal') playFirstReveal();
   else animateCoverageRing();
 
+  // The Route is the one screen with two columns, so it is the one screen that
+  // asks for more than the reading column's width.
+  el.classList.toggle('app-wide', S.screen === 'reveal');
   syncDesktopShell();
   fitSheetLabels();
   } catch(e) {
