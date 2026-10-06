@@ -6642,9 +6642,56 @@ function routeMapHTML(opts) {
     </div></div>${detail}${foot}</div>`;
 }
 
-// What one parcel is: its name, its share, the class that covers it, and where
-// the student stands on it. Every parcel has this, including the empty ones and
-// CARS — previously only a topic with a freshness record could be opened at all.
+// ── THE STUDY PANEL ─────────────────────────────────────────────────────────
+// What one parcel is, and where to go and learn it. Tapping a parcel opens
+// this under the sheet; tapping it again, or another parcel, moves it. One
+// panel at a time, no modal, no second place to close.
+//
+// Waypoint's job ends at the door of the tool that teaches the thing. These
+// are plain labelled links to free material a student already has access to,
+// with no affiliate or tracking parameters on them.
+
+// Where students go from the map. Without practice data this is the only
+// signal of what they do next, and it is the validation-season question the
+// whole redesign raises: do they use the map to go and study, and with what.
+//
+// Three props, no more: which tool, which parcel, and what state that parcel
+// was in when they left. No identifiers, and nothing that is not already on
+// the screen they clicked.
+function trackStudyLink(source, topicId) {
+  const t = TOPICS.find(x => x.id === topicId);
+  const covered = !!(t && t.course && S.courses.has(t.course));
+  const state = !covered ? 'ahead'
+    : S.courseStatus[t.course] === 'in-progress' ? 'taking' : 'finished';
+  if (window.plausible) plausible('study_link', { props: { source, parcel: topicId, state } });
+}
+
+// A twist belonging to this parcel: the first question on the topic that has
+// one. Reading only here — no question attached, no answer to pick.
+function twistForTopic(topicId) {
+  for (const q of QUESTIONS) {
+    if (q.topic !== topicId) continue;
+    const t = twistTextFor(q);
+    if (t) return t;
+  }
+  return '';
+}
+
+// Anki's search box takes the string; this just hands it over.
+async function copyAnkiSearch(btn, search) {
+  let ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(search);
+      ok = true;
+    }
+  } catch (e) { /* clipboard denied — the string is on screen either way */ }
+  if (btn) {
+    btn.textContent = ok ? 'Copied' : 'Select it above';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  }
+}
+
 function parcelDetailHTML(tid) {
   const t = TOPICS.find(x => x.id === tid);
   if (!t) return '';
@@ -6652,32 +6699,61 @@ function parcelDetailHTML(tid) {
   const course  = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
   const covered = !!(t.course && S.courses.has(t.course));
   const taking  = covered && S.courseStatus[t.course] === 'in-progress';
+  const cname   = course ? course.name : 'the course';
 
-  // The same sentence machinery the Route's focus line uses, so one topic never
-  // reads two ways on one screen.
-  const f    = covered && PRACTICE ? topicFreshness(tid) : null;
-  const days = f ? f.days : null;
-  const practice = !PRACTICE ? '' : cars ? '' : !covered ? ''
-    : days === null ? 'Not practised yet.'
-    : days === 0    ? 'Practised today.'
-    : days === 1    ? 'Practised yesterday.'
-    : days < 7      ? `Practised ${days} days ago.`
-    :                 `Practised ${weeksAgo(days)}.`;
+  // One sentence of standing, and one that says what to do about it.
+  const standing = cars ? 'Not covered by any class.'
+    : covered ? `${cname}, ${taking ? 'in progress' : 'finished'}.`
+    : `Not on your route yet.`;
+  const framing = cars    ? 'No class covers this. Practise reading here.'
+    : taking  ? 'Study it alongside the class.'
+    : covered ? 'Covered in class. Review it here when you start MCAT prep.'
+    :           `Covered when you take ${cname}. Preview it here if you like.`;
 
-  const standing = cars
-      ? 'Built by reading practice, not courses. Not on your route.'
-    : covered
-      ? `${course ? course.name : 'Your course'}, ${taking ? 'in progress — counts half' : 'finished — counts whole'}.`
-      : `Covered when you take ${course ? course.name : 'the course'}.`;
+  const codes = topicCategories(tid);
+  const khan  = khanUnitsFor(codes);
+  const anki  = ankingSearchFor(codes);
 
-  // The held layer's action keeps the gate it has always had.
-  const st = f && freshnessActive() ? heldDisplayState(f) : null;
-  const n  = st && st !== 'fresh' ? repinCount(tid) : 0;
-  const action = st && st !== 'fresh'
-    ? `<button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''}</button>`
-    : !covered && !cars
-      ? `<button onclick="go('courses')" class="link-btn" style="margin-top:4px;min-height:0;padding:4px 0;">Update my courses</button>`
-      : '';
+  const line = (label, href, note) => `
+          <a href="${href}" target="_blank" rel="noopener" onclick="trackStudyLink('${href.includes('khan') ? 'khan' : 'aamc'}','${tid}')"
+             style="display:block;font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;padding:7px 0;">${label}</a>${note || ''}`;
+
+  const khanLines = khan.length
+    ? (cars
+        ? line('Work through Khan Academy\'s CARS practice', khan[0].url)
+        : khan.map(u => line(`Watch the ${lower(u.title)} lessons on Khan Academy`, u.url)).join(''))
+    : '';
+
+  // The search string is shown, not just copied: a student whose clipboard is
+  // blocked can still select it, and seeing it is how they learn the deck is
+  // tagged by AAMC category at all.
+  const ankiBlock = anki ? `
+          <div style="padding:7px 0;">
+            <p style="font-size: var(--fs-13);font-weight:600;color:var(--ink-2);margin:0 0 6px;">Study it in the AnKing MCAT deck</p>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <code style="flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font-size: var(--fs-11);color:var(--muted);background:var(--wash);padding:7px 8px;border-radius: var(--r-ctl);">${esc(anki)}</code>
+              <button onclick="copyAnkiSearch(this, ${JSON.stringify(anki).replace(/"/g, '&quot;')}); trackStudyLink('anking','${tid}')"
+                      style="flex:none;min-height:36px;padding:0 12px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-11);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">Copy</button>
+            </div>
+            <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:6px 0 0;">In Anki, open Browse, paste this, select all, and unsuspend.</p>
+          </div>` : '';
+
+  const twist = twistForTopic(tid);
+  const twistBlock = twist ? `
+          <div style="border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:10px 12px;margin-top:10px;">
+            <p style="font-size: var(--fs-13);font-weight:600;color:var(--ink);margin:0 0 4px;">In class vs. on the MCAT</p>
+            <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">${twist}</p>
+          </div>` : '';
+
+  // With practice on, the panel is also a way into a session on this parcel.
+  const n = PRACTICE ? sessionSize(tid, null) : 0;
+  const practiceLine = PRACTICE && n
+    ? `<button onclick="startRouteFocus('${tid}')" class="link-btn" style="padding:7px 0;">Practise ${n} question${n !== 1 ? 's' : ''} on it</button>`
+    : '';
+
+  const update = !covered && !cars
+    ? `<button onclick="go('courses')" class="link-btn quiet" style="padding:7px 0;">Update my courses</button>`
+    : '';
 
   return `
         <div style="margin-top:10px;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;">
@@ -6685,8 +6761,11 @@ function parcelDetailHTML(tid) {
             <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${t.name}</span>
             <span style="font-size: var(--fs-11);color:var(--faint);white-space:nowrap;">${t.w}% of the exam</span>
           </div>
-          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0;">${standing}${practice ? ' ' + practice : ''}</p>
-          ${action}
+          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0 0 2px;">${standing} ${framing}</p>
+          ${khanLines}${ankiBlock}${practiceLine}
+          ${line('AAMC\'s own official prep', AAMC_PREP_URL)}
+          ${update}
+          ${twistBlock}
         </div>`;
 }
 
