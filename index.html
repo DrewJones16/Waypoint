@@ -123,9 +123,6 @@
     /* One focus ring, everywhere */
     --focus: 2px solid var(--ink);
 
-    /* Small caps are the app's second voice; they all speak at one width */
-    --track-caps: 0.08em;
-
     /* One press, everywhere a finger lands */
     --press: scale(0.985);
   }
@@ -235,8 +232,6 @@
     font-size: var(--fs-11);
     font-weight: 700;
     color: var(--green);
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
     margin-bottom: 8px;
   }
 
@@ -298,8 +293,6 @@
 
   /* Small caps: one width, one weight, one case. */
   .label, .section-label, .kicker, .tg-head {
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
   }
 
   /* Headlines break where a person would break them. */
@@ -422,8 +415,6 @@
     font-size: var(--fs-11);
     font-weight: 700;
     color: var(--dim);
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
     margin: 16px 0 8px;
   }
   .section-label:first-child { margin-top: 0; }
@@ -511,8 +502,7 @@
   }
   .cpick-info:hover, .cpick-info.open { color: var(--muted); }
   .cpick-badge {
-    font-size: var(--fs-11); font-weight: 700; text-transform: uppercase; letter-spacing: var(--track-caps);
-    padding: 4px 8px; border-radius: var(--r-ctl); flex-shrink: 0; white-space: nowrap;
+    font-size: var(--fs-11); font-weight: 700; padding: 4px 8px; border-radius: var(--r-ctl); flex-shrink: 0; white-space: nowrap;
   }
 
   /* The course card. Name, badge and info on one line; the answer on the next.
@@ -571,15 +561,14 @@
   }
   .picker-count {
     text-align: center; font-size: var(--fs-13); color: var(--muted);
-    margin: 0 0 8px; font-weight: 600; letter-spacing: var(--track-caps);
+    margin: 0 0 8px; font-weight: 600;
   }
 
   /* The semester grid: courses down the side, terms across the top, one tap per
      row. Never a chip that opens a picker that opens a list. */
   .tgrid { display: grid; gap: 4px; align-items: center; }
   .tgrid .tg-head {
-    font-size: var(--fs-11); font-weight: 700; color: var(--faint);
-    text-transform: uppercase; letter-spacing: var(--track-caps); text-align: center;
+    font-size: var(--fs-11); font-weight: 700; color: var(--faint); text-align: center;
     padding-bottom: 4px;
   }
   .tgrid .tg-label {
@@ -641,8 +630,6 @@
     font-size: var(--fs-11);
     font-weight: 700;
     color: var(--violet);
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
     margin-bottom: 4px;
   }
   .nudge-card p {
@@ -962,10 +949,8 @@
     margin-bottom: 32px;
   }
   .app-brand-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--green-wash-2);
-    border-radius: var(--r-ctl);
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -989,8 +974,6 @@
     font-size: var(--fs-11);
     font-weight: 700;
     color: var(--green);
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
     margin-bottom: 12px;
   }
   .topic-pill {
@@ -1146,11 +1129,8 @@
       -webkit-tap-highlight-color: transparent;
     }
     .dt-brand-mark {
-      width: 38px; height: 38px; flex-shrink: 0;
+      width: 24px; height: 24px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      background: var(--green-wash-2);
-      border: 1px solid var(--green-line);
-      border-radius: var(--r-ctl);
     }
     .dt-brand-name {
       display: block;
@@ -1160,8 +1140,7 @@
     }
     .dt-brand-sub {
       display: block;
-      font-size: var(--fs-11); font-weight: 700; letter-spacing: var(--track-caps);
-      text-transform: uppercase; color: var(--muted); margin-top: 4px;
+      font-size: var(--fs-11); font-weight: 700; color: var(--muted); margin-top: 4px;
     }
 
     /* Nav */
@@ -1191,8 +1170,7 @@
 
     /* Coverage dashboard */
     .dt-dash-label {
-      font-size: var(--fs-11); font-weight: 800; letter-spacing: var(--track-caps);
-      text-transform: uppercase; color: var(--green); margin-bottom: 16px;
+      font-size: var(--fs-11); font-weight: 800; color: var(--green); margin-bottom: 16px;
     }
     .dt-ring-wrap {
       display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
@@ -1210,7 +1188,7 @@
       font-variant-numeric: tabular-nums;
     }
     .dt-ring-pct .u { font-size: var(--fs-13); color: var(--faint); }
-    .dt-ring-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; letter-spacing: var(--track-caps); }
+    .dt-ring-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; }
     .dt-ring-note { font-size: var(--fs-13); line-height: 1.5; color: var(--faint); }
     .dt-ring-note strong { color: var(--muted); font-weight: 600; }
 
@@ -1242,7 +1220,7 @@
       font-variant-numeric: tabular-nums;
     }
     .dt-stat-num.streak { color: var(--amber); }
-    .dt-stat-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; letter-spacing: var(--track-caps); }
+    .dt-stat-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; }
 
     /* Pre-onboarding (no courses yet) */
     .dt-setup-hint { display: none; }
@@ -1338,7 +1316,6 @@
     </span>
     <span>
       <span class="dt-brand-name">Waypoint</span>
-      <span class="dt-brand-sub">MCAT Coverage</span>
     </span>
   </button>
 
@@ -6657,6 +6634,10 @@ function mapLegendHTML(live) {
 
 // ── SECTIONED MAP (reveal screen) ─────────────────────────────────────────────
 
+// The way-in mark on a tappable row. An icon, not a typed arrow: the
+// affordance was never the problem, the character was.
+const CHEVRON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>';
+
 const TILE_NAMES = {
   'cell-bio':'Cell Bio', 'genetics':'Genetics', 'mol-bio':'Mol. Bio',
   'biochem':'Biochem',   'physio':'Physio',      'neuro':'Neuro',
@@ -6950,7 +6931,7 @@ function getTopicInsight() {
   const { topic, desc } = withCrunch[0];
   return `
     <div style="background:var(--surface);border:1px solid var(--line);border-radius: var(--r-ctl);padding:16px 16px;margin-bottom:16px;">
-      <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">You just practiced</div>
+      <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);margin-bottom:8px;">You just practiced</div>
       <div style="font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">${topic.name}</div>
       <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.5;">${desc}</p>
     </div>`;
@@ -7372,13 +7353,13 @@ function freshDetailHTML(tid) {
   // Held ground gets no action — nothing to fix is not a reason to ask for work.
   const n = repinCount(tid);
   const action = st === 'fresh' ? '' : `
-          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
+          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''}</button>`;
   return `
         <div style="margin-top:8px;background:var(--wash);border:1px solid color-mix(in srgb, ${m.color} 27%, transparent);border-radius: var(--r-ctl);padding:12px 12px;">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
             <span style="width:7px;height:7px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1.5px solid ${m.color};"></span>
             <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${f.topic.name}</span>
-            <span style="font-size: var(--fs-11);font-weight:700;color:${m.color};text-transform:uppercase;letter-spacing:var(--track-caps);">${m.word}</span>
+            <span style="font-size: var(--fs-11);font-weight:700;color:${m.color};">${m.word}</span>
           </div>
           <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0;">${f.why}</p>
           ${action}
@@ -7658,7 +7639,7 @@ function screenPace() {
             <span class="tp-name" style="color:${on ? 'var(--violet)' : 'var(--ink)'};">${u.label}</span>
             <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${on ? (fromSyl ? 'Where your syllabus puts you' : 'What we assumed you\'re on') : u.topic.name}</span>
           </span>
-          <span class="tp-arrow" style="color:${on ? 'var(--violet)' : 'var(--faint)'};">${on ? '✓' : '→'}</span>
+          <span class="tp-arrow" style="color:${on ? 'var(--green)' : 'var(--faint)'};">${on ? '✓' : CHEVRON}</span>
         </button>`;
       }).join('')}
 
@@ -7920,7 +7901,7 @@ function briefCardHTML() {
   const stat = (v, label) => `
     <div style="flex:1;min-width:0;">
       <div class="disp" style="font-size: var(--fs-20);font-weight:700;color:var(--ink);line-height:1;">${v}</div>
-      <div style="font-size: var(--fs-11);color:var(--faint);margin-top:4px;letter-spacing:var(--track-caps);">${label}</div>
+      <div style="font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${label}</div>
     </div>`;
 
   const headline = b.quiet
@@ -7958,7 +7939,7 @@ function briefCardHTML() {
       ${b.weakest && !b.quiet ? `<p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin:0 0 12px;">Weakest right now: <strong style="color:var(--ink-2);">${b.weakest.topic.name}</strong> at ${Math.round(b.weakest.accuracy * 100)}% across ${b.weakest.attempts} question${b.weakest.attempts !== 1 ? 's' : ''}.</p>` : ''}
 
       ${b.action ? `
-        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">This week, do this one thing</div>
+        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);margin-bottom:4px;">This week, do this one thing</div>
         <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 12px;">${b.action.text}</p>` : ''}`;
 
   // No action left can mean two different things. A student with no route needs
@@ -7966,7 +7947,7 @@ function briefCardHTML() {
   // needs acknowledging, not another demand.
   const cta = b.action
     ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;"
-               onclick="briefActionStart('${b.action.topic.id}', ${b.action.subId ? `'${b.action.subId}'` : 'null'})">Start →</button>`
+               onclick="briefActionStart('${b.action.topic.id}', ${b.action.subId ? `'${b.action.subId}'` : 'null'})">Start</button>`
     : S.courses.size === 0
       ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="go('courses')">Add a course to your route</button>`
       : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">That's today's ground covered. Come back tomorrow and the week keeps building.</p>`;
@@ -8299,7 +8280,7 @@ function screenExamPlan() {
     const date = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     const mark = isDone
       ? `<span style="color:var(--green-bright);font-size: var(--fs-13);font-weight:700;flex-shrink:0;">✓</span>`
-      : `<span style="color:var(--dim);font-size: var(--fs-13);flex-shrink:0;">${isToday ? '→' : ''}</span>`;
+      : `<span style="color:var(--dim);flex-shrink:0;">${isToday ? CHEVRON : ''}</span>`;
     return `
       <div style="display:flex;align-items:center;gap:12px;padding:12px 12px;border-radius: var(--r-ctl);margin-bottom:4px;${isToday ? 'background:var(--amber-wash);border:1px solid var(--amber-line);' : 'border:1px solid transparent;'}">
         <div style="width:74px;flex-shrink:0;font-size: var(--fs-11);font-weight:600;color:${isToday ? 'var(--amber)' : 'var(--faint)'};">${isToday ? 'Today' : date}</div>
@@ -8981,11 +8962,11 @@ function syllabusEntryHTML(courseId) {
   // it, get your due dates back. Waypoint doesn't do that and shouldn't imply it
   // — so the link names the thing it actually produces. A promise the product
   // can't keep makes a perfect parse feel like a miss.
-  if (!has) return btn('Turn your syllabus into an MCAT plan →', `openSyllabus('${courseId}')`, 'var(--green-bright)');
+  if (!has) return btn('Turn your syllabus into an MCAT plan', `openSyllabus('${courseId}')`, 'var(--green-bright)');
   // Removing is quiet and sits after replacing, because replacing is what a
   // student who got one week wrong actually wants.
   return `<span style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;">
-      ${btn('✓ Mapped — replace it →', `openSyllabus('${courseId}')`, 'var(--green-bright)')}
+      ${btn('✓ Mapped — replace it', `openSyllabus('${courseId}')`, 'var(--green-bright)')}
       ${btn('Remove', `removeSyllabus('${courseId}')`, 'var(--faint)')}
     </span>`;
 }
@@ -9078,7 +9059,7 @@ function sylWeekRowHTML(w, i, units, reason) {
   return `
       <div style="${SYL_CARD}padding:12px 12px;margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-          <span style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);">Week ${w.week}</span>
+          <span style="font-size: var(--fs-11);font-weight:700;color:var(--faint);">Week ${w.week}</span>
           ${w.unitIds.length ? `<button onclick="sylDropWeek(${i})" style="background:none;border:none;padding:0;font-family:inherit;font-size: var(--fs-11);color:var(--faint);cursor:pointer;-webkit-tap-highlight-color:transparent;">Clear</button>` : ''}
         </div>
         <p style="font-size: var(--fs-13);color:var(--ink);line-height:1.5;margin:0 0 ${reason ? '6px' : '8px'};">${w.label ? esc(w.label) : '<span style="color:var(--faint);font-style:italic;">(no topic listed)</span>'}</p>
@@ -9091,7 +9072,7 @@ function sylWeekRowHTML(w, i, units, reason) {
         ${open ? `
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);">
             ${unitGroupsHTML(units).map(g => `
-              <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);line-height:1.4;margin:12px 0 6px;">${g.heading}</p>
+              <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);line-height:1.4;margin:12px 0 6px;">${g.heading}</p>
               <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 ${g.units.map(u => {
                   const on = w.unitIds.indexOf(u.id) !== -1;
@@ -9125,7 +9106,7 @@ function screenSyllabus() {
       <p class="label">Your syllabus</p>
       <h2 style="margin-bottom:8px;">This one needs an account.</h2>
       <p class="p-lead">Your class schedule is worth keeping, so it syncs with your account rather than living in one browser. This is the only part of Waypoint that needs one.</p>
-      <button class="btn btn-primary" onclick="S.syl=null;go('settings')">Sign in →</button>
+      <button class="btn btn-primary" onclick="S.syl=null;go('settings')">Sign in</button>
       <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Not now</button>
     </div>`;
   }
@@ -9165,7 +9146,7 @@ function screenSyllabus() {
            </div>`
         : `<button class="topic-pick-btn" onclick="openSyllabus('${c.id}')">
              <span class="tp-name" style="color:var(--ink);">${c.name}</span>
-             <span class="tp-arrow" style="color:var(--green-bright);">→</span>
+             <span class="tp-arrow" style="color:var(--green-bright);">${CHEVRON}</span>
            </button>`).join('')}
       <div style="height:10px;"></div>
       <button class="btn btn-ghost" onclick="finishSyllabus()">Done for now</button>
@@ -9190,19 +9171,19 @@ function screenSyllabus() {
 
       ${next ? `
         <div style="${SYL_CARD}padding:16px 16px;margin-bottom:12px;">
-          <p style="font-size: var(--fs-11);font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 4px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
+          <p style="font-size: var(--fs-11);font-weight:700;color:var(--violet);margin:0 0 4px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
           <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.5;margin:0 0 4px;font-weight:600;">${esc(next.row.label) || 'Week ' + next.row.week}</p>
           <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0 0 12px;">${next.row.unitIds.map(id => { const u = unitFromId(id); return u ? u.label : id; }).join(', ')}</p>
-          <button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="syllabusStartWeek('${next.row.unitIds[0]}')">Start ${next.now ? 'this week' : 'week ' + next.row.week}'s 5 →</button>
+          <button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="syllabusStartWeek('${next.row.unitIds[0]}')">Start ${next.now ? 'this week' : 'week ' + next.row.week}'s 5</button>
         </div>` : ''}
 
       <div style="${SYL_CARD}padding:16px 16px;margin-bottom:20px;">
-        <p style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 4px;">What the term adds up to</p>
+        <p style="font-size: var(--fs-11);font-weight:700;color:var(--green);margin:0 0 4px;">What the term adds up to</p>
         <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;">${month ? `By ${month}` : 'By the end of term'} this course takes you to <strong style="color:var(--green-bright);">${end}% of MCAT content</strong>.</p>
       </div>
 
       ${left.length
-        ? `<button class="btn btn-primary" onclick="syllabusAddAnother()">Add another syllabus →</button>
+        ? `<button class="btn btn-primary" onclick="syllabusAddAnother()">Add another syllabus</button>
            <button class="btn btn-ghost" onclick="finishSyllabus()">Done</button>`
         : `<p style="font-size: var(--fs-13);color:var(--faint);line-height:1.6;margin-bottom:12px;">That's every class you're taking this term mapped.</p>
            <button class="btn btn-primary" onclick="finishSyllabus()">Done</button>`}
@@ -9216,7 +9197,7 @@ function screenSyllabus() {
       <p class="label">One more thing</p>
       <h2 style="margin-bottom:8px;">Is this when your term started?</h2>
       <p class="p-lead">Your syllabus says <strong style="color:var(--ink);">${d.result.termStart}</strong>. Waypoint uses it to work out which week you're in — you can change it any time.</p>
-      <button class="btn btn-primary" onclick="useSyllabusTermStart()">Use that date →</button>
+      <button class="btn btn-primary" onclick="useSyllabusTermStart()">Use that date</button>
       <button class="btn btn-ghost" onclick="finishSyllabus()">Skip</button>
     </div>`;
   }
@@ -9246,7 +9227,7 @@ function screenSyllabus() {
       <p class="p-lead">${shots
         ? `Try again with the schedule page flat and in frame, or paste the text instead. Waypoint will keep using the typical pacing for ${name} until then, which works fine.`
         : `Waypoint will keep using the typical pacing for ${name}, which works fine. If your syllabus does have a week-by-week table, paste just that part and try again.`}</p>
-      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">${shots ? `Back to your ${many ? 'photos' : 'photo'} →` : 'Try another paste →'}</button>
+      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">${shots ? `Back to your ${many ? 'photos' : 'photo'}` : 'Try another paste'}</button>
       ${shots ? `<button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;sylClearPages();">Paste the schedule instead</button>` : ''}
       <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Leave it</button>
     </div>`;
@@ -9298,7 +9279,7 @@ function screenSyllabus() {
       ` : ''}
 
       <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.6;margin:16px 0 12px;">Professors drift from their own syllabus. When yours does, <strong style="color:var(--muted);">Not what you're covering?</strong> on Today puts Waypoint back in step in one tap — so this doesn't have to be perfect.</p>
-      <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right — save it →</button>
+      <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right, save it</button>
       <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;S.syl.showAll=false;render();">${d.method === 'camera'
         // "Start over" reads as throwing the shots away, which is the opposite
         // of what this does — and it's the route the partial notice above sends
@@ -9340,7 +9321,7 @@ function screenSyllabus() {
       ${cameraInput}
 
       ${pages.length ? `
-        <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 8px;">${pages.length} page${s(pages.length)} captured</p>
+        <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);margin:0 0 8px;">${pages.length} page${s(pages.length)} captured</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
           ${pages.map((p, i) => `
             <div style="width:72px;">
@@ -9353,7 +9334,7 @@ function screenSyllabus() {
             </div>`).join('')}
         </div>
         ${pages.length < SYL_MAX_PAGES
-          ? shootBtn('Add another page →')
+          ? shootBtn('Add another page')
           : `<p style="font-size: var(--fs-13);color:var(--faint);line-height:1.6;margin-bottom:12px;">That's the ${SYL_MAX_PAGES}-page limit, which is plenty for a schedule. Remove one if you want a different shot.</p>`}
         <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-bottom:8px;">Shoot the weekly schedule pages in order. A table that runs onto a second page is fine — Waypoint reads them as one document.</p>
         <button onclick="sylClearPages()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--faint);cursor:pointer;-webkit-tap-highlight-color:transparent;">Upload a PDF or paste it instead</button>
@@ -9379,14 +9360,14 @@ function screenSyllabus() {
                style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
                onchange="sylPickFile(this)">
 
-        <p style="text-align:center;font-size: var(--fs-11);color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:12px;">or paste it</p>
+        <p style="text-align:center;font-size: var(--fs-11);color:var(--dim);margin-bottom:12px;">or paste it</p>
         <textarea id="syl-text" oninput="sylPasteInput(this)" rows="9" spellcheck="false"
           placeholder="Week 1: Muscle structure and contraction&#10;Week 2: Cardiac cycle&#10;Week 3: Midterm exam&#10;…"
           style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);line-height:1.5;resize:vertical;margin-bottom:12px;-webkit-appearance:none;">${esc(d.text || '')}</textarea>
       `}
 
       <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-bottom:16px;">Waypoint reads your syllabus and keeps the schedule in your account. ${pages.length ? 'The photos aren\'t stored on our servers.' : 'The syllabus itself isn\'t stored on our servers.'}</p>
-      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">${pages.length ? `Read these ${pages.length} page${s(pages.length)} →` : 'Read my syllabus →'}</button>
+      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">${pages.length ? `Read these ${pages.length} page${s(pages.length)}` : 'Read my syllabus'}</button>
     </div>`;
 }
 
@@ -9487,8 +9468,8 @@ function claimHTML() {
   const more = items.length > 1 ? ` <span style="color:var(--muted);">(+${items.length - 1} more in progress)</span>` : '';
   return `
       <button onclick="go('courses')" style="width:100%;text-align:left;background:var(--amber-wash);border:1px solid var(--amber-line);border-radius: var(--r-card);padding:12px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
-        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">In progress</div>
-        <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.5;margin:0;">You're taking <strong style="color:var(--ink);">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:var(--amber);">+${top.delta}%</strong> coverage →</p>
+        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);margin-bottom:4px;">In progress</div>
+        <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.5;margin:0;">You're taking <strong style="color:var(--ink);">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:var(--amber);">+${top.delta}%</strong> coverage</p>
       </button>`;
 }
 
@@ -9579,7 +9560,7 @@ function todayPick(skip = null) {
                : `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
              onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')`,
              run: () => startWeekDrill(wk.topic.id, wk.subId),
-             link: { label: 'Not what you\'re covering? →', onclick: `openPaceFix('${wk.courseId}')` } };
+             link: { label: 'Not what you\'re covering?', onclick: `openPaceFix('${wk.courseId}')` } };
   }
 
   // Faded ground gets to lead, but only twice a week — semester-synced work is
@@ -9642,7 +9623,7 @@ function doneForTodayHTML() {
   if (!practicedToday() || S.courses.size === 0) return '';
   const kicker = `Done for today${S.streak > 1 ? ` · ${S.streak} days` : ''}`;
   // The link sits outside the card: the reward is the card, this is the aside.
-  const keepGoingLink = `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going — another 5 →</button>`;
+  const keepGoingLink = `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going with another 5</button>`;
 
   const d = getDailyTwist();
   if (d) {
@@ -9710,7 +9691,7 @@ function screenBrief() {
     <div class="screen">
       <div class="brief-topbar">
         <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
-          <div style="width:30px;height:30px;background:var(--green-wash-2);border-radius: var(--r-ctl);display:flex;align-items:center;justify-content:center;">
+          <div style="display:flex;align-items:center;justify-content:center;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/>
             </svg>
@@ -9738,9 +9719,9 @@ function screenBrief() {
       ${liveCourses().length
         ? (unmappedCourses().length
           ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
-          : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus →</button>`)
+          : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus</button>`)
         : (S.courses.size
-          ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking →</button>`
+          ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking</button>`
           : '')}
       <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
     </div>`;
@@ -9790,9 +9771,9 @@ function screenLanding() {
         <div style="font-size: var(--fs-11);color:var(--faint);margin-top:12px;line-height:1.55;">${EXAMPLE_ROUTE.label} — which counts half until it's finished. Every tile is sized by how much of the exam it is. You're probably further along than you think.</div>
       </div>
 
-      <button class="btn btn-primary" onclick="go('year')" style="font-size: var(--fs-15);font-weight:600;letter-spacing:-0.01em;">See where you are →</button>
-      <p style="text-align:center;font-size: var(--fs-13);color:var(--dim);margin-top:12px;">Free · about 2 minutes</p>
-      <button onclick="openAbout()" class="link-btn" style="margin:var(--s-3) auto 0;">What is Waypoint? Why I built it →</button>
+      <button class="btn btn-primary" onclick="go('year')" style="font-size: var(--fs-15);font-weight:600;letter-spacing:-0.01em;">See where you are</button>
+      <p style="text-align:center;font-size: var(--fs-13);color:var(--dim);margin-top:12px;">Free, and about two minutes</p>
+      <button onclick="openAbout()" class="link-btn" style="margin:var(--s-3) auto 0;">What is Waypoint? Why I built it</button>
       <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:24px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
     </div>`;
 }
@@ -9827,7 +9808,7 @@ function screenAbout() {
 
       <p style="font-size: var(--fs-15);color:var(--green-bright);font-weight:600;margin-top:4px;">— Drew</p>
 
-      <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--line);font-size: var(--fs-13);color:var(--faint);line-height:1.6;">Free · nothing to buy · a premed side project. Built with care between shifts.</div>
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--line);font-size: var(--fs-13);color:var(--faint);line-height:1.6;">Free, with nothing to buy. A premed side project, built with care between shifts.</div>
     </div>`;
 }
 
@@ -9849,11 +9830,11 @@ function screenSettings() {
 
       <button onclick="openAbout()" style="width:100%;text-align:left;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:inherit;">
         <span><span style="display:block;font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">What is Waypoint?</span><span style="font-size: var(--fs-13);color:var(--faint);">Why I built it, and how it helps — from the maker.</span></span>
-        <span style="color:var(--green);font-size: var(--fs-20);flex-shrink:0;">→</span>
+        <span style="color:var(--green);flex-shrink:0;display:inline-flex;">${CHEVRON}</span>
       </button>
 <button onclick="openSources()" style="width:100%;text-align:left;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:inherit;">
         <span><span style="display:block;font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">Where these numbers come from</span><span style="font-size: var(--fs-13);color:var(--faint);">Sources for every figure, and the working behind Waypoint's own estimates.</span></span>
-        <span style="color:var(--green);font-size: var(--fs-20);flex-shrink:0;">→</span>
+        <span style="color:var(--green);flex-shrink:0;display:inline-flex;">${CHEVRON}</span>
       </button>
 
       <p class="label" style="margin-bottom:8px;">Your year</p>
@@ -10075,8 +10056,8 @@ function breakdownHTML() {
       ${sections.map(({ sec, items, secTotal, secCredited }) => `
         <div style="margin-bottom:20px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-            <span style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);">${sec.short}</span>
-            <span style="font-size: var(--fs-11);color:var(--muted);">${sec.id === 'cars' ? '23% · ongoing' : `${secCredited} / ${secTotal}%`}</span>
+            <span style="font-size: var(--fs-11);font-weight:700;color:var(--muted);">${sec.short}</span>
+            <span style="font-size: var(--fs-11);color:var(--muted);">${sec.id === 'cars' ? '23%, ongoing' : `${secCredited} / ${secTotal}%`}</span>
           </div>
           ${items.map(({ t, state }) => `
             <div class="bd-row">
@@ -10088,9 +10069,9 @@ function breakdownHTML() {
       <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:16px 16px;margin-top:4px;">
         <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--ink-2);margin-bottom:8px;"><span>Course content covered</span><strong style="color:var(--green-bright);">${cov}%</strong></div>
         <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);"><span>Max from courses</span><span>77%</span></div>
-        <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);"><span>CARS — a reading skill built all along</span><span>23% here · 53 of 230 questions</span></div>
-        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-top:12px;">✓ done · ½ taking now (counts half until you finish) · · not yet · ~ ongoing.</p>
-        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.6;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">These weights are Waypoint's own estimate, built from AAMC's content outline and the standard scope of each course — a typical course load, not a survey of students. <button onclick="openSources()" class="link-btn" style="font-size:var(--fs-11);min-height:0;text-decoration:underline;">Where these numbers come from →</button></p>
+        <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);"><span>CARS — a reading skill built all along</span><span>23% here, 53 of 230 questions</span></div>
+        <p style="display:flex;flex-wrap:wrap;gap:4px 16px;font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-top:12px;"><span>✓ done</span><span>½ taking now, counts half until you finish</span><span>· not yet</span><span>~ ongoing</span></p>
+        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.6;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">These weights are Waypoint's own estimate, built from AAMC's content outline and the standard scope of each course — a typical course load, not a survey of students. <button onclick="openSources()" class="link-btn" style="font-size:var(--fs-11);min-height:0;text-decoration:underline;">Where these numbers come from</button></p>
       </div>
     </div>`;
 }
@@ -10121,7 +10102,7 @@ function screenCoverage() {
       <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:12px;">The MCAT is 230 questions, and AAMC publishes exactly what is in them: 59 on biology and biochemistry, 59 on chemistry and physics, 59 on psychology and sociology, 53 on reading — and a stated mix of disciplines inside each one.</p>
       <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:12px;">The Coverage Model maps premed coursework onto that structure: each course to the MCAT topics it teaches, each topic to its discipline's real share of the exam. AAMC publishes what the exam contains. Nobody publishes which of your classes covers it. That mapping is what turns <em>I took Biochem</em> into a number.</p>
       <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:8px;">Every figure comes from AAMC's own published data, the arithmetic is written out, and you can recheck the whole thing with a calculator. <strong style="color:var(--ink-2);">Complex enough to be right. Simple enough that you can check it.</strong></p>
-      <button onclick="openSources()" class="link-btn full" style="margin-bottom:var(--s-3);">See the whole derivation →</button>
+      <button onclick="openSources()" class="link-btn full" style="margin-bottom:var(--s-3);">See the whole derivation</button>
 
       <div class="section-divider"></div>
       <p class="label" style="margin-bottom:8px;">What the number means</p>
@@ -10257,7 +10238,7 @@ function screenExplain() {
       ${groups.map(g => `
         <div style="margin-bottom:20px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-            <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);"><span style="display:inline-flex;color:var(--green);">${sectionIcon(g.sec.id)}</span>${g.sec.short}</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--muted);"><span style="display:inline-flex;color:var(--green);">${sectionIcon(g.sec.id)}</span>${g.sec.short}</span>
             <span style="font-size: var(--fs-11);color:var(--muted);flex-shrink:0;">${covPoints(g.points)}%</span>
           </div>
           ${rows(g)}
@@ -10275,8 +10256,8 @@ function screenExplain() {
       ${sectionBalanceHTML({ bare: true })}
 
       <div class="section-divider"></div>
-      <button onclick="openSources()" class="link-btn full">See the whole derivation →</button>
-      <button onclick="go('coverage')" class="link-btn full quiet">How the Coverage Model works →</button>
+      <button onclick="openSources()" class="link-btn full">See the whole derivation</button>
+      <button onclick="go('coverage')" class="link-btn full quiet">How the Coverage Model works</button>
       <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
     </div>`;
 }
@@ -10360,13 +10341,13 @@ function screenSources() {
       ${h("Waypoint's coverage weights")}
       ${p(`Derived from the two AAMC figures above, not estimated: each section's question count times each discipline's share of it, totalled across the exam, over 230. Check any line with a calculator.`)}
       <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;overflow-x:auto;">
-        <div style="display:flex;justify-content:space-between;gap:12px;font-size: var(--fs-11);color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);padding-bottom:8px;border-bottom:1px solid var(--line);">
-          <span>Discipline</span><span style="flex-shrink:0;">Questions · share · weight</span>
+        <div style="display:flex;justify-content:space-between;gap:12px;font-size: var(--fs-11);color:var(--faint);padding-bottom:8px;border-bottom:1px solid var(--line);">
+          <span>Discipline</span><span style="flex-shrink:0;display:grid;grid-template-columns:72px 64px 40px;text-align:right;"><span>Questions</span><span>Share</span><span>Weight</span></span>
         </div>
         ${DERIVATION.map(d => `
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);">
             <span style="font-size: var(--fs-13);color:var(--ink-2);">${d.label}</span>
-            <span style="font-size: var(--fs-13);color:var(--muted);flex-shrink:0;">${d.q} · ${d.pct}% · <strong style="color:var(--green-bright);">${d.w}</strong></span>
+            <span style="font-size: var(--fs-13);color:var(--muted);flex-shrink:0;display:grid;grid-template-columns:72px 64px 40px;text-align:right;font-variant-numeric:tabular-nums;"><span>${d.q}</span><span>${d.pct}%</span><strong style="color:var(--green-bright);">${d.w}</strong></span>
           </div>`).join('')}
         <div style="display:flex;justify-content:space-between;padding-top:12px;font-size: var(--fs-13);color:var(--ink-2);"><span>230 questions</span><strong style="color:var(--green-bright);">${total}</strong></div>
       </div>
@@ -10558,7 +10539,7 @@ function screenCourses() {
 
       <div class="picker-foot">
         <p id="course-counter" class="picker-count" style="${n > 0 ? '' : 'visibility:hidden;'}">${n} course${n !== 1 ? 's' : ''} selected</p>
-        <button id="course-cta" class="btn btn-primary" ${n ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
+        <button id="course-cta" class="btn btn-primary" ${n ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage</button>
       </div>
     </div>`;
 }
@@ -10645,8 +10626,8 @@ function termsLinkHTML() {
   const done = finishedCourses();
   if (!done.length) return '';
   const dated = done.filter(c => TERM_RE.test(S.courseWhen[c.id] || '')).length;
-  const label = dated === done.length ? 'Change when you took your classes →'
-              : dated                 ? 'Finish saying when you took your classes →'
+  const label = dated === done.length ? 'Change when you took your classes'
+              : dated                 ? 'Finish saying when you took your classes'
               :                         'Say when you took your finished classes';
   return `<button class="link-btn full quiet" onclick="go('terms')">${label}</button>`;
 }
@@ -10672,7 +10653,7 @@ function termsGridHTML() {
       </div>
       <div style="display:flex;gap:16px;align-items:center;margin-top:8px;">
         ${page < TERM_GRID_PAGES - 1 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page + 1})">← Earlier</button>` : ''}
-        ${page > 0 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page - 1})">Recent →</button>` : ''}
+        ${page > 0 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page - 1})">Recent</button>` : ''}
       </div>`;
 }
 
@@ -10703,7 +10684,7 @@ function screenTerms() {
       </div>
 
       <div class="picker-foot">
-        <button class="btn btn-primary" onclick="go('reveal')">Back to my route →</button>
+        <button class="btn btn-primary" onclick="go('reveal')">Back to my route</button>
       </div>
     </div>`;
 }
@@ -10890,8 +10871,8 @@ function screenReveal() {
   const ctaLabel = curated && curatedCourse
     // The course name and arrow travel as one unit, so a wrap at 375px never
     // leaves "I →" alone on the second line.
-    ? `Start with ${curated.length} questions from your ${curatedCourse.name.replace(/ /g, '&nbsp;')}&nbsp;→`
-    : 'Practice from what you know →';
+    ? `Start with ${curated.length} questions from your ${curatedCourse.name.replace(/ /g, '&nbsp;')}`
+    : 'Practice from what you know';
   // First reveal puts the account ask directly under this button, and with no
   // margin the two touched.
   // One action on the screen. The focus button under the sheet already starts a
@@ -10992,7 +10973,7 @@ function screenQuestion() {
           </div>
         </details>
         <button class="btn btn-primary" onclick="next()">
-          ${S.idx + 1 < S.session.length ? 'Next question →' : 'See my results →'}
+          ${S.idx + 1 < S.session.length ? 'Next question' : 'See my results'}
         </button>` : ''}
     </div>`;
 }
@@ -11021,7 +11002,7 @@ function getRetentionHTML(sessionAnswers) {
 
   return `
     <div style="margin-bottom:20px;">
-      <div style="font-size: var(--fs-11);font-weight:600;color:var(--faint);letter-spacing:var(--track-caps);text-transform:uppercase;margin-bottom:12px;">Your retention</div>
+      <div style="font-size: var(--fs-11);font-weight:600;color:var(--faint);margin-bottom:12px;">Your retention</div>
       ${rows.map(({ topic, pct, total }) => {
         const color = pct >= 70 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--muted)';
         return `
@@ -11331,7 +11312,7 @@ function screenComplete() {
       ${acctPromptHTML('complete')}
       ${remindOnceHTML()}
 
-      <button class="btn btn-primary" onclick="go('brief')">Done &rarr;</button>
+      <button class="btn btn-primary" onclick="go('brief')">Done</button>
     </div>`;
 }
 
@@ -11364,7 +11345,7 @@ function screenQuickLog() {
           <span class="tp-name">${sub.label}</span>
           <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${sessionSize(t.id, sub.id)} question${sessionSize(t.id, sub.id) !== 1 ? 's' : ''}</span>
         </span>
-        <span class="tp-arrow">→</span>
+        <span class="tp-arrow">${CHEVRON}</span>
       </button>`).join('');
 
     // "All of X" is the whole-topic row — the only one offered when a topic has
@@ -11375,7 +11356,7 @@ function screenQuickLog() {
           <span class="tp-name"${subs.length ? ' style="color:var(--faint);"' : ''}>All of ${t.name}</span>
           <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${sessionSize(t.id, null)} question${sessionSize(t.id, null) !== 1 ? 's' : ''}</span>
         </span>
-        <span class="tp-arrow"${subs.length ? ' style="color:var(--faint);"' : ''}>→</span>
+        <span class="tp-arrow"${subs.length ? ' style="color:var(--faint);"' : ''}>${CHEVRON}</span>
       </button>`;
 
     return `
@@ -11422,7 +11403,7 @@ function screenQuickLogDone() {
         ? 'That\'s the first time your route has anything to say about this one.'
         : 'Your route says you\'re holding it, because you just showed that you are.'}</p>
 
-      <button class="btn btn-primary" onclick="go('reveal')">See it on my route →</button>
+      <button class="btn btn-primary" onclick="go('reveal')">See it on my route</button>
       <button class="btn btn-ghost" onclick="go('brief')">Back to Home</button>
     </div>`;
   }
@@ -12191,7 +12172,7 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   // Footer
   ctx.fillStyle = tok('--muted');
   ctx.font = '500 26px "Public Sans", sans-serif';
-  ctx.fillText('Track your own MCAT coverage → waypointmcat.com', W / 2, H - 60);
+  ctx.fillText('Track your own MCAT coverage at waypointmcat.com', W / 2, H - 60);
 
   try {
     await deliverShare({
@@ -12304,7 +12285,7 @@ async function shareTwistCard(btn) {
   // Footer
   ctx.fillStyle = tok('--muted');
   ctx.font = '500 26px "Public Sans", sans-serif';
-  ctx.fillText('See the twist on every topic → waypointmcat.com', W / 2, H - 64);
+  ctx.fillText('See the twist on every topic at waypointmcat.com', W / 2, H - 64);
 
   try {
     await deliverShare({

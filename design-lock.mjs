@@ -126,10 +126,13 @@ export function scan(src) {
     if (w && !['13','16','20','24'].includes(w[1])) add('icon-size', `${w[1]}px near line ${locate(src, tag)}`);
   }
 
-  // 7. Every uppercase run speaks at one width.
+  // 7. No positive tracking. It existed for the small-caps eyebrows, and with
+  //    those gone the only letter-spacing left is the negative kind that tightens
+  //    a headline. Loosened tracking on lowercase text is how a shouted label
+  //    comes back wearing a different hat.
   for (const m of rest.matchAll(/letter-spacing:\s*([^;"'}\n]+)/g)) {
     const v = m[1].trim();
-    if (/^-/.test(v) || v === 'var(--track-caps)' || v === 'normal') continue;
+    if (/^-/.test(v) || v === 'normal') continue;
     add('tracking', `${v} near line ${locate(rest, m[0])}`);
   }
 
@@ -144,7 +147,7 @@ const VIOLATIONS = [
   ['an off-palette theme-color', s => s.replace(/(<meta name="theme-color" content=")#[0-9A-Fa-f]+/, '$1#ABCDEF')],
   ['an off-grid icon',   s => s.replace('<svg width="16"', '<svg width="18"')],
   ['a heavy icon stroke', s => s.replace('stroke-width="2"', 'stroke-width="2.4"')],
-  ['a one-off tracking', s => s.replace('<div id="app">', '<div id="app" style="letter-spacing:0.06em;">')],
+  ['any positive tracking', s => s.replace('<div id="app">', '<div id="app" style="letter-spacing:0.06em;">')],
   ['an off-scale size',  s => s.replace('<div id="app">', '<div id="app" style="font-size:18px;">')],
   ['an off-scale radius',s => s.replace('<div id="app">', '<div id="app" style="border-radius:5px;">')],
   ['an untokened shadow',s => s.replace('<div id="app">', '<div id="app" style="box-shadow:0 2px 9px rgba(0,0,0,0.4);">')],
@@ -172,7 +175,7 @@ for (const [name, inject] of VIOLATIONS) {
 // The token block itself must still define everything the rules refer to.
 console.log('');
 const { root } = regions(src);
-for (const t of [...FONT_STEPS, ...RADII, ...SHADOWS, '--ease', '--dur', '--focus', '--track-caps', '--press'])
+for (const t of [...FONT_STEPS, ...RADII, ...SHADOWS, '--ease', '--dur', '--focus', '--press'])
   ok(`:root defines ${t}`, root.includes(t + ':'));
 
 // Spacing: the scale exists and is what the sweep snaps to.
