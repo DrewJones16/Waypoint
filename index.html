@@ -709,8 +709,13 @@
     position: absolute; box-sizing: border-box; overflow: hidden;
     box-shadow: inset 0 0 0 1px var(--line);
     padding: 3px 4px; text-align: left; font-family: inherit;
+    display: flex; flex-direction: column;
+    align-items: flex-start; justify-content: flex-start;
     -webkit-tap-highlight-color: transparent;
   }
+  /* The name needs the parcel's full content width, or shrink-to-fit hides the
+     overflow that fitSheetLabels() measures. */
+  .pl-name, .pl-sub { align-self: stretch; }
   button.pl { border: 0; cursor: pointer; }
   .pl-name { font-size: var(--fs-11); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; color: var(--ink); display: block; }
   .pl-sub  { font-size: var(--fs-11); font-weight: 400; color: var(--faint); line-height: 1.1; display: block; margin-top: 1px; }
