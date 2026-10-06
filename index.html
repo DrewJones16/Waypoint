@@ -5826,8 +5826,7 @@ function exampleRoute() {
     // the figures are: one renderer, one model, and a marketing card that cannot
     // drift from the app it is advertising.
     return { cov: coverage(courses, true), sections: sectionCoverage(courses),
-             map: routeMapHTML({ idPrefix: 'ex', bandPx: 220, legend: false,
-                                 sectionLabels: false, names: false, static: true }) };
+             map: routeMapHTML({ idPrefix: 'ex', frame: false, names: false, static: true }) };
   } finally { S.courseStatus = prevStatus; S.courses = prevCourses; }
 }
 
@@ -6456,7 +6455,8 @@ function routeMapHTML(opts) {
   const o = opts || {};
   const rows = sheetLayout();
   const idPrefix = o.idPrefix || 'rt';
-  const chrome = o.sectionLabels !== false;      // region strips, legend, foot
+  const frame   = o.frame !== false;            // the sheet: border, title rail, legend, foot
+  const regions = o.regions !== false;          // the region lettering above each column
   // The landing card stands in an example student's shoes for S.courses but not
   // for their practice record, so held there would be this visitor's freshness
   // read against someone else's route. Static maps show coverage only.
@@ -6464,7 +6464,7 @@ function routeMapHTML(opts) {
   // A thumbnail asks for the shape of the exam, not eighteen names in four
   // letters each; bandPx is how wide that thumbnail is drawn.
   const blockW = o.bandPx || SHEET_NOMINAL_W;
-  const focus = chrome && !o.static ? routeFocus() : null;
+  const focus = frame && !o.static ? routeFocus() : null;
 
   const band = row => {
     const parcels = row.cols.map(col => col.tiles.map(b => {
@@ -6510,7 +6510,7 @@ function routeMapHTML(opts) {
         </${tag}>`;
     }).join('')).join('');
 
-    const strip = chrome
+    const strip = regions
       ? `<div class="reg-row">${row.cols.map(c => `<div class="reg" style="width:${c.w.toFixed(3)}%;">${SHEET_REG[c.sec.id]}</div>`).join('')}</div>`
       : '';
     // aspect-ratio keeps the two bands summing to a square whatever the width,
@@ -6519,7 +6519,9 @@ function routeMapHTML(opts) {
   };
 
   const block = rows.map(band).join('');
-  if (!chrome) return `<div id="${idPrefix}-map" style="max-width:${blockW}px;">${block}</div>`;
+  // A thumbnail fills whatever it is put in. It used to be pinned to bandPx,
+  // which left a dead strip down the side of a card at every width.
+  if (!frame) return `<div id="${idPrefix}-map">${block}</div>`;
 
   const cov  = coverage(S.courses, true);
   const year = S.year ? `Your route, ${S.year} year` : 'Your route';
@@ -9778,9 +9780,9 @@ function screenLanding() {
            percentage and three section bars; it leads with the map now, because
            that is what the product is. -->
       <div style="background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px;margin-bottom:32px;">
-        <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">Example — seven courses in</div>
         <div style="font-size: var(--fs-17);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.01em;margin-bottom:12px;">${territoryLine(ex.cov)}</div>
         ${ex.map}
+        <p style="font-family:'Source Serif 4',Georgia,serif;font-style:italic;font-size: var(--fs-13);color:var(--muted);margin:8px 0 0;">An example junior, seven courses in.</p>
         ${mapLegendHTML()}
         <div style="font-size: var(--fs-11);color:var(--faint);margin-top:12px;line-height:1.55;">${EXAMPLE_ROUTE.label} — which counts half until it's finished. Every tile is sized by how much of the exam it is. You're probably further along than you think.</div>
       </div>
