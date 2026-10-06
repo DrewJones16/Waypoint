@@ -6449,16 +6449,15 @@ function routeMapHTML(opts) {
       const f    = live && t.course && S.courses.has(t.course) ? topicFreshness(t.id) : null;
       const st   = f ? heldDisplayState(f) : null;
 
-      // Real pixels, for deciding what a name can do in the space it has.
+      // The full name goes in, and fitSheetLabels() decides after layout what
+      // the parcel can actually hold. Guessing from a character count against a
+      // nominal 297px was wrong in both directions at once: at 375px it left
+      // Acid-Base unnamed, and on desktop it rotated Atomic and Thermo into
+      // columns they had the width to sit across.
       const pw = b.w / 100 * blockW;
       const ph = b.h / 100 * blockW;   // b.h is already in the taller units
-      const label = mapName(t);
-      const needs = label.length * 6.7 + 10;     // 11px semibold, plus the padding
-      const horiz = needs <= pw && ph >= 22;
-      const vert  = !horiz && needs <= ph && pw >= 20;
-      const named = o.names !== false && (horiz || vert);
+      const named = o.names !== false;
       const sub   = cars ? 'ongoing' : fill === 0.5 ? 'taking' : fill === 0 ? 'ahead' : '';
-      const room  = !vert && ph >= 34 && sub;
 
       const tex = cars ? 'pl-water' : fill >= 1 ? 'pl-done' : fill > 0 ? 'pl-take' : 'pl-ahead';
       const next = focus && focus.topic.id === t.id;
@@ -6469,19 +6468,20 @@ function routeMapHTML(opts) {
       // An empty parcel is the one place a student who left a class off can say
       // so. It never invites claiming a class: the tooltip says what the course
       // will cover when they take it, not what adding it would do to standing.
+      // Every parcel opens its own detail line. They were divs carrying a title
+      // tooltip, which does not exist on a touch screen — so on a phone most of
+      // the map could not be interrogated at all. And an empty parcel used to
+      // jump straight to the course picker, which answered a question the
+      // student had not asked; now it explains itself and offers the link.
       const course = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
-      const pick   = fill === 0 && course && !o.static && !cars;
-      const tell   = !!f && !pick;
-      const tip    = pick ? `Covered when you take ${course.name}`
-                   : f    ? f.why.replace(/<[^>]+>/g, '').replace(/"/g, '&quot;')
-                   :        t.name;
-      const tag    = pick || tell ? 'button' : 'div';
-      const click  = pick ? ` onclick="go('courses')"` : tell ? ` onclick="toggleMapTile('${t.id}')"` : '';
-      const expand = tell ? ` aria-expanded="${S._mapOpen === t.id}"` : '';
+      const tag    = o.static ? 'div' : 'button';
+      const tip    = fill === 0 && course && !cars ? `Covered when you take ${course.name}` : t.name;
+      const click  = o.static ? '' : ` onclick="toggleMapTile('${t.id}')"`;
+      const expand = o.static ? '' : ` aria-expanded="${S._mapOpen === t.id}"`;
 
-      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}${vert ? ' pl-vert' : ''}" title="${tip}"${click}${expand}
+      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}" title="${tip}"${click}${expand}
           style="left:${b.x.toFixed(3)}%;top:${(b.y / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;width:${b.w.toFixed(3)}%;height:${(b.h / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;">
-          ${named ? `<span class="pl-name">${label}</span>${room ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}${next && ph >= 46 ? '<span class="pl-flag">next</span>' : ''}
+          ${named ? `<span class="pl-name" data-full="${t.name}" data-short="${mapName(t)}">${t.name}</span>${sub ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}${next && ph >= 46 ? '<span class="pl-flag">next</span>' : ''}
         </${tag}>`;
     }).join('')).join('');
 
@@ -6502,7 +6502,7 @@ function routeMapHTML(opts) {
   const foot = skills.length
     ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:8px 0 0;">${skills.map(t => t.name).join(' and ')} ${skills.length === 1 ? 'is' : 'are'} tested as a skill across the sections rather than as a share of their own, so ${skills.length === 1 ? 'it has' : 'they have'} no parcel.</p>`
     : '';
-  const detail = live && S._mapOpen ? freshDetailHTML(S._mapOpen) : '';
+  const detail = S._mapOpen ? parcelDetailHTML(S._mapOpen) : '';
 
   return `<div id="${idPrefix}-map"><div class="sheet"><div class="sheet-in">
       <div class="sheet-title"><i>${year}</i><b><small>about</small>${Math.round(cov / 5) * 5}%<small>covered</small></b></div>
@@ -6511,6 +6511,102 @@ function routeMapHTML(opts) {
       <div class="sheet-foot"><span class="one" style="width:${(Math.sqrt(SHEET_ASPECT) * 10).toFixed(3)}%;"></span>This square is 1% of the exam.</div>
     </div></div>${detail}${foot}</div>`;
 }
+
+// What one parcel is: its name, its share, the class that covers it, and where
+// the student stands on it. Every parcel has this, including the empty ones and
+// CARS — previously only a topic with a freshness record could be opened at all.
+function parcelDetailHTML(tid) {
+  const t = TOPICS.find(x => x.id === tid);
+  if (!t) return '';
+  const cars    = t.mcat === 'cars';
+  const course  = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
+  const covered = !!(t.course && S.courses.has(t.course));
+  const taking  = covered && S.courseStatus[t.course] === 'in-progress';
+
+  // The same sentence machinery the Route's focus line uses, so one topic never
+  // reads two ways on one screen.
+  const f    = covered ? topicFreshness(tid) : null;
+  const days = f ? f.days : null;
+  const practice = cars ? '' : !covered ? ''
+    : days === null ? 'Not practised yet.'
+    : days === 0    ? 'Practised today.'
+    : days === 1    ? 'Practised yesterday.'
+    : days < 7      ? `Practised ${days} days ago.`
+    :                 `Practised ${weeksAgo(days)}.`;
+
+  const standing = cars
+      ? 'Built by reading practice, not courses. Not on your route.'
+    : covered
+      ? `${course ? course.name : 'Your course'}, ${taking ? 'in progress — counts half' : 'finished — counts whole'}.`
+      : `Covered when you take ${course ? course.name : 'the course'}.`;
+
+  // The held layer's action keeps the gate it has always had.
+  const st = f && freshnessActive() ? heldDisplayState(f) : null;
+  const n  = st && st !== 'fresh' ? repinCount(tid) : 0;
+  const action = st && st !== 'fresh'
+    ? `<button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''}</button>`
+    : !covered && !cars
+      ? `<button onclick="go('courses')" class="link-btn" style="margin-top:4px;min-height:0;padding:4px 0;">Update my courses</button>`
+      : '';
+
+  return `
+        <div style="margin-top:10px;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;">
+            <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${t.name}</span>
+            <span style="font-size: var(--fs-11);color:var(--faint);white-space:nowrap;">${t.w}% of the exam</span>
+          </div>
+          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0;">${standing}${practice ? ' ' + practice : ''}</p>
+          ${action}
+        </div>`;
+}
+
+// ── FITTING A NAME TO A PARCEL ───────────────────────────────────────────────
+// Measured after layout, never estimated. A parcel's width depends on the
+// viewport, the squarifier and the region it landed in, and a character count
+// against one nominal width got it wrong in both directions at once.
+//
+// The ladder, in order: full name with its state word, full name alone, short
+// name, rotated, nothing. A parcel never shows a word cut part-way through —
+// that rule is why the last rung exists.
+function fitSheetLabels(scope) {
+  const host = scope || document;
+  for (const pl of host.querySelectorAll('.pl')) {
+    const name = pl.querySelector('.pl-name');
+    if (!name) continue;
+    const sub = pl.querySelector('.pl-sub');
+
+    // Overflow on the parcel catches both failures: a single unbreakable word
+    // wider than the box, and a wrapped name taller than it.
+    const over = () => pl.scrollWidth > pl.clientWidth + 1 || pl.scrollHeight > pl.clientHeight + 1;
+
+    pl.classList.remove('pl-vert');
+    name.style.display = '';
+    name.textContent = name.dataset.full;
+    if (sub) sub.style.display = '';
+    if (!over()) continue;
+
+    if (sub) { sub.style.display = 'none'; if (!over()) continue; }
+
+    name.textContent = name.dataset.short;
+    if (!over()) continue;
+
+    pl.classList.add('pl-vert');
+    if (!over()) continue;
+
+    pl.classList.remove('pl-vert');
+    name.style.display = 'none';
+  }
+}
+
+let fitTimer = null;
+function fitSheetLabelsSoon() {
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => fitSheetLabels(), 90);
+}
+window.addEventListener('resize', fitSheetLabelsSoon);
+// Measuring before the face loads measures the fallback, and Public Sans is
+// wider than it at the same size.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitSheetLabels());
 
 // A map needs a key. Three states, in the order a route fills them.
 function toggleMapTile(tid) {
@@ -12484,6 +12580,7 @@ function render() {
   else animateCoverageRing();
 
   syncDesktopShell();
+  fitSheetLabels();
   } catch(e) {
     console.error('[Waypoint] render() failed:', e);
     screenError();

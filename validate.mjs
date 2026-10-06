@@ -9,7 +9,8 @@ let js = src.slice(src.indexOf('const COURSES ='));
 js = js.slice(0, js.indexOf('</script>')).replace(/render\(\);\s*$/, '');
 
 const sandbox = {
-  window: {}, document: { getElementById: () => null, addEventListener() {}, body: { classList: { add() {}, remove() {} } } },
+  window: { addEventListener() {}, removeEventListener() {} },
+  document: { getElementById: () => null, querySelectorAll: () => [], addEventListener() {}, body: { classList: { add() {}, remove() {} } } },
   localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, plausible() {},
 };
 const ctx = { ...sandbox, console };
