@@ -7,22 +7,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F2F4EF">
 <meta name="color-scheme" content="light">
-<title>Waypoint — See how much of the MCAT your classes already cover</title>
-<meta name="description" content="You know where you're going. This is where you are. Waypoint maps the classes you've taken onto the real MCAT and shows how much of the exam they already cover — free, in about two minutes.">
+<title>Waypoint — See where you stand on the MCAT, and where to study each part</title>
+<meta name="description" content="You know where you're going. This is where you are. Waypoint shows where you stand on the MCAT from the classes you've taken, and where to study each part. Free, in about two minutes.">
 <!-- Favicon: the Waypoint mark, inline so the app stays one file -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23F2F4EF'/%3E%3Cpath d='M16 5 28 27H4Z' fill='none' stroke='%231F2A24' stroke-width='2.4' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='20' r='3' fill='%232A5F3E'/%3E%3C/svg%3E">
 <!-- Open Graph / social preview -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Waypoint">
 <meta property="og:title" content="Waypoint — You know where you're going. This is where you are.">
-<meta property="og:description" content="Waypoint maps the classes you've taken onto the real MCAT and shows how much of the exam they already cover.">
+<meta property="og:description" content="Waypoint shows where you stand on the MCAT from the classes you've taken, and where to study each part.">
 <meta property="og:url" content="https://waypointmcat.com">
 <meta property="og:image" content="https://waypointmcat.com/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Waypoint — You know where you're going. This is where you are.">
-<meta name="twitter:description" content="Waypoint maps the classes you've taken onto the real MCAT and shows how much of the exam they already cover.">
+<meta name="twitter:description" content="Waypoint shows where you stand on the MCAT from the classes you've taken, and where to study each part.">
 <meta name="twitter:image" content="https://waypointmcat.com/og-image.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"Waypoint","alternateName":"Waypoint MCAT","applicationCategory":"EducationalApplication","operatingSystem":"Web","url":"https://waypointmcat.com","description":"Waypoint maps the premed classes you've taken onto the real MCAT content outline and shows how much of the exam your coursework already covers — then lets you practice how the exam tests that material, a few minutes at a time.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"audience":{"@type":"EducationalAudience","educationalRole":"student"}}
@@ -733,6 +733,8 @@
   /* The parcel the next action points at. A dashed claim line, the way a plat
      marks the lot under discussion. */
   .pl-next { outline: 1.5px dashed var(--green); outline-offset: -3px; }
+  /* After .pl-next, so an open focus parcel reads as open rather than as next. */
+  .pl-open { outline: 2px solid var(--green); outline-offset: -3px; }
   .pl-flag { position: absolute; left: 4px; bottom: 3px; font-size: var(--fs-11); font-weight: 600; color: var(--green); }
 
   /* Under the sheet: which parcel, why it is that one, and the way in. */
@@ -1068,6 +1070,10 @@
 
   /* Persistent desktop dashboard rail — sibling of #app, hidden below 1000px */
   .dt-shell { display: none; }
+  /* The Home row went with Today; the rail opens on the Route. */
+  .dt-retired { display: none !important; }
+  /* Rail rows that only mean something with practice data. */
+  body.no-practice .dt-practice-only { display: none !important; }
   /* Hidden until onboarding is done, at every width. */
   .dt-shell.dt-prelaunch { display: none !important; }
 
@@ -1088,6 +1094,7 @@
     .screen.rt > * { grid-column: 2; min-width: 0; }
     /* Except the sheet, which holds the left one for the whole screen. */
     .screen.rt > .rt-sheet { grid-column: 1; grid-row: 1 / span 99; margin-bottom: 0; }
+    .screen.rt > .rt-bar { grid-column: 1 / -1; }
   }
 
   @media (min-width: 1000px) {
@@ -1255,6 +1262,8 @@
 
     /* On desktop the rail replaces the bottom tab bar */
     .tab-bar { display: none; }
+    /* The rail carries the name and the gear at this width. */
+    .screen.rt > .rt-bar { display: none; }
     #app.has-tabbar .screen { padding-bottom: 48px; }
   }
   /* Course→topic breakdown (expandable rows + breakdown screen) */
@@ -1309,7 +1318,7 @@
     <p style="margin-bottom:24px;">Track your MCAT coverage as you finish courses, drill MCAT-style questions on the topics you're currently learning, and see the "MCAT twist" on every concept — how the exam reframes what you learned in class. It's built for the two years before dedicated prep, so that by the time you open a question bank junior year, a big chunk of it already feels familiar.</p>
 
     <p style="font-size: var(--fs-15);color:var(--faint);margin-bottom:8px;">Open Waypoint to see your own MCAT coverage — free. (The interactive tracker needs JavaScript enabled.)</p>
-    <p style="font-size: var(--fs-13);color:var(--faint);">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
+    <p style="font-size: var(--fs-13);color:var(--faint);">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC. Waypoint is not affiliated with Khan Academy or AnKing.</p>
   </div></div>
 
 <!-- Persistent desktop dashboard rail (sibling of #app; never re-rendered; hidden <1000px).
@@ -1327,7 +1336,7 @@
   </button>
 
   <nav class="dt-nav">
-    <button class="dt-nav-item" data-nav="brief" onclick="go('brief')">
+    <button class="dt-nav-item dt-retired" data-nav="brief" onclick="go('reveal')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
       <span>Home</span>
     </button>
@@ -1335,7 +1344,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>
       <span>Route</span>
     </button>
-    <button class="dt-nav-item" data-nav="quicklog" onclick="go('quicklog')">
+    <button class="dt-nav-item dt-practice-only" data-nav="quicklog" onclick="go('quicklog')">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
       <span>Log</span>
     </button>
@@ -1380,8 +1389,8 @@
     </div>
 
     <div class="dt-stats-row">
-      <div class="dt-stat"><div class="dt-stat-num streak" id="dt-streak">0</div><div class="dt-stat-cap">day streak</div></div>
-      <div class="dt-stat"><div class="dt-stat-num" id="dt-answered">0</div><div class="dt-stat-cap">answered</div></div>
+      <div class="dt-stat dt-practice-only"><div class="dt-stat-num streak" id="dt-streak">0</div><div class="dt-stat-cap">day streak</div></div>
+      <div class="dt-stat dt-practice-only"><div class="dt-stat-num" id="dt-answered">0</div><div class="dt-stat-cap">answered</div></div>
     </div>
   </div>
 
@@ -1393,6 +1402,24 @@
 
 <script>
 // ── DATA ─────────────────────────────────────────────────────────────────────
+
+// ── PRACTICE ─────────────────────────────────────────────────────────────────
+// The question system, behind one switch.
+//
+// Waypoint's job is to show a student where they stand on the MCAT and where to
+// go and study each part of it. Running the studying is not that job. But the
+// 263 questions and 262 twists are real work, and a validation season may yet
+// show they matter — so nothing is deleted. This flag hides every way in, and
+// every reading that only means something with practice data. The questions,
+// the twists, S.qStats, the history, the streak and every wp_* key stay exactly
+// as they are underneath, untouched and unmigrated.
+//
+// Flipped true, practice returns inside the navigation as it stands: the
+// Route's focus button and each parcel's study panel start a session, every
+// session counts toward streak and history, and the contour rings come back.
+// The surfaces that lost their home when the tab bar went — the Log tab and
+// Today's card — are retired and do not return.
+const PRACTICE = false;
 
 const COURSES = [
   { id:'bio1',   name:'Biology I',             section:'Biology'         },
@@ -1512,32 +1539,6 @@ const ICONS = {
 };
 function sectionIcon(mcat) { return ICONS[mcat] || ''; }
 
-// Bottom tab bar — shown on the main "home base" screens for quick navigation
-const TAB_ICONS = {
-  home:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>`,
-  route: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>`,
-  log:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>`,
-  settings: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
-};
-
-const TAB_BAR_SCREENS = ['brief', 'reveal', 'quicklog', 'quicklog-subtopic', 'quicklogdone', 'complete', 'settings', 'midterm', 'pace', 'examplan'];
-
-function tabBarHTML() {
-  // Two destinations, not four. Log is an action (reached from Today), and
-  // Settings is a gear in the topbar — neither is a place you go.
-  const tabs = [
-    { id: 'brief',  label: 'Today', icon: TAB_ICONS.home,
-      match: ['brief', 'complete', 'quicklog', 'quicklog-subtopic', 'quicklogdone'] },
-    { id: 'reveal', label: 'Route', icon: TAB_ICONS.route, match: ['reveal'] },
-  ];
-  return `<div class="tab-bar">
-    ${tabs.map(t => `
-      <button class="tab-item ${t.match.includes(S.screen) ? 'active' : ''}" onclick="go('${t.id}')">
-        ${t.icon}
-        <span>${t.label}</span>
-      </button>`).join('')}
-  </div>`;
-}
 
 // ── THE MCAT TWIST ─ professor-vs-MCAT framing for every question ────────────
 // Rendered as a purple callout card after the explanation, if the key exists.
@@ -2188,6 +2189,132 @@ const CONTENT_MAP = [
 // this student's Orgo I teaches spectroscopy where plenty teach it in Orgo II.
 // The syllabus resolves which half a given student actually covers. That
 // judgment is Waypoint's; the tags underneath it are AAMC's.
+// ── WHERE TO STUDY IT ────────────────────────────────────────────────────────
+// Waypoint shows a student where they stand. These say where to go and learn
+// each part, in tools they already have for free.
+//
+// One switch per source. Khan's MCAT course was built with AAMC and funded
+// through 2026; the signs point to it continuing, but a source that goes away
+// should cost one line here, not a rewrite. With a source off, every panel
+// still reads correctly — it simply has one fewer line.
+const STUDY_SOURCES = { khan: true, anking: true };
+
+// AAMC's official prep, linked once for the whole app rather than per parcel:
+// it is a shop and a question bank, not a lesson on a topic.
+const AAMC_PREP_URL = 'https://students-residents.aamc.org/prepare-mcat-exam/prepare-mcat-exam';
+
+// ── Khan Academy, by foundational concept ───────────────────────────────────
+// Khan built its MCAT course with AAMC, around AAMC's ten foundational
+// concepts — the same ten CONTENT_MAP already records on every category. So a
+// category's Khan link is DERIVED from its concept rather than written out
+// thirty-one times: ten URLs to check instead of thirty-one to get wrong.
+//
+// SOURCE: Khan Academy's MCAT course, khanacademy.org/test-prep/mcat.
+// CHECKED in a browser on 2026-10-06, against the course's own unit list. No
+// check that runs here can confirm a slug — this machine cannot reach
+// khanacademy.org — so the date records a human having opened them, and that
+// is the only thing that ever could.
+//
+// Two were wrong at that reading. Concept 9 pointed at /social-inequality,
+// which is concept 10's unit: wrong on its own and, worse, a duplicate, so
+// two different parcels offered the same lesson and neither offered concept
+// 9's. CARS pointed at a stem that is not the unit's own address.
+//
+// Change a URL and the date beside it becomes a lie. Move it, or clear it, in
+// the same commit; `npm run check` prints both together so the pair is hard
+// to separate by accident.
+const KHAN_UNITS = {
+  1:  { title: 'Biomolecules',              url: 'https://www.khanacademy.org/test-prep/mcat/biomolecules' },
+  2:  { title: 'Cells',                     url: 'https://www.khanacademy.org/test-prep/mcat/cells' },
+  3:  { title: 'Organ systems',             url: 'https://www.khanacademy.org/test-prep/mcat/organ-systems' },
+  4:  { title: 'Physical processes',        url: 'https://www.khanacademy.org/test-prep/mcat/physical-processes' },
+  5:  { title: 'Chemical processes',        url: 'https://www.khanacademy.org/test-prep/mcat/chemical-processes' },
+  6:  { title: 'Processing the environment', url: 'https://www.khanacademy.org/test-prep/mcat/processing-the-environment' },
+  7:  { title: 'Behavior',                  url: 'https://www.khanacademy.org/test-prep/mcat/behavior' },
+  8:  { title: 'Individuals and society',   url: 'https://www.khanacademy.org/test-prep/mcat/individuals-and-society' },
+  9:  { title: 'Society and culture',       url: 'https://www.khanacademy.org/test-prep/mcat/society-and-culture' },
+  10: { title: 'Social inequality',         url: 'https://www.khanacademy.org/test-prep/mcat/social-inequality' },
+};
+const KHAN_CARS = { title: 'CARS practice questions', url: 'https://www.khanacademy.org/test-prep/mcat/critical-analysis-and-reasoning-skills-practice-questions' };
+const KHAN_COURSE = 'https://www.khanacademy.org/test-prep/mcat';
+// The day a person last opened every link above. Printed by the lock beside
+// the URLs it lists, so review is dated rather than remembered.
+const KHAN_CHECKED = '2026-10-06';
+
+// ── The AnKing MCAT deck, by AAMC content category ──────────────────────────
+// TODO(Drew): every value below is null and must stay null until the real tag
+// string is copied out of the deck. A wrong tag finds nothing and says nothing
+// about it, which is worse than showing no Anki line at all — so a guess here
+// is not a shortcut, it is a silent dead end.
+//
+// To fill these: in Anki, open Browse and expand the AnKing deck's tag tree
+// under its AAMC Content Outline branch. Copy each tag EXACTLY, including
+// case, separators and any numeric prefixes, and paste it beside its code.
+//
+// The 31 needed, in order:
+//   1A 1B 1C 1D   2A 2B 2C   3A 3B   4A 4B 4C 4D 4E   5A 5B 5C 5D 5E
+//   6A 6B 6C   7A 7B 7C   8A 8B 8C   9A 9B   10A
+const ANKING_TAGS = {
+  '1A': null, '1B': null, '1C': null, '1D': null,
+  '2A': null, '2B': null, '2C': null,
+  '3A': null, '3B': null,
+  '4A': null, '4B': null, '4C': null, '4D': null, '4E': null,
+  '5A': null, '5B': null, '5C': null, '5D': null, '5E': null,
+  '6A': null, '6B': null, '6C': null,
+  '7A': null, '7B': null, '7C': null,
+  '8A': null, '8B': null, '8C': null,
+  '9A': null, '9B': null,
+  '10A': null,
+};
+
+// Which AAMC categories a parcel covers.
+//
+// Derived, not written: AAMC_UNITS already carries, for all 140 units of the
+// outline, both the Waypoint topic it belongs to and its category code. That
+// is the reviewed link between the map and AAMC's structure, and reusing it
+// means this cannot drift from the thing the coverage model is built on.
+//
+// Two topics AAMC_UNITS does not reach, and why:
+//   orgo2  — AAMC does not split organic chemistry into a first and second
+//            course; Waypoint splits by class. So Org. chem II studies the
+//            same categories as Org. chem I.
+//   research — Research methods is a Scientific Inquiry and Reasoning Skill,
+//            tested across the sections rather than as a content category. It
+//            has no weight and no parcel, so it has no panel either.
+function topicCategories(topicId) {
+  if (topicId === 'cars') return ['CARS'];
+  const id = topicId === 'orgo2' ? 'orgo' : topicId;
+  const codes = new Set();
+  for (const u of AAMC_UNITS) if (u.topic === id && u.codes) {
+    for (const c of String(u.codes).split(/[ ,]+/)) if (c) codes.add(c);
+  }
+  const order = CONTENT_MAP.map(c => c.code);
+  return [...codes].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+}
+
+// The Khan units a parcel's categories fall under, de-duplicated — several
+// categories in one concept are one lesson unit, not three.
+function khanUnitsFor(codes) {
+  if (!STUDY_SOURCES.khan) return [];
+  if (codes.includes('CARS')) return [KHAN_CARS];
+  const out = [];
+  for (const code of codes) {
+    const cat = CONTENT_MAP.find(c => c.code === code);
+    const unit = cat && KHAN_UNITS[cat.concept];
+    if (unit && !out.some(u => u.url === unit.url)) out.push(unit);
+  }
+  return out;
+}
+
+// The Anki browser search for a parcel: its categories' tags, joined with or.
+// Null while the tags are unconfirmed, which is what keeps the panel honest.
+function ankingSearchFor(codes) {
+  if (!STUDY_SOURCES.anking || codes.includes('CARS')) return null;
+  const tags = codes.map(c => ANKING_TAGS[c]).filter(Boolean);
+  if (!tags.length) return null;
+  return tags.map(t => `tag:"${t}"`).join(' or ');
+}
+
 const AAMC_UNITS = [
   { name:"Amino Acids", topic:'orgo', sub:'amino-acids', disc:'BC OC', codes:'1A' },
   { name:"Protein Structure", topic:'mol-bio', sub:'protein-structure', disc:'BIO BC OC', codes:'1A' },
@@ -6384,10 +6511,32 @@ const HELD_RING = { fresh: 'k3', fading: 'k2', faded: 'k1' };
 // Home. Deliberately: a second one here would eventually disagree with it, and
 // two surfaces telling a student to practise different things is worse than
 // either choice on its own.
+// Which parcel to point at when there is no practice record to go on.
+//
+// Three tiers, largest first within each. A class you are in now is the one
+// where studying alongside it pays twice. Failing that, the biggest thing your
+// classes have already covered, which is review. Failing that, the biggest
+// thing still ahead, which is a preview — and for a student with no courses
+// yet, the only honest suggestion there is.
+function nextParcel() {
+  const byWeight = (a, b) => b.w - a.w;
+  const weighted = TOPICS.filter(t => t.w > 0 && t.course);
+  const taking = weighted.filter(t => S.courses.has(t.course) && S.courseStatus[t.course] === 'in-progress');
+  if (taking.length) return { topic: taking.sort(byWeight)[0], kind: 'taking' };
+  const covered = weighted.filter(t => S.courses.has(t.course));
+  if (covered.length) return { topic: covered.sort(byWeight)[0], kind: 'covered' };
+  const ahead = weighted.filter(t => !S.courses.has(t.course));
+  if (ahead.length) return { topic: ahead.sort(byWeight)[0], kind: 'ahead' };
+  return null;
+}
+
 function routeFocus() {
   if (!S.courses.size) return null;
-  const d = getDirectiveTopic();
-  if (!d || !d.topic.course) return null;
+  // With practice on, the recommender that drives it still chooses; with
+  // practice off there is no record to recommend from, so weight and state do.
+  const pick = PRACTICE ? getDirectiveTopic() : nextParcel();
+  const d = pick && (pick.topic ? pick : { topic: pick });
+  if (!d || !d.topic || !d.topic.course) return null;
   const t = d.topic;
   const course = COURSES.find(c => c.id === t.course);
   if (!course) return null;
@@ -6403,11 +6552,12 @@ function routeFocus() {
   // Read days rather than heldDisplayState, because that state reads "fresh"
   // from enrolment alone when there is no practice record at all, and this
   // sentence must never report sitting in a class as having practised.
-  const f = topicFreshness(t.id);
+  const f = PRACTICE ? topicFreshness(t.id) : null;
   const days = f ? f.days : null;
   const unpractised = days === null;
 
-  const practice = unpractised   ? 'Not practised yet.'
+  const practice = !PRACTICE     ? ''
+                 : unpractised   ? 'Not practised yet.'
                  : days === 0    ? 'Practised today.'
                  : days === 1    ? 'Practised yesterday.'
                  : days < 7      ? `Practised ${days} days ago.`
@@ -6415,13 +6565,21 @@ function routeFocus() {
 
   // Never "haven't practised" when they have — the line has to survive the
   // student having drilled it this morning.
-  const why = d.reason === 'retention'
-        ? `You covered this ${weeksAgo(d.days)} — worth holding on to.`
-        : taking
-          ? (unpractised ? "The largest parcel you're taking and haven't practised."
-                         : "The largest parcel you're taking.")
-          : (unpractised ? "The largest parcel your courses cover and you haven't practised."
-                         : 'The largest parcel your courses cover.');
+  const why = !PRACTICE
+        // Why this parcel, and nothing else. The instruction that used to
+        // finish each of these — "Study it alongside the class" — is the first
+        // thing the panel says when the button opens it, so it was being read
+        // twice in the space of two taps.
+        ? (d.kind === 'taking'  ? "The largest class you're taking now."
+         : d.kind === 'covered' ? 'The largest parcel your classes have covered.'
+         :                        'The largest parcel still ahead of you.')
+        : d.reason === 'retention'
+          ? `You covered this ${weeksAgo(d.days)} — worth holding on to.`
+          : taking
+            ? (unpractised ? "The largest parcel you're taking and haven't practised."
+                           : "The largest parcel you're taking.")
+            : (unpractised ? "The largest parcel your courses cover and you haven't practised."
+                           : 'The largest parcel your courses cover.');
 
   // The concept's line named a course code — "PSYC 111" — and the app has never
   // collected one, so this says what it actually knows. Where the course and the
@@ -6471,6 +6629,7 @@ function routeMapHTML(opts) {
 
       const tex = cars ? 'pl-water' : fill >= 1 ? 'pl-done' : fill > 0 ? 'pl-take' : 'pl-ahead';
       const next = focus && focus.topic.id === t.id;
+      const open = !flat && S._mapOpen === t.id;
       const small = Math.min(pw, ph) < 88;
       const ring = st && st !== 'unpinned' && pw >= 34 && ph >= 34
         ? ` pl-held ${small ? 'sm ' : ''}${HELD_RING[st]}` : '';
@@ -6489,7 +6648,7 @@ function routeMapHTML(opts) {
       const click  = flat ? '' : ` onclick="toggleMapTile('${t.id}')"`;
       const expand = flat ? '' : ` aria-expanded="${S._mapOpen === t.id}"`;
 
-      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}" title="${tip}"${click}${expand}
+      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}${open ? ' pl-open' : ''}" title="${tip}"${click}${expand}
           style="left:${b.x.toFixed(3)}%;top:${(b.y / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;width:${b.w.toFixed(3)}%;height:${(b.h / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;">
           ${named ? `<span class="pl-name" data-full="${t.name}" data-short="${mapName(t)}">${t.name}</span>${sub ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}${next && ph >= 46 ? '<span class="pl-flag">next</span>' : ''}
         </${tag}>`;
@@ -6524,9 +6683,56 @@ function routeMapHTML(opts) {
     </div></div>${detail}${foot}</div>`;
 }
 
-// What one parcel is: its name, its share, the class that covers it, and where
-// the student stands on it. Every parcel has this, including the empty ones and
-// CARS — previously only a topic with a freshness record could be opened at all.
+// ── THE STUDY PANEL ─────────────────────────────────────────────────────────
+// What one parcel is, and where to go and learn it. Tapping a parcel opens
+// this under the sheet; tapping it again, or another parcel, moves it. One
+// panel at a time, no modal, no second place to close.
+//
+// Waypoint's job ends at the door of the tool that teaches the thing. These
+// are plain labelled links to free material a student already has access to,
+// with no affiliate or tracking parameters on them.
+
+// Where students go from the map. Without practice data this is the only
+// signal of what they do next, and it is the validation-season question the
+// whole redesign raises: do they use the map to go and study, and with what.
+//
+// Three props, no more: which tool, which parcel, and what state that parcel
+// was in when they left. No identifiers, and nothing that is not already on
+// the screen they clicked.
+function trackStudyLink(source, topicId) {
+  const t = TOPICS.find(x => x.id === topicId);
+  const covered = !!(t && t.course && S.courses.has(t.course));
+  const state = !covered ? 'ahead'
+    : S.courseStatus[t.course] === 'in-progress' ? 'taking' : 'finished';
+  if (window.plausible) plausible('study_link', { props: { source, parcel: topicId, state } });
+}
+
+// A twist belonging to this parcel: the first question on the topic that has
+// one. Reading only here — no question attached, no answer to pick.
+function twistForTopic(topicId) {
+  for (const q of QUESTIONS) {
+    if (q.topic !== topicId) continue;
+    const t = twistTextFor(q);
+    if (t) return t;
+  }
+  return '';
+}
+
+// Anki's search box takes the string; this just hands it over.
+async function copyAnkiSearch(btn, search) {
+  let ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(search);
+      ok = true;
+    }
+  } catch (e) { /* clipboard denied — the string is on screen either way */ }
+  if (btn) {
+    btn.textContent = ok ? 'Copied' : 'Select it above';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  }
+}
+
 function parcelDetailHTML(tid) {
   const t = TOPICS.find(x => x.id === tid);
   if (!t) return '';
@@ -6534,41 +6740,82 @@ function parcelDetailHTML(tid) {
   const course  = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
   const covered = !!(t.course && S.courses.has(t.course));
   const taking  = covered && S.courseStatus[t.course] === 'in-progress';
+  const cname   = course ? course.name : 'the course';
 
-  // The same sentence machinery the Route's focus line uses, so one topic never
-  // reads two ways on one screen.
-  const f    = covered ? topicFreshness(tid) : null;
-  const days = f ? f.days : null;
-  const practice = cars ? '' : !covered ? ''
-    : days === null ? 'Not practised yet.'
-    : days === 0    ? 'Practised today.'
-    : days === 1    ? 'Practised yesterday.'
-    : days < 7      ? `Practised ${days} days ago.`
-    :                 `Practised ${weeksAgo(days)}.`;
+  // One sentence of standing, and one that says what to do about it.
+  //
+  // Neither repeats the other, and neither repeats the header. Where the
+  // course and the parcel share a name — Psychology, Psychology — naming both
+  // reads as a stutter, the same way it did on the Route's focus line; and
+  // "Not covered by any class. No class covers this." was the same sentence
+  // twice with the words in a different order.
+  const same = !!course && course.name.toLowerCase() === t.name.toLowerCase();
+  const standing = cars ? 'Not covered by any class.'
+    : covered ? (same ? `${taking ? 'In progress' : 'Finished'}.` : `${cname}, ${taking ? 'in progress' : 'finished'}.`)
+    : `Not on your route yet.`;
+  const framing = cars    ? 'Practise reading here.'
+    : taking  ? 'Study it alongside the class.'
+    : covered ? 'Covered in class. Review it here when you start MCAT prep.'
+    :           `Covered when you take ${cname}. Preview it here if you like.`;
 
-  const standing = cars
-      ? 'Built by reading practice, not courses. Not on your route.'
-    : covered
-      ? `${course ? course.name : 'Your course'}, ${taking ? 'in progress — counts half' : 'finished — counts whole'}.`
-      : `Covered when you take ${course ? course.name : 'the course'}.`;
+  const codes = topicCategories(tid);
+  const khan  = khanUnitsFor(codes);
+  const anki  = ankingSearchFor(codes);
 
-  // The held layer's action keeps the gate it has always had.
-  const st = f && freshnessActive() ? heldDisplayState(f) : null;
-  const n  = st && st !== 'fresh' ? repinCount(tid) : 0;
-  const action = st && st !== 'fresh'
-    ? `<button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''}</button>`
-    : !covered && !cars
-      ? `<button onclick="go('courses')" class="link-btn" style="margin-top:4px;min-height:0;padding:4px 0;">Update my courses</button>`
-      : '';
+  const line = (label, href, note) => `
+          <a href="${href}" target="_blank" rel="noopener" onclick="trackStudyLink('${href.includes('khan') ? 'khan' : 'aamc'}','${tid}')"
+             style="display:block;font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;padding:7px 0;">${label}</a>${note || ''}`;
+
+  // The unit's own title, as Khan prints it, then where it is. The template it
+  // replaces — "Watch the ${title} lessons on Khan Academy" — read as a
+  // template: "Watch the cells lessons", "Watch the processing the environment
+  // lessons". Lowercasing a proper unit name turned a heading into a fragment,
+  // and the same sentence over and over turned ten real destinations into one
+  // repeated gesture. A title and its place is how a person would say it.
+  const khanLines = khan.map(u => line(`${u.title}, on Khan Academy`, u.url)).join('');
+
+  // The search string is shown, not just copied: a student whose clipboard is
+  // blocked can still select it, and seeing it is how they learn the deck is
+  // tagged by AAMC category at all.
+  const ankiBlock = anki ? `
+          <div style="padding:7px 0;">
+            <p style="font-size: var(--fs-13);font-weight:600;color:var(--ink-2);margin:0 0 6px;">Study it in the AnKing MCAT deck</p>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <code style="flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font-size: var(--fs-11);color:var(--muted);background:var(--wash);padding:7px 8px;border-radius: var(--r-ctl);">${esc(anki)}</code>
+              <button onclick="copyAnkiSearch(this, ${JSON.stringify(anki).replace(/"/g, '&quot;')}); trackStudyLink('anking','${tid}')"
+                      style="flex:none;min-height:36px;padding:0 12px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-11);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">Copy</button>
+            </div>
+            <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:6px 0 0;">In Anki, open Browse, paste this, select all, and unsuspend.</p>
+          </div>` : '';
+
+  const twist = twistForTopic(tid);
+  const twistBlock = twist ? `
+          <div style="border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:10px 12px;margin-top:10px;">
+            <p style="font-size: var(--fs-13);font-weight:600;color:var(--ink);margin:0 0 4px;">In class vs. on the MCAT</p>
+            <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">${twist}</p>
+          </div>` : '';
+
+  // With practice on, the panel is also a way into a session on this parcel.
+  const n = PRACTICE ? sessionSize(tid, null) : 0;
+  const practiceLine = PRACTICE && n
+    ? `<button onclick="startRouteFocus('${tid}')" class="link-btn" style="padding:7px 0;">Practise ${n} question${n !== 1 ? 's' : ''} on it</button>`
+    : '';
+
+  const update = !covered && !cars
+    ? `<button onclick="go('courses')" class="link-btn quiet" style="padding:7px 0;">Update my courses</button>`
+    : '';
 
   return `
-        <div style="margin-top:10px;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;">
+        <div id="parcel-detail" style="margin-top:10px;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;">
           <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;">
             <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${t.name}</span>
             <span style="font-size: var(--fs-11);color:var(--faint);white-space:nowrap;">${t.w}% of the exam</span>
           </div>
-          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0;">${standing}${practice ? ' ' + practice : ''}</p>
-          ${action}
+          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0 0 2px;">${standing} ${framing}</p>
+          ${khanLines}${ankiBlock}${practiceLine}
+          ${line('AAMC\'s own official prep', AAMC_PREP_URL)}
+          ${update}
+          ${twistBlock}
         </div>`;
 }
 
@@ -6622,8 +6869,18 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitS
 
 // A map needs a key. Three states, in the order a route fills them.
 function toggleMapTile(tid) {
-  S._mapOpen = (S._mapOpen === tid) ? null : tid;
+  const opening = S._mapOpen !== tid;
+  S._mapOpen = opening ? tid : null;
   render();
+  // The panel renders under the sheet, which is above the button that opens
+  // it and above any parcel low on the map — so on a phone it can open
+  // entirely off-screen. Bring it to the reader rather than making them hunt.
+  if (opening) {
+    const panel = document.getElementById('parcel-detail');
+    if (panel && panel.scrollIntoView) {
+      panel.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    }
+  }
 }
 
 function mapLegendHTML(live) {
@@ -7183,6 +7440,10 @@ function practiceSessions() {
 }
 
 function freshnessActive() {
+  // The held layer IS practice data: contour rings, the holding line, the
+  // standing line, the key's practised rows and the re-pin action all hang off
+  // this one answer.
+  if (!PRACTICE) return false;
   const f = freshnessSummary();
   if (!f.total) return false;
   if (practiceSessions() < HELD_MIN_SESSIONS) return false;
@@ -8237,7 +8498,7 @@ function screenExamPlan() {
       ${rows}
 
       <div style="height:16px;"></div>
-      ${plan.today ? `<button class="btn btn-primary" onclick="startMidtermDrill('${plan.today.topicId}', '${plan.today.subId}')">Start today's unit</button>` : ''}
+      ${PRACTICE && plan.today ? `<button class="btn btn-primary" onclick="startMidtermDrill('${plan.today.topicId}', '${plan.today.subId}')">Start today's unit</button>` : ''}
       <button class="btn btn-ghost" onclick="startMidtermSetup()">Edit this plan</button>
     </div>`;
 }
@@ -9574,110 +9835,30 @@ function doneForTodayHTML() {
               '', { titleSize: 'var(--fs-17)' }) + keepGoingLink;
 }
 
-function todayCardHTML() {
-  // The weekly read owns the slot on Sunday and Monday — still one card, one action.
-  const brief = briefCardHTML();
-  if (brief) return brief;
 
-  // Today's work is done: the slot becomes the reward rather than another demand.
-  // The Twist is the best thing Waypoint has to say, so it earns the space here
-  // instead of competing with the CTA it used to sit above.
-  const done = doneForTodayHTML();
-  if (done) return done;
-
-  const cta = (label, onclick) =>
-    `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="${onclick}">${label}</button>`;
-  const reason = (text, color) =>
-    `<p style="font-size: var(--fs-13);color:${color};line-height:1.55;margin:0 0 16px;">${text}</p>`;
-
-  if (S.courses.size === 0) {
-    return card('var(--green)', '', 'Add the classes you\'re taking',
-                reason('That\'s all it takes to see your route.', 'var(--faint)'),
-                cta('Choose my courses', "go('courses')"), { tint: 'var(--green-bright)' });
-  }
-
-  // Reached only when the brief owns no slot and today's work is not yet done,
-  // but the exclusion is passed regardless: it costs nothing and closes the
-  // gap for good.
-  const p = todayPick(practicedToday() ? topicsSeenToday() : null);
-  if (!p) {
-    return card('var(--green)', '', 'A session from what you know',
-                reason('Drawn from the courses on your route.', 'var(--faint)'),
-                cta('Start practising', 'startSession()'), { tint: 'var(--green-bright)' });
-  }
-
-  const link = p.link
-    ? `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--faint);cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-bottom:-12px;-webkit-tap-highlight-color:transparent;" onclick="${p.link.onclick}">${p.link.label}</button>`
-    : '';
-  // The button says what happens, with the count the title no longer carries.
-  const n = p.n || sessionSize((p.topic && p.topic.id) || '', null) || 5;
-  return card(p.accent, p.label, p.title, reason(p.reason, 'var(--muted)'),
-              cta(`Practice ${n} ${lower(p.title)} question${n !== 1 ? 's' : ''}`, p.onclick) + link);
+// What Today was still carrying that the Route was not. The syllabus offer and
+// the new-term prompt are about the classes on the map, so they belong under
+// the list of them; the term card is about the term that list is grouped by.
+function routeFootHTML() {
+  const syllabus = liveCourses().length
+    ? (unmappedCourses().length
+      ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
+      : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus</button>`)
+    : (S.courses.size
+      ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking</button>`
+      : '');
+  const sem = S.semStart ? '' : `<button class="link-btn full quiet" onclick="go('pace')">Set your semester start</button>`;
+  const card = termCardHTML();
+  if (!syllabus && !sem && !card) return '';
+  return `      <div class="section-divider"></div>
+      ${card}
+      ${syllabus}
+      ${sem}`;
 }
 
-// Today was one card and three links, with no trace of the thing the product
-// is. This is the student's own sheet at thumbnail size: the shape of the exam,
-// what they have covered of it, and the parcel they are being pointed at —
-// one tap from the Route itself. The figure rides on its title rail, where the
-// sheet keeps it, which is what the Route chip in the topbar was standing in
-// for.
-function todaySheetHTML() {
-  if (!S.courses.size) return '';
-  const cov = coverage(S.courses, true);
-  if (cov <= 0) return '';
-  const year = S.year ? `Your route, ${S.year} year` : 'Your route';
-  return `
-      <button onclick="go('reveal')" aria-label="Your route" style="display:block;width:100%;text-align:left;background:none;border:none;padding:0;margin:0 0 18px;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
-        <span class="sheet" style="display:block;">
-          <span class="sheet-in" style="display:block;">
-            <span class="sheet-title" style="display:flex;"><i>${year}</i><b><small>about</small>${Math.round(cov / 5) * 5}%<small>covered</small></b></span>
-            ${routeMapHTML({ idPrefix: 'today', frame: false, names: false, flat: true })}
-          </span>
-        </span>
-      </button>`;
-}
-
-function screenBrief() {
-  return `
-    <div class="screen">
-      <div class="brief-topbar">
-        <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
-          <div style="display:flex;align-items:center;justify-content:center;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/>
-            </svg>
-          </div>
-          <span class="disp" style="font-size: var(--fs-15);font-weight:600;color:var(--ink);">Waypoint</span>
-        </button>
-        <div style="display:flex;align-items:center;gap:12px;">
-          ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size: var(--fs-13);font-weight:600;">${S.streak}</span></div>` : ''}
-          <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
-          </button>
-        </div>
-      </div>
-
-      ${todaySheetHTML()}
-      ${todayCardHTML()}
-      ${termCardHTML()}
-
-      <button class="link-btn full" onclick="go('quicklog')">Practice a specific topic</button>
-      <!-- The syllabus offer moved to the foot of the check screen last sprint,
-           and the check screen is one a simple-picker student never sees — which
-           left the word "syllabus" nowhere on the Route or on Home. Same entry,
-           same words, shown only while there is a class left to map, so it goes
-           away by itself once there is nothing to offer. -->
-      ${liveCourses().length
-        ? (unmappedCourses().length
-          ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
-          : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus</button>`)
-        : (S.courses.size
-          ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking</button>`
-          : '')}
-      <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
-    </div>`;
-}
-
+// Today is retired and "brief" routes to the Route. This stays so a direct
+// call from anywhere still paints something real rather than an empty shell.
+function screenBrief() { return screenReveal(); }
 
 function screenLanding() {
   const ex = exampleRoute();
@@ -9706,7 +9887,7 @@ function screenLanding() {
         sentence is its own inline-block, so the break lands where the thought
         does and each half still wraps on its own at any width.
    --><span style="display:inline-block;">You know where you're going.</span> <span style="display:inline-block;">This is where you are.</span></h1>
-      <p style="font-size: var(--fs-17);color:var(--muted);line-height:1.55;margin-bottom:24px;letter-spacing:-0.01em;">Waypoint maps the classes you've taken onto the real MCAT.</p>
+      <p style="font-size: var(--fs-17);color:var(--muted);line-height:1.55;margin-bottom:24px;letter-spacing:-0.01em;">Waypoint shows where you stand on the MCAT from the classes you've taken, and where to study each part.</p>
 
       <!-- The example route, still computed at runtime from TOPICS through the
            same functions a real student's route goes through — so a change to
@@ -9725,7 +9906,7 @@ function screenLanding() {
       <button class="btn btn-primary" onclick="go('year')" style="font-size: var(--fs-15);font-weight:600;letter-spacing:-0.01em;">See where you are</button>
       <p style="text-align:center;font-size: var(--fs-13);color:var(--dim);margin-top:12px;">Free, and about two minutes</p>
       <button onclick="openAbout()" class="link-btn" style="margin:var(--s-3) auto 0;">What is Waypoint? Why I built it</button>
-      <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:24px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
+      <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:24px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC. Waypoint is not affiliated with Khan Academy or AnKing.</p>
     </div>`;
 }
 
@@ -9750,10 +9931,10 @@ function screenAbout() {
 
       ${para(`Hey — I'm Drew. I'm a sophomore and a neuroscience major, and I'm premed, just like you. I built Waypoint because I couldn't find the thing I needed, so I made it myself.`)}
       ${para(`Here's the honest origin story. I wanted to start getting ready for the MCAT early — not cram, just build a real foundation while the material was actually in front of me in class. But everywhere I looked, the advice was the same: <em style="color:var(--muted);">"It's too early. Wait until junior year."</em>`)}
-      ${para(`I understand why people say that — you shouldn't be grinding full-length practice exams as a sophomore. But "just wait" never sat right with me. I'm already taking Bio. I'm already taking Chem. That <strong style="color:var(--ink);">is</strong> MCAT material. It felt wrong to ignore an advantage sitting right in front of me — and I really believe that if I learn this stuff a little more deeply the first time, junior year becomes review instead of panic.`)}
+      ${para(`I understand why people say that — nobody should be grinding full-length exams as a sophomore. But "just wait" never sat right with me. I'm already taking Bio. I'm already taking Chem. That <strong style="color:var(--ink);">is</strong> MCAT material. It felt wrong to ignore an advantage sitting right in front of me — and I really believe that if I learn this stuff a little more deeply the first time, junior year becomes review instead of panic.`)}
       ${para(`So Waypoint is the tool I wished existed.`)}
-      ${para(`It maps the classes you're already taking onto the MCAT, so you can see honestly how much of the exam your coursework already covers. It shows you how the MCAT will bend what your professor is teaching — because the exam tests the <em style="color:var(--muted);">consequence</em>, not just the definition — and it lets you practice that gap a few minutes at a time, on the exact topics you're in right now.`)}
-      ${para(`It's not a cram tool, and it's not trying to replace the big question banks you'll use junior year. It's for the two years <em style="color:var(--muted);">before</em> that — the stretch where you're motivated but everyone tells you there's nothing to do yet. The goal is simple: by the time you open a prep book, a good chunk of it already feels familiar, and you never had to do a panic death-march to get there. Mostly, I want the whole thing to feel a little less scary and a little more in your control.`)}
+      ${para(`It maps the classes you're already taking onto the MCAT, so you can see honestly how much of the exam your coursework already covers. It shows you how the MCAT will bend what your professor is teaching — because the exam tests the <em style="color:var(--muted);">consequence</em>, not just the definition — and it points you at the free material that teaches each part, on the exact topics you're in right now.`)}
+      ${para(`It's not a cram tool, and it's not trying to replace the banks you'll work through junior year. It's for the two years <em style="color:var(--muted);">before</em> that — the stretch where you're motivated but everyone tells you there's nothing to do yet. The goal is simple: by the time you open a prep book, a good chunk of it already feels familiar, and you never had to do a panic death-march to get there. Mostly, I want the whole thing to feel a little less scary and a little more in your control.`)}
       ${para(`A few honest things, because trust matters to me. I'm a student, not a company. I build this between classes, EMT shifts, and my work as an RBT — it's a side project, not a startup trying to sell you anything. The coverage numbers come from the real AAMC exam weighting and a standard premed course sequence, and I say so plainly inside the app; they're a typical course load, not a survey of students. It's free and there's nothing to buy. Signing in with your email keeps your route safe — your courses, your coverage, and every session you've done — and lets it follow you from your laptop to your phone.`)}
       ${para(`I just needed this to exist. I hope it helps.`)}
 
@@ -9840,7 +10021,7 @@ function screenSettings() {
       <div class="section-divider"></div>
 
       <p class="label" style="margin-bottom:8px;">Reset</p>
-      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Clear your courses, streak, and all practice history. This can't be undone — back up first if you want a copy.</p>
+      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Clear your courses and everything Waypoint has saved. This can't be undone — back up first if you want a copy.</p>
       <button class="btn btn-ghost" onclick="resetProgress()">Start fresh</button>
 
       <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:32px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool, not affiliated with or endorsed by the AAMC.</p>
@@ -10317,13 +10498,14 @@ function screenSources() {
       ${p(`<strong style="color:var(--ink-2);">What's ours:</strong> AAMC tags a discipline, not a semester. So both halves of a two-semester sequence get the whole discipline — Organic Chemistry I and II reach the same topics, and your syllabus decides which half you actually cover. Schools split sequences differently, and guessing your school's split would be a guess presented as a fact.`)}
       ${p(`<strong style="color:var(--ink-2);">How we checked:</strong> the outline was transcribed twice, independently, without the second pass seeing the first. Both produced the same ${CONTENT_MAP.reduce((n, c) => n + c.topics.length, 0)} listings with the same tags. That rules out a slip in the copying; it doesn't rule out both passes misreading the same thing the same way.`)}
       ${p(`<strong style="color:var(--ink-2);">What's missing:</strong> content categories 5E and 10A are truncated in the sources we could read, so sociology and part of thermodynamics are short by an unknown amount. The tags used are the ones printed beside each topic; AAMC also tags individual subtopics, which this doesn't capture — that's why no unit is named for nomenclature. Statistics has no AAMC discipline tag at all, so its units remain Waypoint's own.`)}
-      ${p(`Many units have no practice questions behind them yet. Those can be mapped in a syllabus and no drill is offered for them — a topic being on the exam and Waypoint being able to quiz you on it are two different things, and the app shouldn't blur them.`)}
+      ${PRACTICE ? p(`Many units have no practice questions behind them yet. Those can be mapped in a syllabus and no drill is offered for them — a topic being on the exam and Waypoint being able to quiz you on it are two different things, and the app shouldn't blur them.`) : ''}
       ${p(`Source: ${A(AAMC_OUTLINE, 'AAMC, "What\'s on the MCAT Exam?"')} — the content outline and its per-section downloads.`)}
 
       ${h('Course requirements')}
       ${p(`Waypoint's Required / Recommended / MCAT-tested tags describe the common pattern across medical schools, not any one school's rules. AAMC's own framing: requirements vary school to school, and some have moved to competency-based admissions with no specific course list. Check your target schools directly.`)}
       ${p(`Source: ${A(AAMC_MSAR, 'AAMC MSAR')} — its Premed Course Requirements chart lists required and recommended coursework school by school, updated annually.`)}
 
+      ${PRACTICE ? `
       ${h('Covered vs held')}
       ${p(`Covered means your coursework has taught it. Held means you have practised it recently enough that Waypoint has evidence you still have it — it counts topics you have actually practised within the fresh window, nothing more. Being enrolled in a class is not evidence: a topic from a class you are taking now, but have never practised here, is shown as not yet checked and is never counted as held.`)}
       ${p(`Held is a share of what you have covered, not a second score, and neither number predicts how you would do on the exam. Waypoint has no basis for that and does not claim it.`)}
@@ -10332,9 +10514,9 @@ function screenSources() {
       ${p(`From when you last practised a topic and how accurately. Fresh under ${FRESH.freshDays.normal} days, fading to ${FRESH.fadeDays.normal}, faded beyond; answering at ${Math.round(FRESH.strongPct * 100)}% or better over at least ${FRESH.strongMin} questions stretches those to ${FRESH.freshDays.strong} and ${FRESH.fadeDays.strong}.`)}
       ${p(`<strong style="color:var(--ink-2);">Those day counts are Waypoint's judgment, not a published forgetting curve.</strong> A semester is about four months, and a topic untouched since last term deserves a second look.`)}
       ${p(`Waypoint never estimates a retention percentage — you will never see "you have retained 72% of Genetics", because the science does not support a number that precise about one person. Only fresh, fading, faded or not yet checked, with the reason attached.`)}
-      ${p(`None of it appears until you have practised at least ${HELD_MIN_TOPICS} topics across at least ${HELD_MIN_SESSIONS} sessions, and not while the only topics that read fresh are classes you are taking but have not practised.`)}
+      ${p(`None of it appears until you have practised at least ${HELD_MIN_TOPICS} topics across at least ${HELD_MIN_SESSIONS} sessions, and not while the only topics that read fresh are classes you are taking but have not practised.`)}` : ''}
 
-      <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:32px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
+      <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:32px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC. Waypoint is not affiliated with Khan Academy or AnKing.</p>
 
       <button class="btn btn-ghost" style="margin-top:20px;" onclick="backFromSources()">Back</button>
     </div>`;
@@ -10757,6 +10939,19 @@ function screenReveal() {
   //
   // #route-map keeps its name the way #cov-num used to: the first-reveal
   // animation finds it there.
+  // The gear lived in Today's topbar. With Today retired and no tab bar, the
+  // Route carries the only chrome the app has left: its name, and the way to
+  // Settings. On desktop the rail already provides both, so this hides there.
+  const bar = `      <div class="brief-topbar rt-bar">
+        <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/></svg>
+          <span class="disp" style="font-size: var(--fs-15);font-weight:600;color:var(--ink);">Waypoint</span>
+        </button>
+        <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
+        </button>
+      </div>`;
+
   const head = cov > 0 ? `      <p class="label">Your route</p>
       <h1 style="margin:0 0 8px;"><span id="reveal-subhead" style="display:block;font-family:inherit;font-size: var(--fs-24);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.02em;">${subhead}</span></h1>
       <!-- The figure moved onto the sheet's own title rail, where it labels the
@@ -10780,9 +10975,21 @@ function screenReveal() {
   // its own; the block that points at it stays with the prose, which is where
   // it belongs at both widths.
   const map = `      <div class="rt-sheet" style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>`;
-  const focusBlock = focus ? `      <p class="focus">${focus.detail}</p>
+  // Only one parcel is being talked about at a time. Open Physiology and the
+  // Route used to go on describing Psychology underneath it — a line, a button
+  // and a reason, all about a parcel the student had just navigated away from
+  // on the map. The open panel is the more specific answer and it is the one
+  // the student asked for, so the focus block stands down while it is up.
+  //
+  // The dashed outline and the "next" flag stay on the map throughout. They
+  // are the map's own annotation rather than a second description, and they
+  // are how a student finds their way back to the recommendation after
+  // looking around. Closing the parcel brings the block back.
+  const focusBlock = focus && !S._mapOpen ? `      <p class="focus">${focus.detail}</p>
       <div style="margin-top:18px;margin-bottom:8px;">
-        <button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>
+        ${PRACTICE
+          ? `<button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>`
+          : `<button class="btn btn-primary" onclick="toggleMapTile('${focus.topic.id}')">Study ${lower(focus.topic.name)}</button>`}
         <p class="focus-why">${focus.why}</p>
       </div>` : '';
 
@@ -10837,7 +11044,7 @@ function screenReveal() {
   // It stays as the fallback, because the focus button is not always there: a
   // route with every candidate dismissed has no next parcel, and that student
   // still needs a way in.
-  const cta = focus ? '' : `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} ${first ? 'style="margin-bottom:16px;"' : ''} onclick="startSession()">${ctaLabel}</button>`;
+  const cta = (focus || !PRACTICE) ? '' : `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} ${first ? 'style="margin-bottom:16px;"' : ''} onclick="startSession()">${ctaLabel}</button>`;
 
   // "Share my progress" waits for progress: the same two sessions held waits for
   // (practiceSessions). Four questions in, there is a route to look at but no
@@ -10850,9 +11057,10 @@ function screenReveal() {
 
   return `
     <div class="screen rt">
+${bar}
 ${head}
 
-${[map, focusBlock, '      ' + milestone, ring, ...middle].filter(Boolean).join('\n\n')}
+${[map, focusBlock, '      ' + milestone, ring, ...middle, routeFootHTML()].filter(Boolean).join('\n\n')}
 ${tail}
     </div>`;
 }
@@ -11436,7 +11644,18 @@ function trackScreen(screen) {
   plausible(name);
 }
 
+// Screens that exist only to run a session. With practice off they are
+// unreachable, and a saved S.screen or a stale link lands on the Route rather
+// than on something that cannot work.
+const PRACTICE_SCREENS = ['question', 'complete', 'quicklog', 'quicklog-subtopic', 'quicklogdone'];
+
+// Today was a second home for a product with one. With the practice card gone
+// it held a thumbnail of the map, two links and a term card — a smaller copy of
+// the screen beside it. Its survivors moved to the Route, and "brief" now means
+// the Route, so every caller that said "back to Home" still lands somewhere.
 function go(screen) {
+  if (screen === 'brief') screen = 'reveal';
+  if (!PRACTICE && PRACTICE_SCREENS.includes(screen)) screen = 'reveal';
   trackScreen(screen);
   if (screen !== 'terms') S._termPage = 0;        // the grid always opens on the recent terms
   // The picker is reachable from onboarding, from Home and from the Route, and
@@ -11450,6 +11669,10 @@ function go(screen) {
   // of not answering, which is allowed.
   S._whenOpen = null;
   S._whenMore = false;
+  // An open parcel belongs to the map it was opened on, and while one is open
+  // the Route hides its focus line. Leaving it set would mean coming back to
+  // the Route to find the line gone and no visible reason why.
+  S._mapOpen = null;
   S.screen = screen;
   render();
 }
@@ -11954,7 +12177,7 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   const myTopics    = TOPICS.filter(t => t.course && S.courses.has(t.course));
   const totalTopics = TOPICS.filter(t => t.course).length;
   const streak = S.streak;
-  const isStreak = variant === 'streak' && streak >= 7;
+  const isStreak = PRACTICE && variant === 'streak' && streak >= 7;
   // The term card is offered only inside its window, and the window can close
   // between the render that offered it and the tap. Falling back to the route
   // card is better than painting a term that has stopped being this one.
@@ -12001,7 +12224,7 @@ async function shareCoverageCard(variant = 'coverage', btn) {
 
   ctx.fillStyle = tok('--muted');
   ctx.font = '500 28px "Public Sans", sans-serif';
-  ctx.fillText(isTerm ? snap.label : isStreak ? 'My study streak' : 'My MCAT prep route', 70, 152);
+  ctx.fillText(isTerm ? snap.label : 'My MCAT prep route', 70, 152);
 
   // The coverage card is the map now — the same hero the Route shows, painted by
   // the same layout function, so a share card can't show a different exam from
@@ -12535,13 +12758,9 @@ function render() {
   const pct = progressPct();
   html = (pct === null ? '' : `<div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`) + html;
 
-  const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
-  if (showTabBar) {
-    html += tabBarHTML();
-    el.classList.add('has-tabbar');
-  } else {
-    el.classList.remove('has-tabbar');
-  }
+  // No tab bar. Two tabs that both showed the map was the busyness this
+  // redesign keeps removing; the Route is the product, Settings is a gear.
+  el.classList.remove('has-tabbar');
 
   el.innerHTML = html;
 
@@ -12566,6 +12785,7 @@ function render() {
   if (S._firstReveal && !S._revealAnimated && S.screen === 'reveal') playFirstReveal();
   else animateCoverageRing();
 
+  document.body.classList.toggle('no-practice', !PRACTICE);
   // The Route is the one screen with two columns, so it is the one screen that
   // asks for more than the reading column's width.
   el.classList.toggle('app-wide', S.screen === 'reveal');
@@ -12608,9 +12828,9 @@ window.onunhandledrejection = function(event) {
 try { captureAuthRedirect(); } catch(e) { console.warn('[Waypoint] auth redirect ignored:', e); }
 
 load();
-// Route: returning user with session history → brief; returning without history → reveal; new user → landing
+// Route: anyone with courses lands on the map; a new visitor gets the landing.
 if (S.courses.size > 0) {
-  S.screen = S.sessionHistory.length > 0 ? 'brief' : 'reveal';
+  S.screen = 'reveal';
   if (window.plausible) plausible('app_open');
 }
 // The boot screen is set here rather than through go(), so the funnel's first
