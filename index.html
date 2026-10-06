@@ -2208,11 +2208,19 @@ const AAMC_PREP_URL = 'https://students-residents.aamc.org/prepare-mcat-exam/pre
 // thirty-one times: ten URLs to check instead of thirty-one to get wrong.
 //
 // SOURCE: Khan Academy's MCAT course, khanacademy.org/test-prep/mcat.
-// UNVERIFIED as written — the build machine cannot reach khanacademy.org, so
-// these slugs come from knowledge of the course and not from opening them.
-// `npm run check` prints every one for review; open each before shipping.
-// The two least certain are concepts 9 and 10, whose units have been renamed
-// at least once.
+// CHECKED in a browser on 2026-10-06, against the course's own unit list. No
+// check that runs here can confirm a slug — this machine cannot reach
+// khanacademy.org — so the date records a human having opened them, and that
+// is the only thing that ever could.
+//
+// Two were wrong at that reading. Concept 9 pointed at /social-inequality,
+// which is concept 10's unit: wrong on its own and, worse, a duplicate, so
+// two different parcels offered the same lesson and neither offered concept
+// 9's. CARS pointed at a stem that is not the unit's own address.
+//
+// Change a URL and the date beside it becomes a lie. Move it, or clear it, in
+// the same commit; `npm run check` prints both together so the pair is hard
+// to separate by accident.
 const KHAN_UNITS = {
   1:  { title: 'Biomolecules',              url: 'https://www.khanacademy.org/test-prep/mcat/biomolecules' },
   2:  { title: 'Cells',                     url: 'https://www.khanacademy.org/test-prep/mcat/cells' },
@@ -2222,11 +2230,14 @@ const KHAN_UNITS = {
   6:  { title: 'Processing the environment', url: 'https://www.khanacademy.org/test-prep/mcat/processing-the-environment' },
   7:  { title: 'Behavior',                  url: 'https://www.khanacademy.org/test-prep/mcat/behavior' },
   8:  { title: 'Individuals and society',   url: 'https://www.khanacademy.org/test-prep/mcat/individuals-and-society' },
-  9:  { title: 'Social inequality',         url: 'https://www.khanacademy.org/test-prep/mcat/social-inequality' },
+  9:  { title: 'Society and culture',       url: 'https://www.khanacademy.org/test-prep/mcat/society-and-culture' },
   10: { title: 'Social inequality',         url: 'https://www.khanacademy.org/test-prep/mcat/social-inequality' },
 };
-const KHAN_CARS = { title: 'Critical analysis and reasoning', url: 'https://www.khanacademy.org/test-prep/mcat/critical-analysis-and-reasoning-skill' };
+const KHAN_CARS = { title: 'CARS practice questions', url: 'https://www.khanacademy.org/test-prep/mcat/critical-analysis-and-reasoning-skills-practice-questions' };
 const KHAN_COURSE = 'https://www.khanacademy.org/test-prep/mcat';
+// The day a person last opened every link above. Printed by the lock beside
+// the URLs it lists, so review is dated rather than remembered.
+const KHAN_CHECKED = '2026-10-06';
 
 // ── The AnKing MCAT deck, by AAMC content category ──────────────────────────
 // TODO(Drew): every value below is null and must stay null until the real tag

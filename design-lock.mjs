@@ -220,7 +220,10 @@ function printStudyLinks(source) {
   const course = /KHAN_COURSE = '(https:\/\/[^']+)'/.exec(source);
   const all = [...new Set([...urls, course && course[1], aamc && aamc[1]].filter(Boolean))];
   if (!all.length) return;
-  console.log('\nStudy links — OPEN EACH ONE before shipping; none of these is fetched here:');
+  const checked = /KHAN_CHECKED = '([\d-]+)'/.exec(source);
+  console.log(checked
+    ? `\nStudy links — last opened by hand on ${checked[1]}; none is fetched here:`
+    : '\nStudy links — UNDATED, so nobody has opened these; none is fetched here:');
   for (const u of all) console.log('  ' + u);
 
   const tags = [...source.matchAll(/'(\d+[A-Z])': (null|'[^']*')/g)];
@@ -258,6 +261,20 @@ for (const t of [...FONT_STEPS, ...RADII, ...SHADOWS, '--ease', '--dur', '--focu
 
 // Spacing: the scale exists and is what the sweep snaps to.
 ok('the space scale is defined', SPACE_STEPS.slice(1).every((n, i) => root.includes(`--s-${i + 1}: ${n}px`)));
+
+// Two concepts sharing one URL is the shape of the bug that shipped: concept 9
+// pointed at concept 10's unit, so one parcel sent students to the wrong
+// lesson and another's was unreachable. Nothing in a palette scan can see
+// that, and a reader comparing ten long slugs by eye will not either.
+console.log('');
+{
+  const units = [...src.matchAll(/^\s+\d+:\s+\{ title: '[^']+',\s+url: '([^']+)' \},$/gm)].map(m => m[1]);
+  const dupes = units.filter((u, i) => units.indexOf(u) !== i);
+  ok('every Khan concept has its own unit', units.length >= 10 && dupes.length === 0,
+     units.length < 10 ? `only parsed ${units.length} units` : dupes.length ? 'shared: ' + [...new Set(dupes)].join(', ') : `${units.length} distinct`);
+  const checked = /KHAN_CHECKED = '(\d{4}-\d{2}-\d{2})'/.exec(src);
+  ok('the study links carry the date they were opened', !!checked, checked ? checked[1] : 'KHAN_CHECKED is missing or malformed');
+}
 
 printStudyLinks(src);
 
