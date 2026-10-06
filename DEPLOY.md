@@ -2,6 +2,11 @@
 
 Your app lives entirely in one file: `index.html`. No installs, no builds, no dependencies.
 
+That is still true of the thing you deploy — `index.html` is the whole site. The
+*checks* are a different matter: `npm run check` now renders the app in a real
+browser, so running it needs a one-time `npm install` and
+`npx playwright install chromium`. None of that ships.
+
 ---
 
 ## Option 1 — Netlify (easiest, 60 seconds)
