@@ -61,8 +61,6 @@
     --green-line:  rgba(42,95,62,0.40);
     --amber-wash:  rgba(142,86,48,0.10);
     --amber-line:  rgba(142,86,48,0.38);
-    --violet-wash: rgba(87,64,146,0.10);
-    --violet-line: rgba(87,64,146,0.38);
     --blue-wash:   rgba(46,111,150,0.10);
     --blue-line:   rgba(46,111,150,0.38);
     --red-wash:    rgba(158,59,34,0.10);
@@ -88,8 +86,6 @@
 
     /* The other three sections of the exam, plus the colour of a wrong answer.
        --amber doubles as the contour colour the practice rings are drawn in. */
-    --violet:      #574092;   /* Psych & Soc, and the Twist */
-    --violet-soft: #6F58AC;
     --amber:       #8E5630;   /* exams, warnings, in-progress, contour rings */
     --blue:        #2A668A;   /* CARS — solved against the water tint, not paper */
     --water:       #D9E7EF;   /* the tint CARS is ruled over */
@@ -122,9 +118,6 @@
 
     /* One focus ring, everywhere */
     --focus: 2px solid var(--ink);
-
-    /* Small caps are the app's second voice; they all speak at one width */
-    --track-caps: 0.08em;
 
     /* One press, everywhere a finger lands */
     --press: scale(0.985);
@@ -235,8 +228,6 @@
     font-size: var(--fs-11);
     font-weight: 700;
     color: var(--green);
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
     margin-bottom: 8px;
   }
 
@@ -298,8 +289,6 @@
 
   /* Small caps: one width, one weight, one case. */
   .label, .section-label, .kicker, .tg-head {
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
   }
 
   /* Headlines break where a person would break them. */
@@ -422,8 +411,6 @@
     font-size: var(--fs-11);
     font-weight: 700;
     color: var(--dim);
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
     margin: 16px 0 8px;
   }
   .section-label:first-child { margin-top: 0; }
@@ -511,8 +498,7 @@
   }
   .cpick-info:hover, .cpick-info.open { color: var(--muted); }
   .cpick-badge {
-    font-size: var(--fs-11); font-weight: 700; text-transform: uppercase; letter-spacing: var(--track-caps);
-    padding: 4px 8px; border-radius: var(--r-ctl); flex-shrink: 0; white-space: nowrap;
+    font-size: var(--fs-11); font-weight: 700; padding: 4px 8px; border-radius: var(--r-ctl); flex-shrink: 0; white-space: nowrap;
   }
 
   /* The course card. Name, badge and info on one line; the answer on the next.
@@ -571,15 +557,14 @@
   }
   .picker-count {
     text-align: center; font-size: var(--fs-13); color: var(--muted);
-    margin: 0 0 8px; font-weight: 600; letter-spacing: var(--track-caps);
+    margin: 0 0 8px; font-weight: 600;
   }
 
   /* The semester grid: courses down the side, terms across the top, one tap per
      row. Never a chip that opens a picker that opens a list. */
   .tgrid { display: grid; gap: 4px; align-items: center; }
   .tgrid .tg-head {
-    font-size: var(--fs-11); font-weight: 700; color: var(--faint);
-    text-transform: uppercase; letter-spacing: var(--track-caps); text-align: center;
+    font-size: var(--fs-11); font-weight: 700; color: var(--faint); text-align: center;
     padding-bottom: 4px;
   }
   .tgrid .tg-label {
@@ -631,8 +616,8 @@
 
   /* Retention nudge card */
   .nudge-card {
-    background: var(--violet-wash);
-    border: 1px solid var(--violet-line);
+    background: var(--green-wash);
+    border: 1px solid var(--green-line);
     border-radius: var(--r-ctl);
     padding: 12px 16px;
     margin-bottom: 16px;
@@ -640,9 +625,7 @@
   .nudge-card .nudge-label {
     font-size: var(--fs-11);
     font-weight: 700;
-    color: var(--violet);
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
+    color: var(--green);
     margin-bottom: 4px;
   }
   .nudge-card p {
@@ -661,8 +644,8 @@
     cursor: pointer;
     border: none;
   }
-  .nudge-btn-primary { background: var(--violet); color: var(--bg); }
-  .nudge-btn-primary:hover { background: var(--violet); }
+  .nudge-btn-primary { background: var(--green); color: var(--bg); }
+  .nudge-btn-primary:hover { background: var(--green); }
   .nudge-btn-ghost { background: transparent; color: var(--faint); border: 1px solid var(--line-2) !important; }
   .nudge-btn-ghost:hover { color: var(--muted); }
 
@@ -694,14 +677,15 @@
   .sheet-title b { font-weight: 600; font-size: var(--fs-13); color: var(--ink); white-space: nowrap; }
   .sheet-title b small { font-weight: 400; color: var(--faint); font-size: var(--fs-11); margin: 0 var(--s-1); }
 
+  /* Lettering on the plan, not a header cell. Boxing these turned the map into
+     a spreadsheet split into bands; the block's neatline is the only outline. */
   .reg {
     font-family: 'Source Serif 4', Georgia, serif; font-style: italic; font-weight: 600;
-    font-size: var(--fs-13); color: var(--ink); line-height: 1;
-    padding: 5px 6px 4px; min-width: 0;
-    overflow: hidden;
+    font-size: var(--fs-13); color: var(--ink); line-height: 1.15;
+    padding: 0 6px 5px 1px; min-width: 0;
   }
   .reg small { font-family: inherit; font-style: normal; font-weight: 400; font-size: var(--fs-11); color: var(--faint); margin-left: var(--s-1); }
-  .reg-row { display: flex; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .reg-row { display: flex; align-items: flex-start; }
   .band { position: relative; box-shadow: inset 0 0 0 1px var(--line-2); }
 
   /* A parcel. No radius anywhere — a sheet is drawn with a straight edge. */
@@ -709,8 +693,13 @@
     position: absolute; box-sizing: border-box; overflow: hidden;
     box-shadow: inset 0 0 0 1px var(--line);
     padding: 3px 4px; text-align: left; font-family: inherit;
+    display: flex; flex-direction: column;
+    align-items: flex-start; justify-content: flex-start;
     -webkit-tap-highlight-color: transparent;
   }
+  /* The name needs the parcel's full content width, or shrink-to-fit hides the
+     overflow that fitSheetLabels() measures. */
+  .pl-name, .pl-sub { align-self: stretch; }
   button.pl { border: 0; cursor: pointer; }
   .pl-name { font-size: var(--fs-11); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; color: var(--ink); display: block; }
   .pl-sub  { font-size: var(--fs-11); font-weight: 400; color: var(--faint); line-height: 1.1; display: block; margin-top: 1px; }
@@ -859,7 +848,7 @@
   .ans-btn:active:not(:disabled) { transform: translateY(0); }
   .ans-btn.correct  { background: var(--green-wash); border-color: var(--green); color: var(--green-bright); font-weight: 600; box-shadow: var(--glow); }
   .ans-btn.wrong    { background: var(--red-wash); border-color: var(--red); color: var(--red); box-shadow: none; }
-  .ans-btn.dim      { opacity: 0.2; transform: none; box-shadow: none; }
+  .ans-btn.dim      { color: var(--faint); transform: none; box-shadow: none; }
 
   .explanation {
     border-left: 3px solid var(--green);
@@ -945,7 +934,7 @@
   /* ── Section color tokens ─────────────────────────────────────────── */
   .tag-bb   { background: var(--green-wash-2);  color: var(--green-bright); }
   .tag-cp   { background: var(--amber-wash);  color: var(--amber); }
-  .tag-ps   { background: var(--violet-wash);  color: var(--violet-soft); }
+  .tag-ps   { background: var(--wash-2);  color: var(--ink-2); }
   .tag-cars { background: var(--blue-wash);  color: var(--blue); }
 
   /* ── Landing screen ───────────────────────────────────────────────── */
@@ -956,10 +945,8 @@
     margin-bottom: 32px;
   }
   .app-brand-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--green-wash-2);
-    border-radius: var(--r-ctl);
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -983,8 +970,6 @@
     font-size: var(--fs-11);
     font-weight: 700;
     color: var(--green);
-    text-transform: uppercase;
-    letter-spacing: var(--track-caps);
     margin-bottom: 12px;
   }
   .topic-pill {
@@ -1068,18 +1053,6 @@
         var(--bg);
       background-attachment: fixed;
     }
-    /* Faint dot-grid "map" texture behind the app column */
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      background-image: radial-gradient(var(--wash-2) 1px, transparent 1.6px);
-      background-size: 26px 26px;
-      -webkit-mask-image: radial-gradient(120% 90% at 50% 42%, rgba(0,0,0,1) 25%, transparent 75%);
-      mask-image: radial-gradient(120% 90% at 50% 42%, rgba(0,0,0,1) 25%, transparent 75%);
-    }
     #app {
       position: relative;
       z-index: 1;
@@ -1095,12 +1068,35 @@
 
   /* Persistent desktop dashboard rail — sibling of #app, hidden below 1000px */
   .dt-shell { display: none; }
+  /* Hidden until onboarding is done, at every width. */
+  .dt-shell.dt-prelaunch { display: none !important; }
+
+  /* The Route, given the width it has had all along and never used. The sheet
+     takes a column of its own; the headline, the line about the next parcel and
+     the button sit beside it, which is the reading order the concept draws and
+     the one the eye wants — look at the map, then read what to do about it.
+     Below 900px nothing here applies and the screen is unchanged. */
+  @media (min-width: 900px) {
+    #app.app-wide { max-width: 1040px; }
+    .screen.rt {
+      display: grid;
+      grid-template-columns: minmax(0, 560px) minmax(0, 1fr);
+      column-gap: 48px;
+      align-items: start;
+    }
+    /* Everything reads down the right-hand column, in source order. */
+    .screen.rt > * { grid-column: 2; min-width: 0; }
+    /* Except the sheet, which holds the left one for the whole screen. */
+    .screen.rt > .rt-sheet { grid-column: 1; grid-row: 1 / span 99; margin-bottom: 0; }
+  }
 
   @media (min-width: 1000px) {
     /* Reserve the rail's width on the left; #app stays flex-centered in the
        space that remains, so the reading column is anchored to real app chrome
        instead of floating in a void. */
     body { padding-left: 280px; }
+    /* No rail, no gutter for it. */
+    body.pre-launch { padding-left: 0; }
 
     .dt-shell {
       display: flex;
@@ -1140,11 +1136,8 @@
       -webkit-tap-highlight-color: transparent;
     }
     .dt-brand-mark {
-      width: 38px; height: 38px; flex-shrink: 0;
+      width: 24px; height: 24px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      background: var(--green-wash-2);
-      border: 1px solid var(--green-line);
-      border-radius: var(--r-ctl);
     }
     .dt-brand-name {
       display: block;
@@ -1154,8 +1147,7 @@
     }
     .dt-brand-sub {
       display: block;
-      font-size: var(--fs-11); font-weight: 700; letter-spacing: var(--track-caps);
-      text-transform: uppercase; color: var(--muted); margin-top: 4px;
+      font-size: var(--fs-11); font-weight: 700; color: var(--muted); margin-top: 4px;
     }
 
     /* Nav */
@@ -1185,8 +1177,7 @@
 
     /* Coverage dashboard */
     .dt-dash-label {
-      font-size: var(--fs-11); font-weight: 800; letter-spacing: var(--track-caps);
-      text-transform: uppercase; color: var(--green); margin-bottom: 16px;
+      font-size: var(--fs-11); font-weight: 800; color: var(--green); margin-bottom: 16px;
     }
     .dt-ring-wrap {
       display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
@@ -1204,7 +1195,7 @@
       font-variant-numeric: tabular-nums;
     }
     .dt-ring-pct .u { font-size: var(--fs-13); color: var(--faint); }
-    .dt-ring-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; letter-spacing: var(--track-caps); }
+    .dt-ring-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; }
     .dt-ring-note { font-size: var(--fs-13); line-height: 1.5; color: var(--faint); }
     .dt-ring-note strong { color: var(--muted); font-weight: 600; }
 
@@ -1236,7 +1227,7 @@
       font-variant-numeric: tabular-nums;
     }
     .dt-stat-num.streak { color: var(--amber); }
-    .dt-stat-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; letter-spacing: var(--track-caps); }
+    .dt-stat-cap { font-size: var(--fs-11); color: var(--muted); margin-top: 4px; }
 
     /* Pre-onboarding (no courses yet) */
     .dt-setup-hint { display: none; }
@@ -1332,7 +1323,6 @@
     </span>
     <span>
       <span class="dt-brand-name">Waypoint</span>
-      <span class="dt-brand-sub">MCAT Coverage</span>
     </span>
   </button>
 
@@ -1385,7 +1375,7 @@
       </div>
       <div class="dt-sec-row">
         <span class="dt-sec-name">Psych &amp; Soc</span><span class="dt-sec-pct" data-secpct="ps">0%</span>
-        <div class="dt-sec-track"><div class="dt-sec-fill" data-secfill="ps" style="background:var(--violet)"></div></div>
+        <div class="dt-sec-track"><div class="dt-sec-fill" data-secfill="ps" style="background:var(--green)"></div></div>
       </div>
     </div>
 
@@ -1397,7 +1387,7 @@
 
   <div class="dt-foot">
     <div class="dt-foot-line">Your classes are <em>already</em> MCAT prep.</div>
-    <button onclick="openAbout()" style="background:none;border:none;color:var(--muted);font-size: var(--fs-13);font-weight:600;cursor:pointer;font-family:inherit;padding:12px 0 0;text-align:left;-webkit-tap-highlight-color:transparent;">What is Waypoint? →</button>
+    <button onclick="openAbout()" style="background:none;border:none;color:var(--muted);font-size: var(--fs-13);font-weight:600;cursor:pointer;font-family:inherit;padding:12px 0 0;text-align:left;-webkit-tap-highlight-color:transparent;">What is Waypoint?</button>
   </div>
 </aside>
 
@@ -1433,7 +1423,7 @@ const DONE_FIRST_YEARS = ['junior', 'senior'];
 const REQ_META = {
   required:    { short:'Required',    color:'var(--green-bright)', bg:'var(--green-wash-2)' },
   recommended: { short:'Recommended', color:'var(--amber)', bg:'var(--amber-wash)' },
-  mcat:        { short:'MCAT-tested', color:'var(--violet)', bg:'var(--violet-wash)' },
+  mcat:        { short:'MCAT-tested', color:'var(--green)', bg:'var(--green-wash)' },
 };
 function courseReqNote(id) {
   if (id === 'biochem') return 'Strongly recommended and increasingly required — finish it before the MCAT (it\'s heavily tested).';
@@ -5820,8 +5810,7 @@ function exampleRoute() {
     // the figures are: one renderer, one model, and a marketing card that cannot
     // drift from the app it is advertising.
     return { cov: coverage(courses, true), sections: sectionCoverage(courses),
-             map: routeMapHTML({ idPrefix: 'ex', bandPx: 220, legend: false,
-                                 sectionLabels: false, names: false, static: true }) };
+             map: routeMapHTML({ idPrefix: 'ex', frame: false, names: false, static: true }) };
   } finally { S.courseStatus = prevStatus; S.courses = prevCourses; }
 }
 
@@ -5949,7 +5938,7 @@ function milestoneCopy() {
   const lvl = MILESTONE_LEVELS[m.at];
   return `<div class="cov-milestone-card">
     <div style="margin-bottom:12px;line-height:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1E4A2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
-    <div style="font-size: var(--fs-11);font-weight:800;color:var(--green-bright);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">${m.sec.short} — ${lvl.label}</div>
+    <div style="font-size: var(--fs-13);font-weight:600;color:var(--green-bright);margin-bottom:8px;">${m.sec.short}, ${lower(lvl.label)}</div>
     <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.55;margin-bottom:12px;">${lvl.text(m.sec)}</p>
     <button class="btn btn-share" style="margin-top:0;font-size: var(--fs-13);padding:12px 16px;" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share this</button>
   </div>`;
@@ -6153,7 +6142,14 @@ function getDirectiveTopic() {
     .filter(t => t.course && S.courses.has(t.course) && daysBetween(S.nudgeDismissed[t.id]) !== 0)
     .sort((a, b) => (inProg(b.course) - inProg(a.course)) || (b.w - a.w));
   if (candidates.length === 0) return null;
-  const top = candidates[0];
+  // Having just practised something is the clearest possible signal not to
+  // recommend it again in the same breath. Both the Route's next parcel and
+  // Home's card come through here, so they move on together. If it is the only
+  // candidate it is still the answer — the line above will say "Practised
+  // today" rather than pretending otherwise.
+  const practisedToday = t => daysBetween(S.topicLastSeen[t.id]) === 0;
+  const unseen = candidates.filter(t => !practisedToday(t));
+  const top = (unseen.length ? unseen : candidates)[0];
   return { topic: top, days: null, reason: inProg(top.course) ? 'in-progress' : 'drill' };
 }
 
@@ -6281,10 +6277,12 @@ function squarify(items, x, y, w, h) {
 // region's rectangle exactly its own percentage of the block.
 //
 // Everything below works in one unit: percent of the block's width. The block
-// is kept square by CSS (the two bands' aspect ratios sum to 1), so one unit
-// across equals one unit down, and a parcel of area 100 unit² is 1% of a
-// 10,000 unit² exam. That is what lets the foot say "this square is 1% of the
-// exam" and be exactly right at any viewport rather than at one nominal width.
+// is not square — SHEET_ASPECT is its height over its width — but its aspect
+// is FIXED, and that is all the scale key needs. A block W wide and
+// W·aspect tall has area W²·aspect, so 1% of it is a square of side
+// W·sqrt(aspect)/10: a constant fraction of the width at every viewport. The
+// key is rendered from that same constant, so it cannot disagree with the
+// block it measures. Verified numerically, not assumed.
 const SHEET_ROWS = [['bb', 'cp'], ['ps', 'cars']];
 // The regions as a plat would name them. Not sec.long, which is AAMC's full
 // title and three words too long for a 20%-wide column.
@@ -6294,7 +6292,24 @@ const SHEET_REG = {
   ps:   'Psychology and sociology',
   cars: 'Reading <small>CARS</small>',
 };
-const SHEET_ASPECT = 1.85;     // block height / block width — swept: 17 of 18 parcels keep a horizontal name
+// 1.85 was swept when labels were estimated from a character count and a parcel
+// either got its full short name or nothing. fitSheetLabels() steps a name down
+// to fit now, so the block no longer has to be tall enough for the worst case.
+//
+// Re-swept at 375px against the two things that actually matter — how far down
+// the button sits, and how many parcels keep a name:
+//
+//   aspect   sheet   named   button y
+//   0.75      442    13/18     742
+//   0.95      505    16/18     804
+//   1.15      567    17/18     866
+//   1.25      597    17/18     897
+//
+// 0.95. Reaching the 440px the plan asks for means 0.75, and five parcels lose
+// their name entirely — too much of the map going quiet to buy 60px. At 0.95
+// the button sits at 804px, inside the first screen-and-a-bit on a 812px phone,
+// which is what the height was being cut for.
+const SHEET_ASPECT = 0.95;     // block height / block width
 const REG_H = 34;              // the region label strip, outside the block; two lines
 const SHEET_NOMINAL_W = 297;   // 375px viewport, for deciding what a label fits in
 
@@ -6378,14 +6393,25 @@ function routeFocus() {
   if (!course) return null;
 
   const taking = S.courseStatus[t.course] === 'in-progress';
-  const f  = freshnessActive() ? topicFreshness(t.id) : null;
-  const st = f ? heldDisplayState(f) : null;
-  const unpractised = !st || st === 'unpinned';
 
-  const practice = unpractised      ? 'Not practised yet.'
-                 : st === 'fresh'   ? 'Practised recently.'
-                 : st === 'fading'  ? 'Practised, but fading.'
-                 :                    'Practised a while back.';
+  // Ungated, unlike the contour rings above. freshnessActive() asks whether
+  // there is enough of a record to draw a *map layer* — two sessions across
+  // three topics — and that is the right bar for a visual claim about the whole
+  // route. It is the wrong bar for a sentence about one topic: a student who
+  // practised Psychology five minutes ago was still being told they had not.
+  //
+  // Read days rather than heldDisplayState, because that state reads "fresh"
+  // from enrolment alone when there is no practice record at all, and this
+  // sentence must never report sitting in a class as having practised.
+  const f = topicFreshness(t.id);
+  const days = f ? f.days : null;
+  const unpractised = days === null;
+
+  const practice = unpractised   ? 'Not practised yet.'
+                 : days === 0    ? 'Practised today.'
+                 : days === 1    ? 'Practised yesterday.'
+                 : days < 7      ? `Practised ${days} days ago.`
+                 :                 `Practised ${weeksAgo(days)}.`;
 
   // Never "haven't practised" when they have — the line has to survive the
   // student having drilled it this morning.
@@ -6413,7 +6439,8 @@ function routeMapHTML(opts) {
   const o = opts || {};
   const rows = sheetLayout();
   const idPrefix = o.idPrefix || 'rt';
-  const chrome = o.sectionLabels !== false;      // region strips, legend, foot
+  const frame   = o.frame !== false;            // the sheet: border, title rail, legend, foot
+  const regions = o.regions !== false;          // the region lettering above each column
   // The landing card stands in an example student's shoes for S.courses but not
   // for their practice record, so held there would be this visitor's freshness
   // read against someone else's route. Static maps show coverage only.
@@ -6421,7 +6448,8 @@ function routeMapHTML(opts) {
   // A thumbnail asks for the shape of the exam, not eighteen names in four
   // letters each; bandPx is how wide that thumbnail is drawn.
   const blockW = o.bandPx || SHEET_NOMINAL_W;
-  const focus = chrome && !o.static ? routeFocus() : null;
+  const flat  = o.static || o.flat;             // parcels are not individually tappable
+  const focus = !o.static ? routeFocus() : null;
 
   const band = row => {
     const parcels = row.cols.map(col => col.tiles.map(b => {
@@ -6431,16 +6459,15 @@ function routeMapHTML(opts) {
       const f    = live && t.course && S.courses.has(t.course) ? topicFreshness(t.id) : null;
       const st   = f ? heldDisplayState(f) : null;
 
-      // Real pixels, for deciding what a name can do in the space it has.
+      // The full name goes in, and fitSheetLabels() decides after layout what
+      // the parcel can actually hold. Guessing from a character count against a
+      // nominal 297px was wrong in both directions at once: at 375px it left
+      // Acid-Base unnamed, and on desktop it rotated Atomic and Thermo into
+      // columns they had the width to sit across.
       const pw = b.w / 100 * blockW;
       const ph = b.h / 100 * blockW;   // b.h is already in the taller units
-      const label = mapName(t);
-      const needs = label.length * 6.7 + 10;     // 11px semibold, plus the padding
-      const horiz = needs <= pw && ph >= 22;
-      const vert  = !horiz && needs <= ph && pw >= 20;
-      const named = o.names !== false && (horiz || vert);
+      const named = o.names !== false;
       const sub   = cars ? 'ongoing' : fill === 0.5 ? 'taking' : fill === 0 ? 'ahead' : '';
-      const room  = !vert && ph >= 34 && sub;
 
       const tex = cars ? 'pl-water' : fill >= 1 ? 'pl-done' : fill > 0 ? 'pl-take' : 'pl-ahead';
       const next = focus && focus.topic.id === t.id;
@@ -6451,23 +6478,24 @@ function routeMapHTML(opts) {
       // An empty parcel is the one place a student who left a class off can say
       // so. It never invites claiming a class: the tooltip says what the course
       // will cover when they take it, not what adding it would do to standing.
+      // Every parcel opens its own detail line. They were divs carrying a title
+      // tooltip, which does not exist on a touch screen — so on a phone most of
+      // the map could not be interrogated at all. And an empty parcel used to
+      // jump straight to the course picker, which answered a question the
+      // student had not asked; now it explains itself and offers the link.
       const course = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
-      const pick   = fill === 0 && course && !o.static && !cars;
-      const tell   = !!f && !pick;
-      const tip    = pick ? `Covered when you take ${course.name}`
-                   : f    ? f.why.replace(/<[^>]+>/g, '').replace(/"/g, '&quot;')
-                   :        t.name;
-      const tag    = pick || tell ? 'button' : 'div';
-      const click  = pick ? ` onclick="go('courses')"` : tell ? ` onclick="toggleMapTile('${t.id}')"` : '';
-      const expand = tell ? ` aria-expanded="${S._mapOpen === t.id}"` : '';
+      const tag    = flat ? 'div' : 'button';
+      const tip    = fill === 0 && course && !cars ? `Covered when you take ${course.name}` : t.name;
+      const click  = flat ? '' : ` onclick="toggleMapTile('${t.id}')"`;
+      const expand = flat ? '' : ` aria-expanded="${S._mapOpen === t.id}"`;
 
-      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}${vert ? ' pl-vert' : ''}" title="${tip}"${click}${expand}
+      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}" title="${tip}"${click}${expand}
           style="left:${b.x.toFixed(3)}%;top:${(b.y / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;width:${b.w.toFixed(3)}%;height:${(b.h / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;">
-          ${named ? `<span class="pl-name">${label}</span>${room ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}${next && ph >= 46 ? '<span class="pl-flag">next</span>' : ''}
+          ${named ? `<span class="pl-name" data-full="${t.name}" data-short="${mapName(t)}">${t.name}</span>${sub ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}${next && ph >= 46 ? '<span class="pl-flag">next</span>' : ''}
         </${tag}>`;
     }).join('')).join('');
 
-    const strip = chrome
+    const strip = regions
       ? `<div class="reg-row">${row.cols.map(c => `<div class="reg" style="width:${c.w.toFixed(3)}%;">${SHEET_REG[c.sec.id]}</div>`).join('')}</div>`
       : '';
     // aspect-ratio keeps the two bands summing to a square whatever the width,
@@ -6476,7 +6504,9 @@ function routeMapHTML(opts) {
   };
 
   const block = rows.map(band).join('');
-  if (!chrome) return `<div id="${idPrefix}-map" style="max-width:${blockW}px;">${block}</div>`;
+  // A thumbnail fills whatever it is put in. It used to be pinned to bandPx,
+  // which left a dead strip down the side of a card at every width.
+  if (!frame) return `<div id="${idPrefix}-map">${block}</div>`;
 
   const cov  = coverage(S.courses, true);
   const year = S.year ? `Your route, ${S.year} year` : 'Your route';
@@ -6484,7 +6514,7 @@ function routeMapHTML(opts) {
   const foot = skills.length
     ? `<p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:8px 0 0;">${skills.map(t => t.name).join(' and ')} ${skills.length === 1 ? 'is' : 'are'} tested as a skill across the sections rather than as a share of their own, so ${skills.length === 1 ? 'it has' : 'they have'} no parcel.</p>`
     : '';
-  const detail = live && S._mapOpen ? freshDetailHTML(S._mapOpen) : '';
+  const detail = S._mapOpen ? parcelDetailHTML(S._mapOpen) : '';
 
   return `<div id="${idPrefix}-map"><div class="sheet"><div class="sheet-in">
       <div class="sheet-title"><i>${year}</i><b><small>about</small>${Math.round(cov / 5) * 5}%<small>covered</small></b></div>
@@ -6493,6 +6523,102 @@ function routeMapHTML(opts) {
       <div class="sheet-foot"><span class="one" style="width:${(Math.sqrt(SHEET_ASPECT) * 10).toFixed(3)}%;"></span>This square is 1% of the exam.</div>
     </div></div>${detail}${foot}</div>`;
 }
+
+// What one parcel is: its name, its share, the class that covers it, and where
+// the student stands on it. Every parcel has this, including the empty ones and
+// CARS — previously only a topic with a freshness record could be opened at all.
+function parcelDetailHTML(tid) {
+  const t = TOPICS.find(x => x.id === tid);
+  if (!t) return '';
+  const cars    = t.mcat === 'cars';
+  const course  = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
+  const covered = !!(t.course && S.courses.has(t.course));
+  const taking  = covered && S.courseStatus[t.course] === 'in-progress';
+
+  // The same sentence machinery the Route's focus line uses, so one topic never
+  // reads two ways on one screen.
+  const f    = covered ? topicFreshness(tid) : null;
+  const days = f ? f.days : null;
+  const practice = cars ? '' : !covered ? ''
+    : days === null ? 'Not practised yet.'
+    : days === 0    ? 'Practised today.'
+    : days === 1    ? 'Practised yesterday.'
+    : days < 7      ? `Practised ${days} days ago.`
+    :                 `Practised ${weeksAgo(days)}.`;
+
+  const standing = cars
+      ? 'Built by reading practice, not courses. Not on your route.'
+    : covered
+      ? `${course ? course.name : 'Your course'}, ${taking ? 'in progress — counts half' : 'finished — counts whole'}.`
+      : `Covered when you take ${course ? course.name : 'the course'}.`;
+
+  // The held layer's action keeps the gate it has always had.
+  const st = f && freshnessActive() ? heldDisplayState(f) : null;
+  const n  = st && st !== 'fresh' ? repinCount(tid) : 0;
+  const action = st && st !== 'fresh'
+    ? `<button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''}</button>`
+    : !covered && !cars
+      ? `<button onclick="go('courses')" class="link-btn" style="margin-top:4px;min-height:0;padding:4px 0;">Update my courses</button>`
+      : '';
+
+  return `
+        <div style="margin-top:10px;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;">
+            <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${t.name}</span>
+            <span style="font-size: var(--fs-11);color:var(--faint);white-space:nowrap;">${t.w}% of the exam</span>
+          </div>
+          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0;">${standing}${practice ? ' ' + practice : ''}</p>
+          ${action}
+        </div>`;
+}
+
+// ── FITTING A NAME TO A PARCEL ───────────────────────────────────────────────
+// Measured after layout, never estimated. A parcel's width depends on the
+// viewport, the squarifier and the region it landed in, and a character count
+// against one nominal width got it wrong in both directions at once.
+//
+// The ladder, in order: full name with its state word, full name alone, short
+// name, rotated, nothing. A parcel never shows a word cut part-way through —
+// that rule is why the last rung exists.
+function fitSheetLabels(scope) {
+  const host = scope || document;
+  for (const pl of host.querySelectorAll('.pl')) {
+    const name = pl.querySelector('.pl-name');
+    if (!name) continue;
+    const sub = pl.querySelector('.pl-sub');
+
+    // Overflow on the parcel catches both failures: a single unbreakable word
+    // wider than the box, and a wrapped name taller than it.
+    const over = () => pl.scrollWidth > pl.clientWidth + 1 || pl.scrollHeight > pl.clientHeight + 1;
+
+    pl.classList.remove('pl-vert');
+    name.style.display = '';
+    name.textContent = name.dataset.full;
+    if (sub) sub.style.display = '';
+    if (!over()) continue;
+
+    if (sub) { sub.style.display = 'none'; if (!over()) continue; }
+
+    name.textContent = name.dataset.short;
+    if (!over()) continue;
+
+    pl.classList.add('pl-vert');
+    if (!over()) continue;
+
+    pl.classList.remove('pl-vert');
+    name.style.display = 'none';
+  }
+}
+
+let fitTimer = null;
+function fitSheetLabelsSoon() {
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => fitSheetLabels(), 90);
+}
+window.addEventListener('resize', fitSheetLabelsSoon);
+// Measuring before the face loads measures the fallback, and Public Sans is
+// wider than it at the same size.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitSheetLabels());
 
 // A map needs a key. Three states, in the order a route fills them.
 function toggleMapTile(tid) {
@@ -6516,6 +6642,10 @@ function mapLegendHTML(live) {
 
 // ── SECTIONED MAP (reveal screen) ─────────────────────────────────────────────
 
+// The way-in mark on a tappable row. An icon, not a typed arrow: the
+// affordance was never the problem, the character was.
+const CHEVRON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>';
+
 const TILE_NAMES = {
   'cell-bio':'Cell Bio', 'genetics':'Genetics', 'mol-bio':'Mol. Bio',
   'biochem':'Biochem',   'physio':'Physio',      'neuro':'Neuro',
@@ -6536,42 +6666,13 @@ const tileCourse = t => TILE_COURSE[t.course] || t.disp;
 // Six and nine topics wrap to the same number of rows three-across as they did
 // four-across, so the map is no taller.
 const TILE_BOX = 'border-radius: var(--r-ctl);padding:8px 8px;flex:1;min-width:92px;max-width:100%;overflow:hidden;';
-const TILE_ROW = 'display:flex;flex-wrap:wrap;gap:4px;';
-
-// A topic the student has covered. Coverage chrome never changes with freshness:
-// covered ground stays green and stays earned. Only the small status line carries
-// the state, and for fresh it stays exactly the line it has always been.
-function coveredTileHTML(t, live, open) {
-  const inProgress = S.courseStatus[t.course] === 'in-progress';
-  const statusIcon = inProgress ? `<span class="pulse-dot" style="width:5px;height:5px;margin-right:4px;"></span>` : '✓ ';
-  let status = `<div style="font-size: var(--fs-11);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${tileCourse(t)}</div>`;
-  const f = live ? topicFreshness(t.id) : null;
-  if (f && heldDisplayState(f) !== 'fresh') {
-    const m = FRESH_META[heldDisplayState(f)];
-    status = `<div style="font-size: var(--fs-11);color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.tile || m.word}</div>`;
-  }
-  const inner = `
-          <div style="font-size: var(--fs-11);color:var(--ink);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-            ${status}
-            <div style="font-size: var(--fs-11);font-weight:700;color:var(--green-bright);flex-shrink:0;margin-left:4px;">${wLabel(t)}</div>
-          </div>`;
-  // Fill, not outline: earned ground is solid. The border slot stays (transparent)
-  // so covered and locked tiles keep identical box metrics.
-  const box = `background:var(--green-wash-2);border:1px solid transparent;${TILE_BOX}`;
-  if (!f) return `<div style="${box}">${inner}</div>`;
-  return `<button onclick="toggleFresh('${t.id}')" aria-expanded="${open === t.id}" title="${f.why.replace(/"/g, '&quot;')}"
-          style="${box}text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;${open === t.id ? 'box-shadow:0 0 0 1px var(--line-2);' : ''}">${inner}</button>`;
-}
-
-// A topic AAMC gives no discipline share to (statistics/research methods) carries
-// weight 0 on purpose. Everywhere a weight is shown to a student it reads as the
-// skill it is, rather than as a zero that looks like an error or a slight.
 function wLabel(t, plus) { return t.w === 0 ? 'skill' : (plus ? '+' : '') + t.w + '%'; }
 
-// Covered courses bucketed by the term they were taken, newest first. An untagged
-// course lands in one bucket keyed 'unset', which ranks below every real term and
-// so sorts to the end on its own — no special case in the sort.
+// A section is only "thinnest" when it is meaningfully behind the others —
+// naming the low one on an even spread would be inventing a weak spot.
+// EVEN_SPREAD is the gap below which "thinnest" would be noise.
+const EVEN_SPREAD = 10;
+
 function termGroups() {
   const byTerm = new Map();
   COURSES.forEach(c => {
@@ -6594,82 +6695,40 @@ function termGroups() {
 // history rather than an abstract list of topics. Untagged courses keep their
 // place at the end with the one chip that dates them; they are never a prompt, a
 // modal or a nag, and everything on the Route works untouched without them.
+// Courses, in the order the student took them, as a list.
+//
+// This was a stack of rounded chips, one per topic, under a header per term —
+// which is to say a second map of the same ground, drawn worse: "Orgo I" above
+// a chip that also said "Orgo I", and the held dot repeating what the sheet's
+// contour rings already say. The sheet owns the topics now, and tapping a
+// parcel gives the breakdown this used to spread across the screen.
+//
+// What is left is the one thing the sheet genuinely cannot show: which term
+// each class belongs to, and what dating an undated one would place.
 function termTimelineHTML(live, open) {
   const groups = termGroups();
   if (!groups.length) return '';
 
-  return groups.map(g => {
-    const unset = g.term === 'unset';
-    // The untagged pile gets no heading at all. "Term not set" over every finished
-    // course read as something the student had failed to provide, for a field the
-    // app deliberately never asks for. Absence of a term needs no badge.
-    const label = unset ? '' : termLabel(g.term);
-    // A term you're still inside hasn't banked its weight yet, and the header says
-    // which of the two numbers it is rather than quietly picking one. The untagged
-    // pile isn't a term at all, so it gets no total: a single figure over a stack
-    // of unrelated classes would read as the weight of the first one.
-    // A term of nothing but skill courses carries no exam weight, and "0% of the
-    // exam" reads as a verdict on the class rather than a fact about AAMC's
-    // question counts.
-    const worth = unset || g.weight === 0 ? ''
-                : g.now ? `worth ${g.weight}% when you finish`
-                        : `${g.weight}% of the exam`;
-
-    // Laid out by course, not by topic: the chip that fixes this belongs to a
-    // class, and the tiles under it show exactly what dating that class would
-    // place on the timeline. Every other group needs only its course names.
-    const body = unset
-      ? g.courses.map(c => {
-          const ts = TOPICS.filter(t => t.course === c.id);
-          const w  = ts.reduce((s, t) => s + t.w, 0);
-          return `
-        <div style="margin-bottom:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-            <span style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;">
-              <span style="font-size: var(--fs-13);font-weight:600;color:var(--ink-2);">${c.name}</span>
-              ${S._whenOpen === c.id ? '' : `<button class="term-chip quiet" style="min-height:24px;font-size: var(--fs-11);font-weight:600;padding:0;border-color:transparent;background:none;color:var(--muted);" onclick="toggleWhen('${c.id}')">Add the term →</button>`}
-            </span>
-            <span style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${w}%</span>
-          </div>
-          ${S._whenOpen === c.id ? `<div style="margin-bottom:8px;">${termPickerHTML(c.id)}</div>` : ''}
-          <div style="${TILE_ROW}">${ts.map(t => coveredTileHTML(t, live, open)).join('')}</div>
-        </div>`;
-        }).join('')
-      : `<div style="${TILE_ROW}">${g.topics.map(t => coveredTileHTML(t, live, open)).join('')}</div>`;
-
+  const rows = groups.flatMap(g => g.courses.map(c => {
+    const w = TOPICS.filter(t => t.course === c.id).reduce((n, t) => n + t.w, 0);
+    const undated = g.term === 'unset';
+    // The term slot carries the term, or the one control that supplies it.
+    const when = undated
+      ? (S._whenOpen === c.id ? '' : `<button class="link-btn quiet" style="min-height:0;padding:0;font-size: var(--fs-11);font-weight:600;" onclick="toggleWhen('${c.id}')">Add the term</button>`)
+      : `<span style="font-size: var(--fs-13);color:var(--muted);">${termLabel(g.term)}${g.now ? ', now' : ''}</span>`;
     return `
-      <div style="margin-bottom:20px;">
-        ${unset ? '' : `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:var(--track-caps);">
-            ${g.now ? '<span class="pulse-dot" style="width:5px;height:5px;margin-right:0;"></span>' : ''}${label}
-          </div>
-          ${worth ? `<div style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${worth}</div>` : ''}
-        </div>`}
-        ${unset ? '' : `<p style="font-size: var(--fs-11);color:var(--faint);margin:0 0 8px;line-height:1.45;">${g.courses.map(c => c.name).join(' · ')}</p>`}
-        ${body}
-        ${open && g.topics.some(t => t.id === open) ? freshDetailHTML(open) : ''}
-      </div>`;
-  }).join('');
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);">
+        <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${c.name}</span>
+        <span style="display:flex;align-items:baseline;gap:12px;flex-shrink:0;">
+          ${when}
+          <span style="font-size: var(--fs-13);color:var(--faint);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;">${w}%</span>
+        </span>
+      </div>${S._whenOpen === c.id ? `<div style="padding:4px 0 10px;">${termPickerHTML(c.id)}</div>` : ''}`;
+  }));
+
+  return rows.join('');
 }
 
-// ── SECTION BALANCE ───────────────────────────────────────────────────────────
-// Where the coverage sits, section by section. The One Number sprint took these
-// bars out of the Route sidebar because three percentages beside the headline
-// competed with it, and that decision stands: this lives at the foot of the map,
-// below the timeline and below what's still ahead, where nothing it says is
-// arguing with the hero.
-//
-// The arithmetic is sectionCoverage()'s, not a second copy of it — the same
-// weighted credit the headline uses, so a section can never disagree with the
-// number it is part of. CARS is absent for the reason it is absent everywhere:
-// no course teaches it.
-
-// Which section a student's coursework is thinnest in, stated as a fact about
-// the coursework and never as a deficiency. Ties are named together rather than
-// resolved arbitrarily, and a route that sits evenly says so instead of
-// inventing a weak spot. EVEN_SPREAD is the gap below which "thinnest" would be
-// a rounding artefact dressed up as a finding.
-const EVEN_SPREAD = 10;
 function sectionBalanceLine(sec) {
   const keys = ['bb', 'cp', 'ps'];
   const vals = keys.map(k => sec[k]);
@@ -6706,7 +6765,7 @@ function sectionBalanceHTML(opts) {
       </div>`).join('');
 
   return `${o.bare ? '' : `<div class="section-divider"></div>
-      <p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">Section balance</p>`}
+      <p style="font-size: var(--fs-13);font-weight:600;color:var(--muted);margin:0 0 12px;">Section balance</p>`}
       ${line ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 16px;">${line}</p>` : ''}
       ${rows}
       <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin:4px 0 0;">Each bar is how much of that section's content your coursework covers. CARS isn't here — no class teaches it.</p>`;
@@ -6729,13 +6788,11 @@ function sectionedMapHTML() {
   const live = freshnessActive();
   const open = live ? S._freshOpen : null;
   const timeline = termTimelineHTML(live, open);
-  const head = text => `<p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">${text}</p>`;
-  const balance = sectionBalanceHTML();
+  const head = text => `<p style="font-size: var(--fs-13);font-weight:600;color:var(--muted);margin:0 0 12px;">${text}</p>`;
   // "Your semesters", not "where you've been": the newest group is the term the
   // student is sitting in right now, and a past-tense heading would misname it.
-  if (!timeline) return balance;
-  // Held closes the covered ground it describes, next to the tiles it summarises.
-  return head('Your semesters') + timeline + standingLineHTML() + balance;
+  if (!timeline) return '';
+  return head('Your semesters') + timeline + standingLineHTML();
 }
 
 // ── JOURNEY PATH (waypoint map) ────────────────────────────────────────────────
@@ -6809,7 +6866,7 @@ function getTopicInsight() {
   const { topic, desc } = withCrunch[0];
   return `
     <div style="background:var(--surface);border:1px solid var(--line);border-radius: var(--r-ctl);padding:16px 16px;margin-bottom:16px;">
-      <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:8px;">You just practiced</div>
+      <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);margin-bottom:8px;">You just practiced</div>
       <div style="font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">${topic.name}</div>
       <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.5;">${desc}</p>
     </div>`;
@@ -7053,7 +7110,7 @@ function topicFreshness(tid) {
           : days < FRESH.fadeDays[key]  ? 'fading'
           :                               'faded';
     const practiced = lastPracticedPhrase(days, iso);
-    why = (when ? `Took this ${when} · ${lower(practiced)}` : practiced)
+    why = (when ? `Took this ${when}, ${lower(practiced)}` : practiced)
         + (strong ? ' Strong here — holds longer.' : '');
   }
   return { tid, topic, state, days, strong, when, why, courseName };
@@ -7153,7 +7210,7 @@ function freshnessLineHTML() {
   [['fading', f.fading], ['faded', f.faded], ['unpinned', f.unchecked]].forEach(([st, list]) => {
     if (list.length) parts.push(`<span style="color:${FRESH_META[st].color};">${list.length} ${FRESH_META[st].word}</span>`);
   });
-  const sep = `<span style="color:var(--dim);"> · </span>`;
+  const sep = `<span style="color:var(--dim);">, </span>`;
   return `
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 ${parts.length ? '3px' : '12px'};">
         <strong style="color:var(--ink-2);">${head}</strong>${parts.length ? sep + parts.join(sep) : '.'}
@@ -7231,13 +7288,13 @@ function freshDetailHTML(tid) {
   // Held ground gets no action — nothing to fix is not a reason to ask for work.
   const n = repinCount(tid);
   const action = st === 'fresh' ? '' : `
-          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''} →</button>`;
+          <button onclick="repin('${tid}')" style="margin-top:12px;width:100%;min-height:44px;padding:0 16px;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);color:var(--green-bright);font-family:inherit;font-size: var(--fs-13);font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;">${st === 'unpinned' ? 'Check it' : 'Re-pin it'} — ${n} question${n !== 1 ? 's' : ''}</button>`;
   return `
         <div style="margin-top:8px;background:var(--wash);border:1px solid color-mix(in srgb, ${m.color} 27%, transparent);border-radius: var(--r-ctl);padding:12px 12px;">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
             <span style="width:7px;height:7px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1.5px solid ${m.color};"></span>
             <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);">${f.topic.name}</span>
-            <span style="font-size: var(--fs-11);font-weight:700;color:${m.color};text-transform:uppercase;letter-spacing:var(--track-caps);">${m.word}</span>
+            <span style="font-size: var(--fs-11);font-weight:700;color:${m.color};">${m.word}</span>
           </div>
           <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0;">${f.why}</p>
           ${action}
@@ -7512,12 +7569,12 @@ function screenPace() {
 
       ${units.map(u => {
         const on = (u.topicId + '|' + u.subId) === currentKey;
-        return `<button class="topic-pick-btn" style="${on ? 'border-color:var(--violet-line);background:var(--violet-wash);' : ''}" onclick="setPaceUnit('${courseId}', ${u.week}, '${u.topicId}', '${u.subId}')">
+        return `<button class="topic-pick-btn" style="${on ? 'border-color:var(--green-line);background:var(--green-wash);' : ''}" onclick="setPaceUnit('${courseId}', ${u.week}, '${u.topicId}', '${u.subId}')">
           <span style="flex:1;text-align:left;">
-            <span class="tp-name" style="color:${on ? 'var(--violet)' : 'var(--ink)'};">${u.label}</span>
+            <span class="tp-name" style="color:${on ? 'var(--green)' : 'var(--ink)'};">${u.label}</span>
             <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${on ? (fromSyl ? 'Where your syllabus puts you' : 'What we assumed you\'re on') : u.topic.name}</span>
           </span>
-          <span class="tp-arrow" style="color:${on ? 'var(--violet)' : 'var(--faint)'};">${on ? '✓' : '→'}</span>
+          <span class="tp-arrow" style="color:${on ? 'var(--green)' : 'var(--faint)'};">${on ? '✓' : CHEVRON}</span>
         </button>`;
       }).join('')}
 
@@ -7761,10 +7818,10 @@ function card(accent, kicker, title, body, cta, opts) {
   const tint = o.tint || accent;
   return `
     <div style="background:linear-gradient(135deg,${wash(accent, 15)},${wash(accent, 4)});border-radius: var(--r-card);padding:20px;margin-bottom:${o.gap === undefined ? 18 : o.gap}px;">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:${title ? 9 : 12}px;">
-        <div style="font-size: var(--fs-11);font-weight:800;color:${tint};text-transform:uppercase;letter-spacing:var(--track-caps);">${kicker}</div>
+      ${kicker || o.aside ? `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:${title ? 9 : 12}px;">
+        ${kicker ? `<div style="font-size: var(--fs-11);font-weight:700;color:${tint};">${kicker}</div>` : '<span></span>'}
         ${o.aside || ''}
-      </div>
+      </div>` : ''}
       ${title ? `<div style="font-size:${o.titleSize || 'var(--fs-20)'};font-weight:700;color:var(--ink);line-height:1.25;margin-bottom:8px;">${title}</div>` : ''}
       ${body || ''}
       ${cta || ''}
@@ -7779,7 +7836,7 @@ function briefCardHTML() {
   const stat = (v, label) => `
     <div style="flex:1;min-width:0;">
       <div class="disp" style="font-size: var(--fs-20);font-weight:700;color:var(--ink);line-height:1;">${v}</div>
-      <div style="font-size: var(--fs-11);color:var(--faint);margin-top:4px;letter-spacing:var(--track-caps);">${label}</div>
+      <div style="font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${label}</div>
     </div>`;
 
   const headline = b.quiet
@@ -7817,7 +7874,7 @@ function briefCardHTML() {
       ${b.weakest && !b.quiet ? `<p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin:0 0 12px;">Weakest right now: <strong style="color:var(--ink-2);">${b.weakest.topic.name}</strong> at ${Math.round(b.weakest.accuracy * 100)}% across ${b.weakest.attempts} question${b.weakest.attempts !== 1 ? 's' : ''}.</p>` : ''}
 
       ${b.action ? `
-        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">This week, do this one thing</div>
+        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);margin-bottom:4px;">This week, do this one thing</div>
         <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;margin:0 0 12px;">${b.action.text}</p>` : ''}`;
 
   // No action left can mean two different things. A student with no route needs
@@ -7825,7 +7882,7 @@ function briefCardHTML() {
   // needs acknowledging, not another demand.
   const cta = b.action
     ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;"
-               onclick="briefActionStart('${b.action.topic.id}', ${b.action.subId ? `'${b.action.subId}'` : 'null'})">Start →</button>`
+               onclick="briefActionStart('${b.action.topic.id}', ${b.action.subId ? `'${b.action.subId}'` : 'null'})">Start</button>`
     : S.courses.size === 0
       ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="go('courses')">Add a course to your route</button>`
       : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">That's today's ground covered. Come back tomorrow and the week keeps building.</p>`;
@@ -8051,10 +8108,10 @@ function midtermPlan(mt = S.midterm, now = new Date()) {
 // so the link is legible without having to tap it to find out.
 function upcomingLinkLabel() {
   const mt = midtermPlan();
-  if (mt && !mt.past) return 'Edit your exam plan →';
-  if (mt && mt.past)  return 'Set up an exam →';
-  if (S.semStart)     return 'Set up an exam →';
-  return 'Set your semester start →';
+  if (mt && !mt.past) return 'Edit your exam plan';
+  if (mt && mt.past)  return 'Set up an exam';
+  if (S.semStart)     return 'Set up an exam';
+  return 'Set your semester start';
 }
 
 function mtSetSemester(v) {
@@ -8158,7 +8215,7 @@ function screenExamPlan() {
     const date = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     const mark = isDone
       ? `<span style="color:var(--green-bright);font-size: var(--fs-13);font-weight:700;flex-shrink:0;">✓</span>`
-      : `<span style="color:var(--dim);font-size: var(--fs-13);flex-shrink:0;">${isToday ? '→' : ''}</span>`;
+      : `<span style="color:var(--dim);flex-shrink:0;">${isToday ? CHEVRON : ''}</span>`;
     return `
       <div style="display:flex;align-items:center;gap:12px;padding:12px 12px;border-radius: var(--r-ctl);margin-bottom:4px;${isToday ? 'background:var(--amber-wash);border:1px solid var(--amber-line);' : 'border:1px solid transparent;'}">
         <div style="width:74px;flex-shrink:0;font-size: var(--fs-11);font-weight:600;color:${isToday ? 'var(--amber)' : 'var(--faint)'};">${isToday ? 'Today' : date}</div>
@@ -8180,7 +8237,7 @@ function screenExamPlan() {
       ${rows}
 
       <div style="height:16px;"></div>
-      ${plan.today ? `<button class="btn btn-primary" onclick="startMidtermDrill('${plan.today.topicId}', '${plan.today.subId}')">Start today's unit →</button>` : ''}
+      ${plan.today ? `<button class="btn btn-primary" onclick="startMidtermDrill('${plan.today.topicId}', '${plan.today.subId}')">Start today's unit</button>` : ''}
       <button class="btn btn-ghost" onclick="startMidtermSetup()">Edit this plan</button>
     </div>`;
 }
@@ -8840,11 +8897,11 @@ function syllabusEntryHTML(courseId) {
   // it, get your due dates back. Waypoint doesn't do that and shouldn't imply it
   // — so the link names the thing it actually produces. A promise the product
   // can't keep makes a perfect parse feel like a miss.
-  if (!has) return btn('Turn your syllabus into an MCAT plan →', `openSyllabus('${courseId}')`, 'var(--green-bright)');
+  if (!has) return btn('Turn your syllabus into an MCAT plan', `openSyllabus('${courseId}')`, 'var(--green-bright)');
   // Removing is quiet and sits after replacing, because replacing is what a
   // student who got one week wrong actually wants.
   return `<span style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;">
-      ${btn('✓ Mapped — replace it →', `openSyllabus('${courseId}')`, 'var(--green-bright)')}
+      ${btn('✓ Mapped — replace it', `openSyllabus('${courseId}')`, 'var(--green-bright)')}
       ${btn('Remove', `removeSyllabus('${courseId}')`, 'var(--faint)')}
     </span>`;
 }
@@ -8910,7 +8967,7 @@ function unitGroupsHTML(units) {
     .sort((a, b) => order.indexOf(a) - order.indexOf(b))
     .map(code => {
       const cat = CONTENT_MAP.find(c => c.code === code);
-      return { heading: `${code} · ${cat ? cat.title : ''}`, units: byCode.get(code) };
+      return { heading: `${code}${cat ? ': ' + cat.title : ''}`, units: byCode.get(code) };
     });
   if (loose.length) groups.push({ heading: 'Also in this course', units: loose });
   return groups;
@@ -8931,13 +8988,13 @@ function sylWeekRowHTML(w, i, units, reason) {
   const open = S.syl.picker === i;
   const chips = w.unitIds.map(id => {
     const u = unitFromId(id);
-    return `<button onclick="sylToggleUnit(${i},'${id}')" title="Remove" style="background:var(--violet-wash);border:1px solid var(--violet-line);border-radius: var(--r-ctl);min-height:32px;padding:0 8px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--violet-soft);cursor:pointer;-webkit-tap-highlight-color:transparent;">${u ? u.label : id} ×</button>`;
+    return `<button onclick="sylToggleUnit(${i},'${id}')" title="Remove" style="background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);min-height:32px;padding:0 8px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent;">${u ? u.label : id} ×</button>`;
   }).join('');
 
   return `
       <div style="${SYL_CARD}padding:12px 12px;margin-bottom:8px;">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-          <span style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);">Week ${w.week}</span>
+          <span style="font-size: var(--fs-11);font-weight:700;color:var(--faint);">Week ${w.week}</span>
           ${w.unitIds.length ? `<button onclick="sylDropWeek(${i})" style="background:none;border:none;padding:0;font-family:inherit;font-size: var(--fs-11);color:var(--faint);cursor:pointer;-webkit-tap-highlight-color:transparent;">Clear</button>` : ''}
         </div>
         <p style="font-size: var(--fs-13);color:var(--ink);line-height:1.5;margin:0 0 ${reason ? '6px' : '8px'};">${w.label ? esc(w.label) : '<span style="color:var(--faint);font-style:italic;">(no topic listed)</span>'}</p>
@@ -8950,11 +9007,11 @@ function sylWeekRowHTML(w, i, units, reason) {
         ${open ? `
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);">
             ${unitGroupsHTML(units).map(g => `
-              <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);line-height:1.4;margin:12px 0 6px;">${g.heading}</p>
+              <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);line-height:1.4;margin:12px 0 6px;">${g.heading}</p>
               <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 ${g.units.map(u => {
                   const on = w.unitIds.indexOf(u.id) !== -1;
-                  return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'var(--violet-wash)' : 'transparent'};border:1px solid ${on ? 'var(--violet)' : 'var(--line-2)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--violet-soft)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
+                  return `<button onclick="sylToggleUnit(${i},'${u.id}')" style="background:${on ? 'var(--green-wash)' : 'transparent'};border:1px solid ${on ? 'var(--green)' : 'var(--line-2)'};border-radius: var(--r-ctl);min-height:34px;padding:0 12px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:${on ? 'var(--muted)' : 'var(--ink-2)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${on ? '✓ ' : ''}${u.label}</button>`;
                 }).join('')}
               </div>`).join('')}
           </div>` : ''}
@@ -8984,7 +9041,7 @@ function screenSyllabus() {
       <p class="label">Your syllabus</p>
       <h2 style="margin-bottom:8px;">This one needs an account.</h2>
       <p class="p-lead">Your class schedule is worth keeping, so it syncs with your account rather than living in one browser. This is the only part of Waypoint that needs one.</p>
-      <button class="btn btn-primary" onclick="S.syl=null;go('settings')">Sign in →</button>
+      <button class="btn btn-primary" onclick="S.syl=null;go('settings')">Sign in</button>
       <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Not now</button>
     </div>`;
   }
@@ -9024,7 +9081,7 @@ function screenSyllabus() {
            </div>`
         : `<button class="topic-pick-btn" onclick="openSyllabus('${c.id}')">
              <span class="tp-name" style="color:var(--ink);">${c.name}</span>
-             <span class="tp-arrow" style="color:var(--green-bright);">→</span>
+             <span class="tp-arrow" style="color:var(--green-bright);">${CHEVRON}</span>
            </button>`).join('')}
       <div style="height:10px;"></div>
       <button class="btn btn-ghost" onclick="finishSyllabus()">Done for now</button>
@@ -9049,19 +9106,19 @@ function screenSyllabus() {
 
       ${next ? `
         <div style="${SYL_CARD}padding:16px 16px;margin-bottom:12px;">
-          <p style="font-size: var(--fs-11);font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 4px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
+          <p style="font-size: var(--fs-11);font-weight:700;color:var(--green);margin:0 0 4px;">${next.now ? 'This week, from your syllabus' : 'First up'}</p>
           <p style="font-size: var(--fs-15);color:var(--ink);line-height:1.5;margin:0 0 4px;font-weight:600;">${esc(next.row.label) || 'Week ' + next.row.week}</p>
-          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0 0 12px;">${next.row.unitIds.map(id => { const u = unitFromId(id); return u ? u.label : id; }).join(' · ')}</p>
-          <button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="syllabusStartWeek('${next.row.unitIds[0]}')">Start ${next.now ? 'this week' : 'week ' + next.row.week}'s 5 →</button>
+          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.5;margin:0 0 12px;">${next.row.unitIds.map(id => { const u = unitFromId(id); return u ? u.label : id; }).join(', ')}</p>
+          <button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="syllabusStartWeek('${next.row.unitIds[0]}')">Start ${next.now ? 'this week' : 'week ' + next.row.week}'s 5</button>
         </div>` : ''}
 
       <div style="${SYL_CARD}padding:16px 16px;margin-bottom:20px;">
-        <p style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 4px;">What the term adds up to</p>
+        <p style="font-size: var(--fs-11);font-weight:700;color:var(--green);margin:0 0 4px;">What the term adds up to</p>
         <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;">${month ? `By ${month}` : 'By the end of term'} this course takes you to <strong style="color:var(--green-bright);">${end}% of MCAT content</strong>.</p>
       </div>
 
       ${left.length
-        ? `<button class="btn btn-primary" onclick="syllabusAddAnother()">Add another syllabus →</button>
+        ? `<button class="btn btn-primary" onclick="syllabusAddAnother()">Add another syllabus</button>
            <button class="btn btn-ghost" onclick="finishSyllabus()">Done</button>`
         : `<p style="font-size: var(--fs-13);color:var(--faint);line-height:1.6;margin-bottom:12px;">That's every class you're taking this term mapped.</p>
            <button class="btn btn-primary" onclick="finishSyllabus()">Done</button>`}
@@ -9075,7 +9132,7 @@ function screenSyllabus() {
       <p class="label">One more thing</p>
       <h2 style="margin-bottom:8px;">Is this when your term started?</h2>
       <p class="p-lead">Your syllabus says <strong style="color:var(--ink);">${d.result.termStart}</strong>. Waypoint uses it to work out which week you're in — you can change it any time.</p>
-      <button class="btn btn-primary" onclick="useSyllabusTermStart()">Use that date →</button>
+      <button class="btn btn-primary" onclick="useSyllabusTermStart()">Use that date</button>
       <button class="btn btn-ghost" onclick="finishSyllabus()">Skip</button>
     </div>`;
   }
@@ -9105,7 +9162,7 @@ function screenSyllabus() {
       <p class="p-lead">${shots
         ? `Try again with the schedule page flat and in frame, or paste the text instead. Waypoint will keep using the typical pacing for ${name} until then, which works fine.`
         : `Waypoint will keep using the typical pacing for ${name}, which works fine. If your syllabus does have a week-by-week table, paste just that part and try again.`}</p>
-      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">${shots ? `Back to your ${many ? 'photos' : 'photo'} →` : 'Try another paste →'}</button>
+      <button class="btn btn-primary" onclick="S.syl.phase='paste';S.syl.result=null;render();">${shots ? `Back to your ${many ? 'photos' : 'photo'}` : 'Try another paste'}</button>
       ${shots ? `<button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;sylClearPages();">Paste the schedule instead</button>` : ''}
       <button class="btn btn-ghost" onclick="S.syl=null;go('brief')">Leave it</button>
     </div>`;
@@ -9157,7 +9214,7 @@ function screenSyllabus() {
       ` : ''}
 
       <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.6;margin:16px 0 12px;">Professors drift from their own syllabus. When yours does, <strong style="color:var(--muted);">Not what you're covering?</strong> on Today puts Waypoint back in step in one tap — so this doesn't have to be perfect.</p>
-      <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right — save it →</button>
+      <button class="btn btn-primary" onclick="acceptSyllabus()">Looks right, save it</button>
       <button class="btn btn-ghost" onclick="S.syl.phase='paste';S.syl.result=null;S.syl.showAll=false;render();">${d.method === 'camera'
         // "Start over" reads as throwing the shots away, which is the opposite
         // of what this does — and it's the route the partial notice above sends
@@ -9199,7 +9256,7 @@ function screenSyllabus() {
       ${cameraInput}
 
       ${pages.length ? `
-        <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 8px;">${pages.length} page${s(pages.length)} captured</p>
+        <p style="font-size: var(--fs-11);font-weight:700;color:var(--faint);margin:0 0 8px;">${pages.length} page${s(pages.length)} captured</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
           ${pages.map((p, i) => `
             <div style="width:72px;">
@@ -9212,7 +9269,7 @@ function screenSyllabus() {
             </div>`).join('')}
         </div>
         ${pages.length < SYL_MAX_PAGES
-          ? shootBtn('Add another page →')
+          ? shootBtn('Add another page')
           : `<p style="font-size: var(--fs-13);color:var(--faint);line-height:1.6;margin-bottom:12px;">That's the ${SYL_MAX_PAGES}-page limit, which is plenty for a schedule. Remove one if you want a different shot.</p>`}
         <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-bottom:8px;">Shoot the weekly schedule pages in order. A table that runs onto a second page is fine — Waypoint reads them as one document.</p>
         <button onclick="sylClearPages()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--faint);cursor:pointer;-webkit-tap-highlight-color:transparent;">Upload a PDF or paste it instead</button>
@@ -9238,14 +9295,14 @@ function screenSyllabus() {
                style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
                onchange="sylPickFile(this)">
 
-        <p style="text-align:center;font-size: var(--fs-11);color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:12px;">or paste it</p>
+        <p style="text-align:center;font-size: var(--fs-11);color:var(--dim);margin-bottom:12px;">or paste it</p>
         <textarea id="syl-text" oninput="sylPasteInput(this)" rows="9" spellcheck="false"
           placeholder="Week 1: Muscle structure and contraction&#10;Week 2: Cardiac cycle&#10;Week 3: Midterm exam&#10;…"
           style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px;color:var(--ink);font-family:inherit;font-size: var(--fs-15);line-height:1.5;resize:vertical;margin-bottom:12px;-webkit-appearance:none;">${esc(d.text || '')}</textarea>
       `}
 
       <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-bottom:16px;">Waypoint reads your syllabus and keeps the schedule in your account. ${pages.length ? 'The photos aren\'t stored on our servers.' : 'The syllabus itself isn\'t stored on our servers.'}</p>
-      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">${pages.length ? `Read these ${pages.length} page${s(pages.length)} →` : 'Read my syllabus →'}</button>
+      <button class="btn btn-primary" id="syl-go" ${ready ? '' : 'disabled'} onclick="runSyllabusParse()">${pages.length ? `Read these ${pages.length} page${s(pages.length)}` : 'Read my syllabus'}</button>
     </div>`;
 }
 
@@ -9346,8 +9403,8 @@ function claimHTML() {
   const more = items.length > 1 ? ` <span style="color:var(--muted);">(+${items.length - 1} more in progress)</span>` : '';
   return `
       <button onclick="go('courses')" style="width:100%;text-align:left;background:var(--amber-wash);border:1px solid var(--amber-line);border-radius: var(--r-card);padding:12px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;font-family:inherit;">
-        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">In progress</div>
-        <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.5;margin:0;">You're taking <strong style="color:var(--ink);">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:var(--amber);">+${top.delta}%</strong> coverage →</p>
+        <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);margin-bottom:4px;">In progress</div>
+        <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.5;margin:0;">You're taking <strong style="color:var(--ink);">${top.course.name}</strong>${more}. Mark it done to claim the rest — <strong style="color:var(--amber);">+${top.delta}%</strong> coverage</p>
       </button>`;
 }
 
@@ -9417,13 +9474,13 @@ function todayPick(skip = null) {
   const mt = midtermPlan();
   if (mt && !mt.past && mt.days <= 14 && mt.today && !skipped(mt.today.topicId)) {
     return { label: 'Before your exam', accent: 'var(--amber)',
-             title: (() => { const n = sessionSize(mt.today.topicId, mt.today.subId); return `${n} question${n !== 1 ? 's' : ''} on ${mt.today.label}`; })(),
+             title: mt.today.label, n: sessionSize(mt.today.topicId, mt.today.subId),
              reason: mt.days === 0 ? `Your ${mt.courseName} exam is today.`
                    : mt.days === 1 ? `Your ${mt.courseName} exam is tomorrow.`
                    : `Your ${mt.courseName} exam is in ${mt.days} days.`,
              onclick: `startMidtermDrill('${mt.today.topicId}', '${mt.today.subId}')`,
              run: () => startMidtermDrill(mt.today.topicId, mt.today.subId),
-             link: { label: 'See the full plan →', onclick: `go('examplan')` } };
+             link: { label: 'See the full plan', onclick: `go('examplan')` } };
   }
 
   const wk = rotateWeekUnits(thisWeekUnits()).find(u => !skipped(u.topic.id));
@@ -9431,14 +9488,14 @@ function todayPick(skip = null) {
     // When it came from their syllabus, say so in their words. "Your syllabus
     // has X this week" is checkable against the paper on their desk; "your
     // class is covering it now" is our inference either way.
-    return { label: 'This week in class', accent: 'var(--violet)',
-             title: (() => { const n = sessionSize(wk.topic.id, wk.subId); return `${n} question${n !== 1 ? 's' : ''} on ${wk.subLabel}`; })(),
+    return { label: 'This week in class', accent: 'var(--green)',
+             title: wk.subLabel, n: sessionSize(wk.topic.id, wk.subId),
              reason: wk.syllabusLabel
                ? `Your syllabus has <strong style="color:var(--ink-2);">${esc(wk.syllabusLabel)}</strong> this week.`
                : `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
              onclick: `startWeekDrill('${wk.topic.id}', '${wk.subId}')`,
              run: () => startWeekDrill(wk.topic.id, wk.subId),
-             link: { label: 'Not what you\'re covering? →', onclick: `openPaceFix('${wk.courseId}')` } };
+             link: { label: 'Not what you\'re covering?', onclick: `openPaceFix('${wk.courseId}')` } };
   }
 
   // Faded ground gets to lead, but only twice a week — semester-synced work is
@@ -9454,7 +9511,7 @@ function todayPick(skip = null) {
       const when = seasonPhrase(S.topicLastSeen[r.tid]);
       const n = repinCount(r.tid);
       return { label: 'Still yours', accent: 'var(--amber)',
-               title: `${n} question${n !== 1 ? 's' : ''} on ${r.topic.name}`,
+               title: r.topic.name, n,
                reason: term ? `You finished this in ${term} — keep holding it.`
                      : when ? `You last practiced this in ${when} — keep holding it.`
                             : 'You covered this a while back — keep holding it.',
@@ -9469,8 +9526,9 @@ function todayPick(skip = null) {
     const reason = d.reason === 'retention'   ? `You covered it ${weeksAgo(d.days)}.`
                  : d.reason === 'in-progress' ? `You're taking it in class right now.`
                  : (t.w === 0 ? 'A skill tested across the exam.' : `${t.w}% of the exam.`);
-    return { label: 'Do this now', accent: 'var(--green)',
-             title: (() => { const n = sessionSize(t.id, null); return `${n} question${n !== 1 ? 's' : ''} on ${t.name}`; })(), reason,
+    // No kicker: "Do this now" restated the heading under it.
+    return { label: '', accent: 'var(--green)',
+             title: t.name, n: sessionSize(t.id, null), reason,
              onclick: `startQuickLog('${t.id}', null)`,
              run: () => startQuickLog(t.id, null) };
   }
@@ -9500,18 +9558,18 @@ function doneForTodayHTML() {
   if (!practicedToday() || S.courses.size === 0) return '';
   const kicker = `Done for today${S.streak > 1 ? ` · ${S.streak} days` : ''}`;
   // The link sits outside the card: the reward is the card, this is the aside.
-  const keepGoingLink = `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going — another 5 →</button>`;
+  const keepGoingLink = `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going with another 5</button>`;
 
   const d = getDailyTwist();
   if (d) {
     const { cls, exam } = splitTwist(d.text);
     const twistBody = `
           <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 0 8px;"><strong style="color:var(--ink-2);">In class:</strong> ${cls}</p>
-          ${exam ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;"><strong style="color:var(--violet);">On the MCAT:</strong> ${exam}</p>` : ''}`;
-    return card('var(--violet)', kicker, `${d.topic ? d.topic.name : 'Your'} — the MCAT twist`,
+          ${exam ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;"><strong style="color:var(--green);">On the MCAT:</strong> ${exam}</p>` : ''}`;
+    return card('var(--green)', kicker, `${d.topic ? d.topic.name : 'Your'} — the MCAT twist`,
                 twistBody, '', { titleSize: 'var(--fs-17)' }) + keepGoingLink;
   }
-  return card('var(--violet)', kicker, 'That\'s today\'s ground covered.',
+  return card('var(--green)', kicker, 'That\'s today\'s ground covered.',
               `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0;">Come back tomorrow and the week keeps building.</p>`,
               '', { titleSize: 'var(--fs-17)' }) + keepGoingLink;
 }
@@ -9533,9 +9591,9 @@ function todayCardHTML() {
     `<p style="font-size: var(--fs-13);color:${color};line-height:1.55;margin:0 0 16px;">${text}</p>`;
 
   if (S.courses.size === 0) {
-    return card('var(--green)', 'Start here', 'Add the classes you\'re taking',
+    return card('var(--green)', '', 'Add the classes you\'re taking',
                 reason('That\'s all it takes to see your route.', 'var(--faint)'),
-                cta('Choose my courses →', "go('courses')"), { tint: 'var(--green-bright)' });
+                cta('Choose my courses', "go('courses')"), { tint: 'var(--green-bright)' });
   }
 
   // Reached only when the brief owns no slot and today's work is not yet done,
@@ -9543,30 +9601,48 @@ function todayCardHTML() {
   // gap for good.
   const p = todayPick(practicedToday() ? topicsSeenToday() : null);
   if (!p) {
-    return card('var(--green)', 'Do this now', 'A session from what you know',
+    return card('var(--green)', '', 'A session from what you know',
                 reason('Drawn from the courses on your route.', 'var(--faint)'),
-                cta('Start →', 'startSession()'), { tint: 'var(--green-bright)' });
+                cta('Start practising', 'startSession()'), { tint: 'var(--green-bright)' });
   }
 
   const link = p.link
     ? `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--faint);cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-bottom:-12px;-webkit-tap-highlight-color:transparent;" onclick="${p.link.onclick}">${p.link.label}</button>`
     : '';
+  // The button says what happens, with the count the title no longer carries.
+  const n = p.n || sessionSize((p.topic && p.topic.id) || '', null) || 5;
   return card(p.accent, p.label, p.title, reason(p.reason, 'var(--muted)'),
-              cta('Start →', p.onclick) + link);
+              cta(`Practice ${n} ${lower(p.title)} question${n !== 1 ? 's' : ''}`, p.onclick) + link);
+}
+
+// Today was one card and three links, with no trace of the thing the product
+// is. This is the student's own sheet at thumbnail size: the shape of the exam,
+// what they have covered of it, and the parcel they are being pointed at —
+// one tap from the Route itself. The figure rides on its title rail, where the
+// sheet keeps it, which is what the Route chip in the topbar was standing in
+// for.
+function todaySheetHTML() {
+  if (!S.courses.size) return '';
+  const cov = coverage(S.courses, true);
+  if (cov <= 0) return '';
+  const year = S.year ? `Your route, ${S.year} year` : 'Your route';
+  return `
+      <button onclick="go('reveal')" aria-label="Your route" style="display:block;width:100%;text-align:left;background:none;border:none;padding:0;margin:0 0 18px;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;">
+        <span class="sheet" style="display:block;">
+          <span class="sheet-in" style="display:block;">
+            <span class="sheet-title" style="display:flex;"><i>${year}</i><b><small>about</small>${Math.round(cov / 5) * 5}%<small>covered</small></b></span>
+            ${routeMapHTML({ idPrefix: 'today', frame: false, names: false, flat: true })}
+          </span>
+        </span>
+      </button>`;
 }
 
 function screenBrief() {
-  const cov = coverage(S.courses, true);
-  // Navigation chrome, but it is still the coverage figure leaving the model, so
-  // it leaves at the grain the model has: nearest 5, like every other percentage
-  // the app shows now that the headline is a map. The pill has no room for the
-  // word "about"; the tap-to-explain view one screen away carries it.
-  const covPill = Math.round(cov / 5) * 5;
   return `
     <div class="screen">
       <div class="brief-topbar">
         <button onclick="logoTap()" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;">
-          <div style="width:30px;height:30px;background:var(--green-wash-2);border-radius: var(--r-ctl);display:flex;align-items:center;justify-content:center;">
+          <div style="display:flex;align-items:center;justify-content:center;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2A5F3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3 20.5 20.5H3.5Z"/><circle cx="12" cy="15.2" r="2.2" fill="#2A5F3E" stroke="none"/>
             </svg>
@@ -9574,7 +9650,6 @@ function screenBrief() {
           <span class="disp" style="font-size: var(--fs-15);font-weight:600;color:var(--ink);">Waypoint</span>
         </button>
         <div style="display:flex;align-items:center;gap:12px;">
-          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-pill);cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;margin:-12px 0;font-family:inherit;font-size: var(--fs-13);font-weight:700;color:var(--green-bright);-webkit-tap-highlight-color:transparent;">Route · ${covPill}%</button>` : ''}
           ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size: var(--fs-13);font-weight:600;">${S.streak}</span></div>` : ''}
           <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
@@ -9582,10 +9657,11 @@ function screenBrief() {
         </div>
       </div>
 
+      ${todaySheetHTML()}
       ${todayCardHTML()}
       ${termCardHTML()}
 
-      <button class="link-btn full" onclick="go('quicklog')">Practice a specific topic →</button>
+      <button class="link-btn full" onclick="go('quicklog')">Practice a specific topic</button>
       <!-- The syllabus offer moved to the foot of the check screen last sprint,
            and the check screen is one a simple-picker student never sees — which
            left the word "syllabus" nowhere on the Route or on Home. Same entry,
@@ -9593,10 +9669,10 @@ function screenBrief() {
            away by itself once there is nothing to offer. -->
       ${liveCourses().length
         ? (unmappedCourses().length
-          ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan →</button>`
-          : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus →</button>`)
+          ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
+          : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus</button>`)
         : (S.courses.size
-          ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking →</button>`
+          ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking</button>`
           : '')}
       <button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;-webkit-tap-highlight-color:transparent;" onclick="startMidtermSetup()">${upcomingLinkLabel()}</button>
     </div>`;
@@ -9639,16 +9715,16 @@ function screenLanding() {
            percentage and three section bars; it leads with the map now, because
            that is what the product is. -->
       <div style="background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px;margin-bottom:32px;">
-        <div style="font-size: var(--fs-11);font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">Example — seven courses in</div>
         <div style="font-size: var(--fs-17);font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-0.01em;margin-bottom:12px;">${territoryLine(ex.cov)}</div>
         ${ex.map}
+        <p style="font-family:'Source Serif 4',Georgia,serif;font-style:italic;font-size: var(--fs-13);color:var(--muted);margin:8px 0 0;">An example junior, seven courses in.</p>
         ${mapLegendHTML()}
         <div style="font-size: var(--fs-11);color:var(--faint);margin-top:12px;line-height:1.55;">${EXAMPLE_ROUTE.label} — which counts half until it's finished. Every tile is sized by how much of the exam it is. You're probably further along than you think.</div>
       </div>
 
-      <button class="btn btn-primary" onclick="go('year')" style="font-size: var(--fs-15);font-weight:600;letter-spacing:-0.01em;">See where you are →</button>
-      <p style="text-align:center;font-size: var(--fs-13);color:var(--dim);margin-top:12px;">Free · about 2 minutes</p>
-      <button onclick="openAbout()" class="link-btn" style="margin:var(--s-3) auto 0;">What is Waypoint? Why I built it →</button>
+      <button class="btn btn-primary" onclick="go('year')" style="font-size: var(--fs-15);font-weight:600;letter-spacing:-0.01em;">See where you are</button>
+      <p style="text-align:center;font-size: var(--fs-13);color:var(--dim);margin-top:12px;">Free, and about two minutes</p>
+      <button onclick="openAbout()" class="link-btn" style="margin:var(--s-3) auto 0;">What is Waypoint? Why I built it</button>
       <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:24px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
     </div>`;
 }
@@ -9676,14 +9752,14 @@ function screenAbout() {
       ${para(`Here's the honest origin story. I wanted to start getting ready for the MCAT early — not cram, just build a real foundation while the material was actually in front of me in class. But everywhere I looked, the advice was the same: <em style="color:var(--muted);">"It's too early. Wait until junior year."</em>`)}
       ${para(`I understand why people say that — you shouldn't be grinding full-length practice exams as a sophomore. But "just wait" never sat right with me. I'm already taking Bio. I'm already taking Chem. That <strong style="color:var(--ink);">is</strong> MCAT material. It felt wrong to ignore an advantage sitting right in front of me — and I really believe that if I learn this stuff a little more deeply the first time, junior year becomes review instead of panic.`)}
       ${para(`So Waypoint is the tool I wished existed.`)}
-      ${para(`It maps the classes you're already taking onto the MCAT, so you can see honestly how much of the exam your coursework already covers. It shows you how the MCAT will bend what your professor is teaching — because the exam tests the <em style="color:var(--violet-soft);">consequence</em>, not just the definition — and it lets you practice that gap a few minutes at a time, on the exact topics you're in right now.`)}
+      ${para(`It maps the classes you're already taking onto the MCAT, so you can see honestly how much of the exam your coursework already covers. It shows you how the MCAT will bend what your professor is teaching — because the exam tests the <em style="color:var(--muted);">consequence</em>, not just the definition — and it lets you practice that gap a few minutes at a time, on the exact topics you're in right now.`)}
       ${para(`It's not a cram tool, and it's not trying to replace the big question banks you'll use junior year. It's for the two years <em style="color:var(--muted);">before</em> that — the stretch where you're motivated but everyone tells you there's nothing to do yet. The goal is simple: by the time you open a prep book, a good chunk of it already feels familiar, and you never had to do a panic death-march to get there. Mostly, I want the whole thing to feel a little less scary and a little more in your control.`)}
       ${para(`A few honest things, because trust matters to me. I'm a student, not a company. I build this between classes, EMT shifts, and my work as an RBT — it's a side project, not a startup trying to sell you anything. The coverage numbers come from the real AAMC exam weighting and a standard premed course sequence, and I say so plainly inside the app; they're a typical course load, not a survey of students. It's free and there's nothing to buy. Signing in with your email keeps your route safe — your courses, your coverage, and every session you've done — and lets it follow you from your laptop to your phone.`)}
       ${para(`I just needed this to exist. I hope it helps.`)}
 
       <p style="font-size: var(--fs-15);color:var(--green-bright);font-weight:600;margin-top:4px;">— Drew</p>
 
-      <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--line);font-size: var(--fs-13);color:var(--faint);line-height:1.6;">Free · nothing to buy · a premed side project. Built with care between shifts.</div>
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--line);font-size: var(--fs-13);color:var(--faint);line-height:1.6;">Free, with nothing to buy. A premed side project, built with care between shifts.</div>
     </div>`;
 }
 
@@ -9705,11 +9781,11 @@ function screenSettings() {
 
       <button onclick="openAbout()" style="width:100%;text-align:left;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:inherit;">
         <span><span style="display:block;font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">What is Waypoint?</span><span style="font-size: var(--fs-13);color:var(--faint);">Why I built it, and how it helps — from the maker.</span></span>
-        <span style="color:var(--green);font-size: var(--fs-20);flex-shrink:0;">→</span>
+        <span style="color:var(--green);flex-shrink:0;display:inline-flex;">${CHEVRON}</span>
       </button>
 <button onclick="openSources()" style="width:100%;text-align:left;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-card);padding:16px 16px;margin-bottom:24px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:inherit;">
         <span><span style="display:block;font-size: var(--fs-15);font-weight:600;color:var(--ink);margin-bottom:4px;">Where these numbers come from</span><span style="font-size: var(--fs-13);color:var(--faint);">Sources for every figure, and the working behind Waypoint's own estimates.</span></span>
-        <span style="color:var(--green);font-size: var(--fs-20);flex-shrink:0;">→</span>
+        <span style="color:var(--green);flex-shrink:0;display:inline-flex;">${CHEVRON}</span>
       </button>
 
       <p class="label" style="margin-bottom:8px;">Your year</p>
@@ -9787,7 +9863,7 @@ function lastSyncedLabel() {
 function accountSectionHTML() {
   const s = authSession();
   const tone = syncState.status === 'error' ? 'var(--amber)'
-             : syncState.status === 'sent'  ? 'var(--violet)' : 'var(--green-bright)';
+             : syncState.status === 'sent'  ? 'var(--green)' : 'var(--green-bright)';
   const note = syncState.message
     ? `<p style="font-size: var(--fs-13);color:${tone};line-height:1.55;margin:-4px 0 12px;">${syncState.message}</p>` : '';
 
@@ -9931,8 +10007,8 @@ function breakdownHTML() {
       ${sections.map(({ sec, items, secTotal, secCredited }) => `
         <div style="margin-bottom:20px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
-            <span style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);">${sec.short}</span>
-            <span style="font-size: var(--fs-11);color:var(--muted);">${sec.id === 'cars' ? '23% · ongoing' : `${secCredited} / ${secTotal}%`}</span>
+            <span style="font-size: var(--fs-11);font-weight:700;color:var(--muted);">${sec.short}</span>
+            <span style="font-size: var(--fs-11);color:var(--muted);">${sec.id === 'cars' ? '23%, ongoing' : `${secCredited} / ${secTotal}%`}</span>
           </div>
           ${items.map(({ t, state }) => `
             <div class="bd-row">
@@ -9944,9 +10020,9 @@ function breakdownHTML() {
       <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:16px 16px;margin-top:4px;">
         <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--ink-2);margin-bottom:8px;"><span>Course content covered</span><strong style="color:var(--green-bright);">${cov}%</strong></div>
         <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);"><span>Max from courses</span><span>77%</span></div>
-        <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);"><span>CARS — a reading skill built all along</span><span>23% here · 53 of 230 questions</span></div>
-        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-top:12px;">✓ done · ½ taking now (counts half until you finish) · · not yet · ~ ongoing.</p>
-        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.6;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">These weights are Waypoint's own estimate, built from AAMC's content outline and the standard scope of each course — a typical course load, not a survey of students. <button onclick="openSources()" class="link-btn" style="font-size:var(--fs-11);min-height:0;text-decoration:underline;">Where these numbers come from →</button></p>
+        <div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);"><span>CARS — a reading skill built all along</span><span>23% here, 53 of 230 questions</span></div>
+        <p style="display:flex;flex-wrap:wrap;gap:4px 16px;font-size: var(--fs-11);color:var(--faint);line-height:1.55;margin-top:12px;"><span>✓ done</span><span>½ taking now, counts half until you finish</span><span>· not yet</span><span>~ ongoing</span></p>
+        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.6;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">These weights are Waypoint's own estimate, built from AAMC's content outline and the standard scope of each course — a typical course load, not a survey of students. <button onclick="openSources()" class="link-btn" style="font-size:var(--fs-11);min-height:0;text-decoration:underline;">Where these numbers come from</button></p>
       </div>
     </div>`;
 }
@@ -9977,7 +10053,7 @@ function screenCoverage() {
       <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:12px;">The MCAT is 230 questions, and AAMC publishes exactly what is in them: 59 on biology and biochemistry, 59 on chemistry and physics, 59 on psychology and sociology, 53 on reading — and a stated mix of disciplines inside each one.</p>
       <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:12px;">The Coverage Model maps premed coursework onto that structure: each course to the MCAT topics it teaches, each topic to its discipline's real share of the exam. AAMC publishes what the exam contains. Nobody publishes which of your classes covers it. That mapping is what turns <em>I took Biochem</em> into a number.</p>
       <p style="font-size: var(--fs-15);color:var(--muted);line-height:1.6;margin-bottom:8px;">Every figure comes from AAMC's own published data, the arithmetic is written out, and you can recheck the whole thing with a calculator. <strong style="color:var(--ink-2);">Complex enough to be right. Simple enough that you can check it.</strong></p>
-      <button onclick="openSources()" class="link-btn full" style="margin-bottom:var(--s-3);">See the whole derivation →</button>
+      <button onclick="openSources()" class="link-btn full" style="margin-bottom:var(--s-3);">See the whole derivation</button>
 
       <div class="section-divider"></div>
       <p class="label" style="margin-bottom:8px;">What the number means</p>
@@ -9991,14 +10067,14 @@ function screenCoverage() {
       <div style="font-size: var(--fs-13);color:var(--faint);line-height:1.6;margin-bottom:24px;">
         <p style="margin:0 0 8px;"><strong style="color:var(--green-bright);">Required by most med schools:</strong> a year each of Biology, General Chemistry, Organic Chemistry, and Physics (all with labs), plus English and a math or statistics course.</p>
         <p style="margin:0 0 8px;"><strong style="color:var(--amber);">Before the MCAT:</strong> all of the above <em>plus Biochemistry</em> — it's heavily tested, so finish it before you sit the exam.</p>
-        <p style="margin:0;"><strong style="color:var(--violet);">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
+        <p style="margin:0;"><strong style="color:var(--green);">MCAT-tested but not required for admission:</strong> Psychology and Sociology (together ~18% of the exam).</p>
         <p style="font-size: var(--fs-11);color:var(--faint);margin:8px 0 0;">English isn't tracked here (it's not MCAT content), but most schools require two semesters.</p>
       </div>
 
       <!-- Sources is already offered twice above — as the closing move of the
            opening block, and under the weights table that cites it. A third
            link at the foot was the same destination wearing a third label. -->
-      <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
+      <button class="btn btn-ghost" onclick="go('reveal')">Back to my route</button>
     </div>`;
 }
 
@@ -10113,7 +10189,7 @@ function screenExplain() {
       ${groups.map(g => `
         <div style="margin-bottom:20px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-            <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);"><span style="display:inline-flex;color:var(--green);">${sectionIcon(g.sec.id)}</span>${g.sec.short}</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size: var(--fs-11);font-weight:700;color:var(--muted);"><span style="display:inline-flex;color:var(--green);">${sectionIcon(g.sec.id)}</span>${g.sec.short}</span>
             <span style="font-size: var(--fs-11);color:var(--muted);flex-shrink:0;">${covPoints(g.points)}%</span>
           </div>
           ${rows(g)}
@@ -10127,13 +10203,13 @@ function screenExplain() {
       </div>
 
       <div class="section-divider"></div>
-      <p style="font-size: var(--fs-11);font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:var(--track-caps);margin:0 0 12px;">Section balance</p>
+      <p style="font-size: var(--fs-13);font-weight:600;color:var(--muted);margin:0 0 12px;">Section balance</p>
       ${sectionBalanceHTML({ bare: true })}
 
       <div class="section-divider"></div>
-      <button onclick="openSources()" class="link-btn full">See the whole derivation →</button>
-      <button onclick="go('coverage')" class="link-btn full quiet">How the Coverage Model works →</button>
-      <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
+      <button onclick="openSources()" class="link-btn full">See the whole derivation</button>
+      <button onclick="go('coverage')" class="link-btn full quiet">How the Coverage Model works</button>
+      <button class="btn btn-ghost" onclick="go('reveal')">Back to my route</button>
     </div>`;
 }
 
@@ -10183,7 +10259,7 @@ function sourceWeightRows() {
     .map(([id, v]) => `
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);">
         <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${label(id)}
-          <span style="display:block;font-size: var(--fs-11);color:var(--faint);line-height:1.4;">${v.names.join(' · ')}</span></span>
+          <span style="display:block;font-size: var(--fs-11);color:var(--faint);line-height:1.4;">${v.names.join(', ')}</span></span>
         <span style="font-size: var(--fs-13);font-weight:700;color:var(--green-bright);flex-shrink:0;">${v.w}%</span>
       </div>`).join('');
 }
@@ -10216,13 +10292,13 @@ function screenSources() {
       ${h("Waypoint's coverage weights")}
       ${p(`Derived from the two AAMC figures above, not estimated: each section's question count times each discipline's share of it, totalled across the exam, over 230. Check any line with a calculator.`)}
       <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;overflow-x:auto;">
-        <div style="display:flex;justify-content:space-between;gap:12px;font-size: var(--fs-11);color:var(--faint);text-transform:uppercase;letter-spacing:var(--track-caps);padding-bottom:8px;border-bottom:1px solid var(--line);">
-          <span>Discipline</span><span style="flex-shrink:0;">Questions · share · weight</span>
+        <div style="display:flex;justify-content:space-between;gap:12px;font-size: var(--fs-11);color:var(--faint);padding-bottom:8px;border-bottom:1px solid var(--line);">
+          <span>Discipline</span><span style="flex-shrink:0;display:grid;grid-template-columns:72px 64px 40px;text-align:right;"><span>Questions</span><span>Share</span><span>Weight</span></span>
         </div>
         ${DERIVATION.map(d => `
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);">
             <span style="font-size: var(--fs-13);color:var(--ink-2);">${d.label}</span>
-            <span style="font-size: var(--fs-13);color:var(--muted);flex-shrink:0;">${d.q} · ${d.pct}% · <strong style="color:var(--green-bright);">${d.w}</strong></span>
+            <span style="font-size: var(--fs-13);color:var(--muted);flex-shrink:0;display:grid;grid-template-columns:72px 64px 40px;text-align:right;font-variant-numeric:tabular-nums;"><span>${d.q}</span><span>${d.pct}%</span><strong style="color:var(--green-bright);">${d.w}</strong></span>
           </div>`).join('')}
         <div style="display:flex;justify-content:space-between;padding-top:12px;font-size: var(--fs-13);color:var(--ink-2);"><span>230 questions</span><strong style="color:var(--green-bright);">${total}</strong></div>
       </div>
@@ -10260,7 +10336,7 @@ function screenSources() {
 
       <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:32px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
 
-      <button class="btn btn-ghost" style="margin-top:20px;" onclick="backFromSources()">← Back</button>
+      <button class="btn btn-ghost" style="margin-top:20px;" onclick="backFromSources()">Back</button>
     </div>`;
 }
 
@@ -10414,7 +10490,7 @@ function screenCourses() {
 
       <div class="picker-foot">
         <p id="course-counter" class="picker-count" style="${n > 0 ? '' : 'visibility:hidden;'}">${n} course${n !== 1 ? 's' : ''} selected</p>
-        <button id="course-cta" class="btn btn-primary" ${n ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage &rarr;</button>
+        <button id="course-cta" class="btn btn-primary" ${n ? '' : 'disabled'} onclick="finishCourses()">Calculate my coverage</button>
       </div>
     </div>`;
 }
@@ -10501,9 +10577,9 @@ function termsLinkHTML() {
   const done = finishedCourses();
   if (!done.length) return '';
   const dated = done.filter(c => TERM_RE.test(S.courseWhen[c.id] || '')).length;
-  const label = dated === done.length ? 'Change when you took your classes →'
-              : dated                 ? 'Finish saying when you took your classes →'
-              :                         'Say when you took your finished classes →';
+  const label = dated === done.length ? 'Change when you took your classes'
+              : dated                 ? 'Finish saying when you took your classes'
+              :                         'Say when you took your finished classes';
   return `<button class="link-btn full quiet" onclick="go('terms')">${label}</button>`;
 }
 
@@ -10527,8 +10603,8 @@ function termsGridHTML() {
         }).join('')}
       </div>
       <div style="display:flex;gap:16px;align-items:center;margin-top:8px;">
-        ${page < TERM_GRID_PAGES - 1 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page + 1})">← Earlier</button>` : ''}
-        ${page > 0 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page - 1})">Recent →</button>` : ''}
+        ${page < TERM_GRID_PAGES - 1 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page + 1})">Earlier</button>` : ''}
+        ${page > 0 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page - 1})">Recent</button>` : ''}
       </div>`;
 }
 
@@ -10559,7 +10635,7 @@ function screenTerms() {
       </div>
 
       <div class="picker-foot">
-        <button class="btn btn-primary" onclick="go('reveal')">Back to my route →</button>
+        <button class="btn btn-primary" onclick="go('reveal')">Back to my route</button>
       </div>
     </div>`;
 }
@@ -10700,12 +10776,15 @@ function screenReveal() {
   // and offering the session turns reading the map into doing something about
   // it, which is the whole reason a student opened this screen.
   const focus = routeFocus();
-  const map = `      <div style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>
-      ${focus ? `<p class="focus">${focus.detail}</p>
-      <div style="margin-top:18px;">
-        <button class="btn btn-primary" onclick="startQuickLog('${focus.topic.id}', null)">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>
+  // The sheet is its own element so the desktop grid can put it in a column of
+  // its own; the block that points at it stays with the prose, which is where
+  // it belongs at both widths.
+  const map = `      <div class="rt-sheet" style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>`;
+  const focusBlock = focus ? `      <p class="focus">${focus.detail}</p>
+      <div style="margin-top:18px;margin-bottom:8px;">
+        <button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>
         <p class="focus-why">${focus.why}</p>
-      </div>` : ''}`;
+      </div>` : '';
 
   // Still one link under the number, but it now leads to the student's own
   // derivation rather than to the methodology. The methodology is one further
@@ -10715,7 +10794,7 @@ function screenReveal() {
   // the percentage lives on the other side of it.
   const ring = `      ${cov > 0 ? `
         <div style="margin:0 0 20px;">
-          <button onclick="go('explain')" class="link-btn">How this map is built →</button>
+          <button onclick="go('explain')" class="link-btn">How this map is built</button>
         </div>` : ''}`;
 
   // On a first reveal this block follows the practice button rather than
@@ -10746,26 +10825,34 @@ function screenReveal() {
   const ctaLabel = curated && curatedCourse
     // The course name and arrow travel as one unit, so a wrap at 375px never
     // leaves "I →" alone on the second line.
-    ? `Start with ${curated.length} questions from your ${curatedCourse.name.replace(/ /g, '&nbsp;')}&nbsp;→`
-    : 'Practice from what you know →';
+    ? `Start with ${curated.length} questions from your ${curatedCourse.name.replace(/ /g, '&nbsp;')}`
+    : 'Practice from what you know';
   // First reveal puts the account ask directly under this button, and with no
   // margin the two touched.
-  const cta = `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} ${first ? 'style="margin-bottom:16px;"' : ''} onclick="startSession()">${ctaLabel}</button>`;
+  // One action on the screen. The focus button under the sheet already starts a
+  // session and its count comes from sessionSize(), so this was the same offer
+  // with a different number on it — on a first reveal the two sat one above the
+  // other saying 5 and 4.
+  //
+  // It stays as the fallback, because the focus button is not always there: a
+  // route with every candidate dismissed has no next parcel, and that student
+  // still needs a way in.
+  const cta = focus ? '' : `      <button class="btn btn-primary" ${cov === 0 ? 'disabled' : ''} ${first ? 'style="margin-bottom:16px;"' : ''} onclick="startSession()">${ctaLabel}</button>`;
 
   // "Share my progress" waits for progress: the same two sessions held waits for
   // (practiceSessions). Four questions in, there is a route to look at but no
   // progress to share. A milestone card keeps its own "Share this".
   const tail = `      ${cov > 0 && practiceSessions() >= HELD_MIN_SESSIONS ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
       ${termsLinkHTML()}
-      <button class="btn btn-ghost" onclick="go('courses')">← Update my courses</button>`;
+      <button class="btn btn-ghost" onclick="go('courses')">Update my courses</button>`;
 
   const middle = first ? [cta, ask, body] : [ask, body, cta];
 
   return `
-    <div class="screen">
+    <div class="screen rt">
 ${head}
 
-${[map, '      ' + milestone, ring, ...middle].join('\n\n')}
+${[map, focusBlock, '      ' + milestone, ring, ...middle].filter(Boolean).join('\n\n')}
 ${tail}
     </div>`;
 }
@@ -10795,7 +10882,6 @@ function screenQuestion() {
       <div class="q-meta">
         <span class="q-count">${S.quickLog ? (S.quickLog.repin ? (S.quickLog.repin === 'unpinned' ? 'Check' : 'Re-pin') : 'Quick check') : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
         <div style="display:flex;gap:8px;align-items:center;">
-          <span style="font-size: var(--fs-11);font-weight:600;background:var(--wash-2);color:var(--muted);padding:4px 8px;border-radius: var(--r-ctl);letter-spacing:var(--track-caps);">MCAT-style</span>
           <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicObj.disp : ''}</span>
         </div>
       </div>
@@ -10823,13 +10909,13 @@ function screenQuestion() {
         <div class="explanation${S.answered !== q.ans ? ' wrong' : ''}">${q.exp}</div>
         ${TOPIC_SKILL[q.topic] ? `
         <div style="background:var(--wash);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
-          <div style="font-size: var(--fs-11);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">Skill trained</div>
+          <div style="font-size: var(--fs-13);font-weight:600;color:var(--ink-2);margin-bottom:4px;">Skill trained</div>
           <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.5;margin:0;">${TOPIC_SKILL[q.topic]}</p>
         </div>` : ''}
         ${(q.twist || TWISTS[q.id]) ? `
-        <div style="background:var(--violet-wash);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
-          <div style="font-size: var(--fs-11);font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:var(--track-caps);margin-bottom:4px;">The MCAT Twist</div>
-          <p style="font-size: var(--fs-13);color:var(--violet-soft);line-height:1.55;margin:0;">${q.twist || TWISTS[q.id]}</p>
+        <div style="border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px 16px;margin-bottom:16px;">
+          <div style="font-size: var(--fs-13);font-weight:600;color:var(--ink);margin-bottom:4px;">In class vs. on the MCAT</div>
+          <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">${q.twist || TWISTS[q.id]}</p>
         </div>` : ''}
         <details class="report-q">
           <summary><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>Report a problem with this question</summary>
@@ -10841,7 +10927,7 @@ function screenQuestion() {
           </div>
         </details>
         <button class="btn btn-primary" onclick="next()">
-          ${S.idx + 1 < S.session.length ? 'Next question →' : 'See my results →'}
+          ${S.idx + 1 < S.session.length ? 'Next question' : 'See my results'}
         </button>` : ''}
     </div>`;
 }
@@ -10870,7 +10956,7 @@ function getRetentionHTML(sessionAnswers) {
 
   return `
     <div style="margin-bottom:20px;">
-      <div style="font-size: var(--fs-11);font-weight:600;color:var(--faint);letter-spacing:var(--track-caps);text-transform:uppercase;margin-bottom:12px;">Your retention</div>
+      <div style="font-size: var(--fs-11);font-weight:600;color:var(--faint);margin-bottom:12px;">Your retention</div>
       ${rows.map(({ topic, pct, total }) => {
         const color = pct >= 70 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--muted)';
         return `
@@ -10970,14 +11056,12 @@ function acctPromptHTML(surface) {
   // Never "create an account" or "sign up". What is on offer is keeping the
   // thing they are looking at, which is also the truth.
   const line = surface === 'reveal'
-    ? 'Keep this route — Waypoint remembers where you are.'
+    ? 'Keep this route on every device.'
     : 'That progress is only on this device.';
-  const cta = surface === 'reveal'
-    ? 'Add your email to keep it →'
-    : 'Add your email and Waypoint keeps it safe →';
+  const cta = surface === 'reveal' ? 'Save my route' : 'Save my progress';
 
   const st   = acctOwns(surface) ? syncState.status : 'idle';
-  const tone = st === 'error' ? 'var(--amber)' : st === 'sent' ? 'var(--violet)' : 'var(--green-bright)';
+  const tone = st === 'error' ? 'var(--amber)' : st === 'sent' ? 'var(--green)' : 'var(--green-bright)';
   const note = st !== 'idle' && syncState.message
     ? `<p class="acct-note" style="color:${tone};">${esc(syncState.message)}</p>` : '';
 
@@ -11182,7 +11266,7 @@ function screenComplete() {
       ${acctPromptHTML('complete')}
       ${remindOnceHTML()}
 
-      <button class="btn btn-primary" onclick="go('brief')">Done &rarr;</button>
+      <button class="btn btn-primary" onclick="go('brief')">Done</button>
     </div>`;
 }
 
@@ -11215,7 +11299,7 @@ function screenQuickLog() {
           <span class="tp-name">${sub.label}</span>
           <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${sessionSize(t.id, sub.id)} question${sessionSize(t.id, sub.id) !== 1 ? 's' : ''}</span>
         </span>
-        <span class="tp-arrow">→</span>
+        <span class="tp-arrow">${CHEVRON}</span>
       </button>`).join('');
 
     // "All of X" is the whole-topic row — the only one offered when a topic has
@@ -11226,7 +11310,7 @@ function screenQuickLog() {
           <span class="tp-name"${subs.length ? ' style="color:var(--faint);"' : ''}>All of ${t.name}</span>
           <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${sessionSize(t.id, null)} question${sessionSize(t.id, null) !== 1 ? 's' : ''}</span>
         </span>
-        <span class="tp-arrow"${subs.length ? ' style="color:var(--faint);"' : ''}>→</span>
+        <span class="tp-arrow"${subs.length ? ' style="color:var(--faint);"' : ''}>${CHEVRON}</span>
       </button>`;
 
     return `
@@ -11273,8 +11357,24 @@ function screenQuickLogDone() {
         ? 'That\'s the first time your route has anything to say about this one.'
         : 'Your route says you\'re holding it, because you just showed that you are.'}</p>
 
-      <button class="btn btn-primary" onclick="go('reveal')">See it on my route →</button>
+      <button class="btn btn-primary" onclick="go('reveal')">See it on my route</button>
       <button class="btn btn-ghost" onclick="go('brief')">Back to Home</button>
+    </div>`;
+  }
+
+  // Two vocabularies, because there were two doors in. "Logged" belongs to the
+  // after-class log — you are recording something you already did. A session
+  // started from the Route was offered as practice, so it ends as practice, and
+  // it ends back on the map it was launched from.
+  if (ql && ql.fromRoute) {
+    return `
+    <div class="screen">
+      <p class="label">Practised</p>
+      <h2 style="margin-bottom:4px;">${topic ? topic.name : 'Topic'} practised.</h2>
+      <p style="font-size: var(--fs-15);margin-bottom:20px;">${correct}/${total} correct. Your route knows about this one now.</p>
+
+      <button class="btn btn-primary" onclick="go('reveal')">Back to my route</button>
+      <button class="btn btn-ghost" onclick="go('quicklog')">Practise another topic</button>
     </div>`;
   }
 
@@ -11464,6 +11564,17 @@ function startQuickLog(topicId, subtopicId, leadQId, opts) {
 
 // Semester Sync's "Drill" is the intended daily ritual, so unlike an ad-hoc quick
 // log it counts toward the streak and session history. Same question flow either way.
+// The Route's button says "Practice", so what it starts has to count as
+// practice: the streak, the history and the words on the way out. Without the
+// streakEligible flag it counted for nothing and ended on the after-class log's
+// copy, which is the one loop the Route exists to close.
+//
+// fromRoute rides on S.quickLog, which is transient — no storage shape changes.
+function startRouteFocus(topicId) {
+  startQuickLog(topicId, null);
+  if (S.quickLog) { S.quickLog.streakEligible = true; S.quickLog.fromRoute = true; }
+}
+
 function startWeekDrill(topicId, subtopicId) {
   startQuickLog(topicId, subtopicId);
   if (S.quickLog) S.quickLog.streakEligible = true;
@@ -12015,7 +12126,7 @@ async function shareCoverageCard(variant = 'coverage', btn) {
   // Footer
   ctx.fillStyle = tok('--muted');
   ctx.font = '500 26px "Public Sans", sans-serif';
-  ctx.fillText('Track your own MCAT coverage → waypointmcat.com', W / 2, H - 60);
+  ctx.fillText('Track your own MCAT coverage at waypointmcat.com', W / 2, H - 60);
 
   try {
     await deliverShare({
@@ -12128,7 +12239,7 @@ async function shareTwistCard(btn) {
   // Footer
   ctx.fillStyle = tok('--muted');
   ctx.font = '500 26px "Public Sans", sans-serif';
-  ctx.fillText('See the twist on every topic → waypointmcat.com', W / 2, H - 64);
+  ctx.fillText('See the twist on every topic at waypointmcat.com', W / 2, H - 64);
 
   try {
     await deliverShare({
@@ -12192,7 +12303,25 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, terms:50, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, explain:50, sources:50 };
+// A bar that measures something, or no bar.
+//
+// It used to be a fixed width per screen: 70% on question 1 of 5, 50% on the
+// Route, 10% on Settings. That is not progress, it is decoration shaped like
+// progress — and a student reading "70%" on their first question is being told
+// something untrue about where they are.
+//
+// Onboarding is a sequence with an end, so it keeps a real bar. The question
+// screen measures the session. Everywhere else has no sequence to be partway
+// through, so it has no bar.
+const PROG_ONBOARDING = { year: 25, courses: 55, terms: 80, reveal: 100 };
+
+function progressPct() {
+  if (S.screen === 'question' && S.session && S.session.length)
+    return Math.round((S.idx + 1) / S.session.length * 100);
+  // The Route is the end of onboarding only the first time through it.
+  if (S.screen === 'reveal' && !S._firstReveal) return null;
+  return PROG_ONBOARDING[S.screen] ?? null;
+}
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -12213,6 +12342,12 @@ function syncDesktopShell() {
     b.classList.toggle('active', !!m && m.includes(S.screen));
   });
 
+  // A visitor is pre-launch until they have a route. The landing, year picker
+  // and course picker are the whole product at that point, and app chrome
+  // around them is furniture for an app they have not started.
+  const preLaunch = !S.courses.size && ['landing', 'year', 'courses'].includes(S.screen);
+  shell.classList.toggle('dt-prelaunch', preLaunch);
+  document.body.classList.toggle('pre-launch', preLaunch);
   shell.classList.toggle('dt-empty', S.courses.size === 0);
   shell.classList.toggle('dt-on-route', S.screen === 'reveal');
 
@@ -12397,7 +12532,8 @@ function render() {
     default: S.screen = 'brief'; html += screenBrief(); break;
   }
 
-  html = `<div class="prog-bar"><div class="prog-fill" style="width:${PROG[S.screen] || 0}%"></div></div>` + html;
+  const pct = progressPct();
+  html = (pct === null ? '' : `<div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`) + html;
 
   const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
   if (showTabBar) {
@@ -12430,7 +12566,11 @@ function render() {
   if (S._firstReveal && !S._revealAnimated && S.screen === 'reveal') playFirstReveal();
   else animateCoverageRing();
 
+  // The Route is the one screen with two columns, so it is the one screen that
+  // asks for more than the reading column's width.
+  el.classList.toggle('app-wide', S.screen === 'reveal');
   syncDesktopShell();
+  fitSheetLabels();
   } catch(e) {
     console.error('[Waypoint] render() failed:', e);
     screenError();

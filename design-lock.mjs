@@ -43,6 +43,36 @@ function regions(src) {
   };
 }
 
+// ── Where the voice rules apply ─────────────────────────────────────────────
+// The question bank is content, not chrome. "ATP → cAMP" and "5′→3′" are how
+// chemistry is written, and a student reads them as chemistry. So the copy
+// rules below run over everything EXCEPT the bank and the comments — which is
+// to say, over the strings the interface says in its own voice.
+function uiVoice(src) {
+  let v = src;
+  const cut = (startRe, endMark) => {
+    const i = v.search(startRe);
+    if (i < 0) return;
+    const j = v.indexOf(endMark, i);
+    if (j > 0) v = v.slice(0, i) + v.slice(j + endMark.length);
+  };
+  cut(/^const QUESTIONS = \[/m, '\n];');
+  cut(/^const TWISTS = \{/m, '\n};');
+  // Comments are not said out loud — including the ones trailing a line of
+  // code, which is where the question picks keep their "ETC toxin · Tay-Sachs"
+  // notes. The lookbehind spares "https://".
+  v = v.replace(/<!--[\s\S]*?-->/g, '')
+       .replace(/\/\*[\s\S]*?\*\//g, '')
+       .replace(/(?<!:)\/\/.*$/gm, '');
+  return v;
+}
+
+// A short allow-list, one reason each. It should stay short.
+const VOICE_ALLOW = [
+  // The AAMC disclaimer is quoted wording and is not ours to restyle.
+  'MCAT® is a registered trademark',
+];
+
 // Report a finding with the line it is on, counted in the original file.
 function locate(src, needle, from = 0) {
   const at = src.indexOf(needle, from);
@@ -68,6 +98,26 @@ export function scan(src) {
   for (const m of rest.matchAll(/\b(?:rgba?|hsla?)\([^)]*\)/g)) {
     add('rgb', `${m[0]} near line ${locate(rest, m[0], Math.max(0, m.index - 1))}`);
   }
+
+  // 1c. The voice rules. Each of these was a habit the interface had rather
+  //     than a thing it meant: an arrow after a button label that already said
+  //     where it went, a label shouted in capitals above the heading it
+  //     restated, two unrelated facts joined by a middle dot, and one section
+  //     of the exam coloured as though it were a different product.
+  const voice = uiVoice(src)
+    .split('\n')
+    .filter(l => !VOICE_ALLOW.some(a => l.includes(a)))
+    .join('\n');
+  // Both directions. A back button is already a back button, and "←" was the
+  // same habit pointing the other way.
+  for (const m of voice.matchAll(/→|←|&rarr;|&larr;/g))
+    add('arrow', `an arrow in UI copy near line ${locate(voice, m[0], Math.max(0, m.index - 1))}`);
+  for (const m of voice.matchAll(/text-transform:\s*uppercase/g))
+    add('shouting', `uppercase near line ${locate(voice, m[0], Math.max(0, m.index - 1))}`);
+  for (const m of voice.matchAll(/ · /g))
+    add('middle-dot', `a " · " meta string near line ${locate(voice, m[0], Math.max(0, m.index - 1))}`);
+  for (const m of voice.matchAll(/var\(--violet[a-z-]*\)/g))
+    add('violet', `${m[0]} near line ${locate(voice, m[0], Math.max(0, m.index - 1))}`);
 
   // 2. Every font-size on the scale. A computed one (${...}) has to resolve to
   //    a token too, so the literal `px` form is what gets caught here.
@@ -126,10 +176,13 @@ export function scan(src) {
     if (w && !['13','16','20','24'].includes(w[1])) add('icon-size', `${w[1]}px near line ${locate(src, tag)}`);
   }
 
-  // 7. Every uppercase run speaks at one width.
+  // 7. No positive tracking. It existed for the small-caps eyebrows, and with
+  //    those gone the only letter-spacing left is the negative kind that tightens
+  //    a headline. Loosened tracking on lowercase text is how a shouted label
+  //    comes back wearing a different hat.
   for (const m of rest.matchAll(/letter-spacing:\s*([^;"'}\n]+)/g)) {
     const v = m[1].trim();
-    if (/^-/.test(v) || v === 'var(--track-caps)' || v === 'normal') continue;
+    if (/^-/.test(v) || v === 'normal') continue;
     add('tracking', `${v} near line ${locate(rest, m[0])}`);
   }
 
@@ -142,9 +195,13 @@ const VIOLATIONS = [
   ['a raw rgba colour',  s => s.replace('<div id="app">', '<div id="app" style="color:rgba(1,2,3,0.5);">')],
   ['a stray icon colour', s => s.replace('<svg ', '<svg stroke="#3FA9C1" ')],
   ['an off-palette theme-color', s => s.replace(/(<meta name="theme-color" content=")#[0-9A-Fa-f]+/, '$1#ABCDEF')],
+  ['an arrow in UI copy', s => s.replace('<div id="app">', '<div id="app">Continue →')],
+  ['a shouted label',    s => s.replace('<div id="app">', '<div id="app" style="text-transform: uppercase;">')],
+  ['a middle-dot string', s => s.replace('<div id="app">', '<div id="app">Free · fast')],
+  ['a violet token',     s => s.replace('<div id="app">', '<div id="app" style="color:var(--violet);">')],
   ['an off-grid icon',   s => s.replace('<svg width="16"', '<svg width="18"')],
   ['a heavy icon stroke', s => s.replace('stroke-width="2"', 'stroke-width="2.4"')],
-  ['a one-off tracking', s => s.replace('<div id="app">', '<div id="app" style="letter-spacing:0.06em;">')],
+  ['any positive tracking', s => s.replace('<div id="app">', '<div id="app" style="letter-spacing:0.06em;">')],
   ['an off-scale size',  s => s.replace('<div id="app">', '<div id="app" style="font-size:18px;">')],
   ['an off-scale radius',s => s.replace('<div id="app">', '<div id="app" style="border-radius:5px;">')],
   ['an untokened shadow',s => s.replace('<div id="app">', '<div id="app" style="box-shadow:0 2px 9px rgba(0,0,0,0.4);">')],
@@ -156,7 +213,7 @@ const ok = (n, c, x = '') => { console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? ' 
 
 const found = scan(src);
 const byRule = found.reduce((a, f) => ((a[f.rule] = a[f.rule] || []).push(f.detail), a), {});
-for (const rule of ['hex', 'rgb', 'font-size', 'border-radius', 'box-shadow', 'svg-colour', 'theme-color', 'icon-stroke', 'icon-size', 'tracking']) {
+for (const rule of ['hex', 'rgb', 'arrow', 'shouting', 'middle-dot', 'violet', 'font-size', 'border-radius', 'box-shadow', 'svg-colour', 'theme-color', 'icon-stroke', 'icon-size', 'tracking']) {
   const list = byRule[rule] || [];
   ok(`no off-system ${rule}`, list.length === 0,
      list.length ? `${list.length}: ` + list.slice(0, 6).join('; ') : '');
@@ -172,7 +229,7 @@ for (const [name, inject] of VIOLATIONS) {
 // The token block itself must still define everything the rules refer to.
 console.log('');
 const { root } = regions(src);
-for (const t of [...FONT_STEPS, ...RADII, ...SHADOWS, '--ease', '--dur', '--focus', '--track-caps', '--press'])
+for (const t of [...FONT_STEPS, ...RADII, ...SHADOWS, '--ease', '--dur', '--focus', '--press'])
   ok(`:root defines ${t}`, root.includes(t + ':'));
 
 // Spacing: the scale exists and is what the sweep snaps to.
