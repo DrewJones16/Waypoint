@@ -12349,7 +12349,25 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
-const PROG = { landing:0, brief:10, year:15, courses:30, terms:50, reveal:50, question:70, complete:100, quicklog:10, 'quicklog-subtopic':10, quicklogdone:100, settings:10, about:10, midterm:10, pace:10, examplan:10, syllabus:10, coverage:50, explain:50, sources:50 };
+// A bar that measures something, or no bar.
+//
+// It used to be a fixed width per screen: 70% on question 1 of 5, 50% on the
+// Route, 10% on Settings. That is not progress, it is decoration shaped like
+// progress — and a student reading "70%" on their first question is being told
+// something untrue about where they are.
+//
+// Onboarding is a sequence with an end, so it keeps a real bar. The question
+// screen measures the session. Everywhere else has no sequence to be partway
+// through, so it has no bar.
+const PROG_ONBOARDING = { year: 25, courses: 55, terms: 80, reveal: 100 };
+
+function progressPct() {
+  if (S.screen === 'question' && S.session && S.session.length)
+    return Math.round((S.idx + 1) / S.session.length * 100);
+  // The Route is the end of onboarding only the first time through it.
+  if (S.screen === 'reveal' && !S._firstReveal) return null;
+  return PROG_ONBOARDING[S.screen] ?? null;
+}
 
 // ── Desktop dashboard rail sync ─────────────────────────────────
 // The rail is a static sibling of #app (survives re-render); refresh its live
@@ -12554,7 +12572,8 @@ function render() {
     default: S.screen = 'brief'; html += screenBrief(); break;
   }
 
-  html = `<div class="prog-bar"><div class="prog-fill" style="width:${PROG[S.screen] || 0}%"></div></div>` + html;
+  const pct = progressPct();
+  html = (pct === null ? '' : `<div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`) + html;
 
   const showTabBar = TAB_BAR_SCREENS.includes(S.screen);
   if (showTabBar) {
