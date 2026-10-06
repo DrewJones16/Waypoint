@@ -16,6 +16,19 @@
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
+// ── What a generic student is promised ──────────────────────────────────────
+// Courses cover topics through a catalog now, so that a school's real course
+// list can say what it covers. Every student not at that school stays on the
+// generic catalog, and the generic catalog is derived from the same TOPICS the
+// weights were always read from — so their screens must be character for
+// character what they were.
+//
+// "Must be" is worth nothing unless something checks it, and a refactor that
+// touches fifty call sites is exactly where a quiet half-percent goes
+// unnoticed. This is the text, captured from main before the first line of it
+// was written.
+const SNAPSHOT = JSON.parse(readFileSync(new URL('./generic-snapshot.json', import.meta.url), 'utf8'));
+
 const FILE = new URL('./index.html', import.meta.url).pathname;
 const SRC  = readFileSync(FILE, 'utf8');
 
@@ -113,6 +126,19 @@ function allowedLine(line) {
   return false;
 }
 
+// The figures line is machine-readable on purpose: a prose diff tells you a
+// screen changed, this tells you whether a number did.
+function snapshotDiff(key, got) {
+  const want = SNAPSHOT.screens[key];
+  if (want === undefined) return `no snapshot for ${key}`;
+  if (want === got) return null;
+  const a = want.split('\n'), b = got.split('\n');
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (a[i] !== b[i]) return `line ${i + 1}: expected "${(a[i] || '').slice(0, 60)}" but read "${(b[i] || '').slice(0, 60)}"`;
+  }
+  return 'differs in trailing whitespace';
+}
+
 const failures = [];
 const browser = await chromium.launch();
 
@@ -182,6 +208,32 @@ for (const variant of VARIANTS) {
       if (pressed) failures.push(`${where}  focus button: ${pressed}`);
       else if (landed !== 'question' || !asked)
         failures.push(`${where}  focus button: landed on "${landed}"${asked ? '' : ' with no answer options'}, expected a question`);
+    }
+
+    // ── The generic promise, checked ────────────────────────────────────────
+    // Only with practice off, which is what ships, and only for the two states
+    // the snapshot was taken in.
+    if (variant.label !== 'PRACTICE=true' && SNAPSHOT.screens[`${state.name}/reveal`]) {
+      for (const scr of ['reveal', 'explain', 'coverage']) {
+        await page.evaluate(x => window.go(x), scr).catch(() => {});
+        await page.waitForTimeout(160);
+        const got = await page.evaluate(() => document.getElementById('app').innerText.trim()).catch(() => '(threw)');
+        const d = snapshotDiff(`${state.name}/${scr}`, got);
+        if (d) failures.push(`${where}  ${scr}: generic text moved — ${d}`);
+      }
+      const figures = await page.evaluate(() => {
+        const cov = coverage(S.courses, true);
+        const states = TOPICS.map(t => {
+          const c = topicCourse(t.id);
+          const st = !coursesCovering(t.id).length ? 'nocourse'
+                   : !topicCovered(t.id) ? 'ahead'
+                   : topicTaking(t.id) ? 'taking' : 'done';
+          return `${t.id}:${st}`;
+        }).join(' ');
+        return `coverage=${cov.toFixed(6)} ${states}`;
+      }).catch(e => '(threw) ' + e.message);
+      const d = snapshotDiff(`${state.name}/figures`, figures);
+      if (d) failures.push(`${where}  figures: generic coverage moved — ${d}`);
     }
 
     await ctx.close();
