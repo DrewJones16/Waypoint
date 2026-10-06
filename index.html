@@ -7902,10 +7902,10 @@ function card(accent, kicker, title, body, cta, opts) {
   const tint = o.tint || accent;
   return `
     <div style="background:linear-gradient(135deg,${wash(accent, 15)},${wash(accent, 4)});border-radius: var(--r-card);padding:20px;margin-bottom:${o.gap === undefined ? 18 : o.gap}px;">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:${title ? 9 : 12}px;">
-        <div style="font-size: var(--fs-11);font-weight:800;color:${tint};text-transform:uppercase;letter-spacing:var(--track-caps);">${kicker}</div>
+      ${kicker || o.aside ? `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:${title ? 9 : 12}px;">
+        ${kicker ? `<div style="font-size: var(--fs-11);font-weight:700;color:${tint};">${kicker}</div>` : '<span></span>'}
         ${o.aside || ''}
-      </div>
+      </div>` : ''}
       ${title ? `<div style="font-size:${o.titleSize || 'var(--fs-20)'};font-weight:700;color:var(--ink);line-height:1.25;margin-bottom:8px;">${title}</div>` : ''}
       ${body || ''}
       ${cta || ''}
@@ -8192,10 +8192,10 @@ function midtermPlan(mt = S.midterm, now = new Date()) {
 // so the link is legible without having to tap it to find out.
 function upcomingLinkLabel() {
   const mt = midtermPlan();
-  if (mt && !mt.past) return 'Edit your exam plan →';
-  if (mt && mt.past)  return 'Set up an exam →';
-  if (S.semStart)     return 'Set up an exam →';
-  return 'Set your semester start →';
+  if (mt && !mt.past) return 'Edit your exam plan';
+  if (mt && mt.past)  return 'Set up an exam';
+  if (S.semStart)     return 'Set up an exam';
+  return 'Set your semester start';
 }
 
 function mtSetSemester(v) {
@@ -8321,7 +8321,7 @@ function screenExamPlan() {
       ${rows}
 
       <div style="height:16px;"></div>
-      ${plan.today ? `<button class="btn btn-primary" onclick="startMidtermDrill('${plan.today.topicId}', '${plan.today.subId}')">Start today's unit →</button>` : ''}
+      ${plan.today ? `<button class="btn btn-primary" onclick="startMidtermDrill('${plan.today.topicId}', '${plan.today.subId}')">Start today's unit</button>` : ''}
       <button class="btn btn-ghost" onclick="startMidtermSetup()">Edit this plan</button>
     </div>`;
 }
@@ -9558,13 +9558,13 @@ function todayPick(skip = null) {
   const mt = midtermPlan();
   if (mt && !mt.past && mt.days <= 14 && mt.today && !skipped(mt.today.topicId)) {
     return { label: 'Before your exam', accent: 'var(--amber)',
-             title: (() => { const n = sessionSize(mt.today.topicId, mt.today.subId); return `${n} question${n !== 1 ? 's' : ''} on ${mt.today.label}`; })(),
+             title: mt.today.label, n: sessionSize(mt.today.topicId, mt.today.subId),
              reason: mt.days === 0 ? `Your ${mt.courseName} exam is today.`
                    : mt.days === 1 ? `Your ${mt.courseName} exam is tomorrow.`
                    : `Your ${mt.courseName} exam is in ${mt.days} days.`,
              onclick: `startMidtermDrill('${mt.today.topicId}', '${mt.today.subId}')`,
              run: () => startMidtermDrill(mt.today.topicId, mt.today.subId),
-             link: { label: 'See the full plan →', onclick: `go('examplan')` } };
+             link: { label: 'See the full plan', onclick: `go('examplan')` } };
   }
 
   const wk = rotateWeekUnits(thisWeekUnits()).find(u => !skipped(u.topic.id));
@@ -9573,7 +9573,7 @@ function todayPick(skip = null) {
     // has X this week" is checkable against the paper on their desk; "your
     // class is covering it now" is our inference either way.
     return { label: 'This week in class', accent: 'var(--violet)',
-             title: (() => { const n = sessionSize(wk.topic.id, wk.subId); return `${n} question${n !== 1 ? 's' : ''} on ${wk.subLabel}`; })(),
+             title: wk.subLabel, n: sessionSize(wk.topic.id, wk.subId),
              reason: wk.syllabusLabel
                ? `Your syllabus has <strong style="color:var(--ink-2);">${esc(wk.syllabusLabel)}</strong> this week.`
                : `${wk.courseName} is covering it now — learn it at MCAT depth while it's fresh.`,
@@ -9595,7 +9595,7 @@ function todayPick(skip = null) {
       const when = seasonPhrase(S.topicLastSeen[r.tid]);
       const n = repinCount(r.tid);
       return { label: 'Still yours', accent: 'var(--amber)',
-               title: `${n} question${n !== 1 ? 's' : ''} on ${r.topic.name}`,
+               title: r.topic.name, n,
                reason: term ? `You finished this in ${term} — keep holding it.`
                      : when ? `You last practiced this in ${when} — keep holding it.`
                             : 'You covered this a while back — keep holding it.',
@@ -9610,8 +9610,9 @@ function todayPick(skip = null) {
     const reason = d.reason === 'retention'   ? `You covered it ${weeksAgo(d.days)}.`
                  : d.reason === 'in-progress' ? `You're taking it in class right now.`
                  : (t.w === 0 ? 'A skill tested across the exam.' : `${t.w}% of the exam.`);
-    return { label: 'Do this now', accent: 'var(--green)',
-             title: (() => { const n = sessionSize(t.id, null); return `${n} question${n !== 1 ? 's' : ''} on ${t.name}`; })(), reason,
+    // No kicker: "Do this now" restated the heading under it.
+    return { label: '', accent: 'var(--green)',
+             title: t.name, n: sessionSize(t.id, null), reason,
              onclick: `startQuickLog('${t.id}', null)`,
              run: () => startQuickLog(t.id, null) };
   }
@@ -9674,9 +9675,9 @@ function todayCardHTML() {
     `<p style="font-size: var(--fs-13);color:${color};line-height:1.55;margin:0 0 16px;">${text}</p>`;
 
   if (S.courses.size === 0) {
-    return card('var(--green)', 'Start here', 'Add the classes you\'re taking',
+    return card('var(--green)', '', 'Add the classes you\'re taking',
                 reason('That\'s all it takes to see your route.', 'var(--faint)'),
-                cta('Choose my courses →', "go('courses')"), { tint: 'var(--green-bright)' });
+                cta('Choose my courses', "go('courses')"), { tint: 'var(--green-bright)' });
   }
 
   // Reached only when the brief owns no slot and today's work is not yet done,
@@ -9684,16 +9685,18 @@ function todayCardHTML() {
   // gap for good.
   const p = todayPick(practicedToday() ? topicsSeenToday() : null);
   if (!p) {
-    return card('var(--green)', 'Do this now', 'A session from what you know',
+    return card('var(--green)', '', 'A session from what you know',
                 reason('Drawn from the courses on your route.', 'var(--faint)'),
-                cta('Start →', 'startSession()'), { tint: 'var(--green-bright)' });
+                cta('Start practising', 'startSession()'), { tint: 'var(--green-bright)' });
   }
 
   const link = p.link
     ? `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--faint);cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-bottom:-12px;-webkit-tap-highlight-color:transparent;" onclick="${p.link.onclick}">${p.link.label}</button>`
     : '';
+  // The button says what happens, with the count the title no longer carries.
+  const n = p.n || sessionSize((p.topic && p.topic.id) || '', null) || 5;
   return card(p.accent, p.label, p.title, reason(p.reason, 'var(--muted)'),
-              cta('Start →', p.onclick) + link);
+              cta(`Practice ${n} ${lower(p.title)} question${n !== 1 ? 's' : ''}`, p.onclick) + link);
 }
 
 function screenBrief() {
@@ -9715,7 +9718,7 @@ function screenBrief() {
           <span class="disp" style="font-size: var(--fs-15);font-weight:600;color:var(--ink);">Waypoint</span>
         </button>
         <div style="display:flex;align-items:center;gap:12px;">
-          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-pill);cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0 12px;margin:-12px 0;font-family:inherit;font-size: var(--fs-13);font-weight:700;color:var(--green-bright);-webkit-tap-highlight-color:transparent;">Route · ${covPill}%</button>` : ''}
+          ${cov > 0 ? `<button onclick="go('reveal')" title="Your route" style="background:none;border:none;cursor:pointer;display:inline-flex;align-items:center;min-height:44px;padding:0;margin:-12px 0;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--green-bright);-webkit-tap-highlight-color:transparent;">Route, ${covPill}% covered</button>` : ''}
           ${S.streak > 0 ? `<div class="streak-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg><span style="font-size: var(--fs-13);font-weight:600;">${S.streak}</span></div>` : ''}
           <button onclick="go('settings')" title="Settings" aria-label="Settings" style="background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-12px -12px -12px 0;-webkit-tap-highlight-color:transparent;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V15z"/></svg>
@@ -9726,7 +9729,7 @@ function screenBrief() {
       ${todayCardHTML()}
       ${termCardHTML()}
 
-      <button class="link-btn full" onclick="go('quicklog')">Practice a specific topic →</button>
+      <button class="link-btn full" onclick="go('quicklog')">Practice a specific topic</button>
       <!-- The syllabus offer moved to the foot of the check screen last sprint,
            and the check screen is one a simple-picker student never sees — which
            left the word "syllabus" nowhere on the Route or on Home. Same entry,
@@ -9734,7 +9737,7 @@ function screenBrief() {
            away by itself once there is nothing to offer. -->
       ${liveCourses().length
         ? (unmappedCourses().length
-          ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan →</button>`
+          ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
           : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus →</button>`)
         : (S.courses.size
           ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking →</button>`
