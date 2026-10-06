@@ -733,6 +733,8 @@
   /* The parcel the next action points at. A dashed claim line, the way a plat
      marks the lot under discussion. */
   .pl-next { outline: 1.5px dashed var(--green); outline-offset: -3px; }
+  /* After .pl-next, so an open focus parcel reads as open rather than as next. */
+  .pl-open { outline: 2px solid var(--green); outline-offset: -3px; }
   .pl-flag { position: absolute; left: 4px; bottom: 3px; font-size: var(--fs-11); font-weight: 600; color: var(--green); }
 
   /* Under the sheet: which parcel, why it is that one, and the way in. */
@@ -6564,9 +6566,13 @@ function routeFocus() {
   // Never "haven't practised" when they have — the line has to survive the
   // student having drilled it this morning.
   const why = !PRACTICE
-        ? (d.kind === 'taking'  ? "The largest class you're taking now. Study it alongside the class."
-         : d.kind === 'covered' ? 'The largest parcel your classes have covered. Review it when you start prep.'
-         :                        'The largest parcel still ahead of you. Preview it if you like.')
+        // Why this parcel, and nothing else. The instruction that used to
+        // finish each of these — "Study it alongside the class" — is the first
+        // thing the panel says when the button opens it, so it was being read
+        // twice in the space of two taps.
+        ? (d.kind === 'taking'  ? "The largest class you're taking now."
+         : d.kind === 'covered' ? 'The largest parcel your classes have covered.'
+         :                        'The largest parcel still ahead of you.')
         : d.reason === 'retention'
           ? `You covered this ${weeksAgo(d.days)} — worth holding on to.`
           : taking
@@ -6623,6 +6629,7 @@ function routeMapHTML(opts) {
 
       const tex = cars ? 'pl-water' : fill >= 1 ? 'pl-done' : fill > 0 ? 'pl-take' : 'pl-ahead';
       const next = focus && focus.topic.id === t.id;
+      const open = !flat && S._mapOpen === t.id;
       const small = Math.min(pw, ph) < 88;
       const ring = st && st !== 'unpinned' && pw >= 34 && ph >= 34
         ? ` pl-held ${small ? 'sm ' : ''}${HELD_RING[st]}` : '';
@@ -6641,7 +6648,7 @@ function routeMapHTML(opts) {
       const click  = flat ? '' : ` onclick="toggleMapTile('${t.id}')"`;
       const expand = flat ? '' : ` aria-expanded="${S._mapOpen === t.id}"`;
 
-      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}" title="${tip}"${click}${expand}
+      return `<${tag} class="pl ${tex}${ring}${next ? ' pl-next' : ''}${open ? ' pl-open' : ''}" title="${tip}"${click}${expand}
           style="left:${b.x.toFixed(3)}%;top:${(b.y / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;width:${b.w.toFixed(3)}%;height:${(b.h / (row.height * SHEET_ASPECT) * 100).toFixed(3)}%;">
           ${named ? `<span class="pl-name" data-full="${t.name}" data-short="${mapName(t)}">${t.name}</span>${sub ? `<span class="pl-sub">${sub}</span>` : ''}` : ''}${next && ph >= 46 ? '<span class="pl-flag">next</span>' : ''}
         </${tag}>`;
@@ -6736,10 +6743,17 @@ function parcelDetailHTML(tid) {
   const cname   = course ? course.name : 'the course';
 
   // One sentence of standing, and one that says what to do about it.
+  //
+  // Neither repeats the other, and neither repeats the header. Where the
+  // course and the parcel share a name — Psychology, Psychology — naming both
+  // reads as a stutter, the same way it did on the Route's focus line; and
+  // "Not covered by any class. No class covers this." was the same sentence
+  // twice with the words in a different order.
+  const same = !!course && course.name.toLowerCase() === t.name.toLowerCase();
   const standing = cars ? 'Not covered by any class.'
-    : covered ? `${cname}, ${taking ? 'in progress' : 'finished'}.`
+    : covered ? (same ? `${taking ? 'In progress' : 'Finished'}.` : `${cname}, ${taking ? 'in progress' : 'finished'}.`)
     : `Not on your route yet.`;
-  const framing = cars    ? 'No class covers this. Practise reading here.'
+  const framing = cars    ? 'Practise reading here.'
     : taking  ? 'Study it alongside the class.'
     : covered ? 'Covered in class. Review it here when you start MCAT prep.'
     :           `Covered when you take ${cname}. Preview it here if you like.`;
@@ -10961,7 +10975,17 @@ function screenReveal() {
   // its own; the block that points at it stays with the prose, which is where
   // it belongs at both widths.
   const map = `      <div class="rt-sheet" style="margin-bottom:${milestone ? 16 : 8}px;">${routeMapHTML({ idPrefix: 'route' })}</div>`;
-  const focusBlock = focus ? `      <p class="focus">${focus.detail}</p>
+  // Only one parcel is being talked about at a time. Open Physiology and the
+  // Route used to go on describing Psychology underneath it — a line, a button
+  // and a reason, all about a parcel the student had just navigated away from
+  // on the map. The open panel is the more specific answer and it is the one
+  // the student asked for, so the focus block stands down while it is up.
+  //
+  // The dashed outline and the "next" flag stay on the map throughout. They
+  // are the map's own annotation rather than a second description, and they
+  // are how a student finds their way back to the recommendation after
+  // looking around. Closing the parcel brings the block back.
+  const focusBlock = focus && !S._mapOpen ? `      <p class="focus">${focus.detail}</p>
       <div style="margin-top:18px;margin-bottom:8px;">
         ${PRACTICE
           ? `<button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>`
@@ -11645,6 +11669,10 @@ function go(screen) {
   // of not answering, which is allowed.
   S._whenOpen = null;
   S._whenMore = false;
+  // An open parcel belongs to the map it was opened on, and while one is open
+  // the Route hides its focus line. Leaving it set would mean coming back to
+  // the Route to find the line gone and no visible reason why.
+  S._mapOpen = null;
   S.screen = screen;
   render();
 }
