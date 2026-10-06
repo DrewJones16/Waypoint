@@ -108,7 +108,9 @@ export function scan(src) {
     .split('\n')
     .filter(l => !VOICE_ALLOW.some(a => l.includes(a)))
     .join('\n');
-  for (const m of voice.matchAll(/→|&rarr;/g))
+  // Both directions. A back button is already a back button, and "←" was the
+  // same habit pointing the other way.
+  for (const m of voice.matchAll(/→|←|&rarr;|&larr;/g))
     add('arrow', `an arrow in UI copy near line ${locate(voice, m[0], Math.max(0, m.index - 1))}`);
   for (const m of voice.matchAll(/text-transform:\s*uppercase/g))
     add('shouting', `uppercase near line ${locate(voice, m[0], Math.max(0, m.index - 1))}`);

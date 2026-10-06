@@ -6654,42 +6654,13 @@ const tileCourse = t => TILE_COURSE[t.course] || t.disp;
 // Six and nine topics wrap to the same number of rows three-across as they did
 // four-across, so the map is no taller.
 const TILE_BOX = 'border-radius: var(--r-ctl);padding:8px 8px;flex:1;min-width:92px;max-width:100%;overflow:hidden;';
-const TILE_ROW = 'display:flex;flex-wrap:wrap;gap:4px;';
-
-// A topic the student has covered. Coverage chrome never changes with freshness:
-// covered ground stays green and stays earned. Only the small status line carries
-// the state, and for fresh it stays exactly the line it has always been.
-function coveredTileHTML(t, live, open) {
-  const inProgress = S.courseStatus[t.course] === 'in-progress';
-  const statusIcon = inProgress ? `<span class="pulse-dot" style="width:5px;height:5px;margin-right:4px;"></span>` : '✓ ';
-  let status = `<div style="font-size: var(--fs-11);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${statusIcon}${tileCourse(t)}</div>`;
-  const f = live ? topicFreshness(t.id) : null;
-  if (f && heldDisplayState(f) !== 'fresh') {
-    const m = FRESH_META[heldDisplayState(f)];
-    status = `<div style="font-size: var(--fs-11);color:${m.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"><span style="display:inline-block;width:5px;height:5px;border-radius: var(--r-pill);box-sizing:border-box;background:${m.hollow ? 'transparent' : m.color};border:1px solid ${m.color};vertical-align:middle;margin-right:4px;"></span>${m.tile || m.word}</div>`;
-  }
-  const inner = `
-          <div style="font-size: var(--fs-11);color:var(--ink);font-weight: 600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${TILE_NAMES[t.id] || t.name}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-            ${status}
-            <div style="font-size: var(--fs-11);font-weight:700;color:var(--green-bright);flex-shrink:0;margin-left:4px;">${wLabel(t)}</div>
-          </div>`;
-  // Fill, not outline: earned ground is solid. The border slot stays (transparent)
-  // so covered and locked tiles keep identical box metrics.
-  const box = `background:var(--green-wash-2);border:1px solid transparent;${TILE_BOX}`;
-  if (!f) return `<div style="${box}">${inner}</div>`;
-  return `<button onclick="toggleFresh('${t.id}')" aria-expanded="${open === t.id}" title="${f.why.replace(/"/g, '&quot;')}"
-          style="${box}text-align:left;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;${open === t.id ? 'box-shadow:0 0 0 1px var(--line-2);' : ''}">${inner}</button>`;
-}
-
-// A topic AAMC gives no discipline share to (statistics/research methods) carries
-// weight 0 on purpose. Everywhere a weight is shown to a student it reads as the
-// skill it is, rather than as a zero that looks like an error or a slight.
 function wLabel(t, plus) { return t.w === 0 ? 'skill' : (plus ? '+' : '') + t.w + '%'; }
 
-// Covered courses bucketed by the term they were taken, newest first. An untagged
-// course lands in one bucket keyed 'unset', which ranks below every real term and
-// so sorts to the end on its own — no special case in the sort.
+// A section is only "thinnest" when it is meaningfully behind the others —
+// naming the low one on an even spread would be inventing a weak spot.
+// EVEN_SPREAD is the gap below which "thinnest" would be noise.
+const EVEN_SPREAD = 10;
+
 function termGroups() {
   const byTerm = new Map();
   COURSES.forEach(c => {
@@ -6712,82 +6683,40 @@ function termGroups() {
 // history rather than an abstract list of topics. Untagged courses keep their
 // place at the end with the one chip that dates them; they are never a prompt, a
 // modal or a nag, and everything on the Route works untouched without them.
+// Courses, in the order the student took them, as a list.
+//
+// This was a stack of rounded chips, one per topic, under a header per term —
+// which is to say a second map of the same ground, drawn worse: "Orgo I" above
+// a chip that also said "Orgo I", and the held dot repeating what the sheet's
+// contour rings already say. The sheet owns the topics now, and tapping a
+// parcel gives the breakdown this used to spread across the screen.
+//
+// What is left is the one thing the sheet genuinely cannot show: which term
+// each class belongs to, and what dating an undated one would place.
 function termTimelineHTML(live, open) {
   const groups = termGroups();
   if (!groups.length) return '';
 
-  return groups.map(g => {
-    const unset = g.term === 'unset';
-    // The untagged pile gets no heading at all. "Term not set" over every finished
-    // course read as something the student had failed to provide, for a field the
-    // app deliberately never asks for. Absence of a term needs no badge.
-    const label = unset ? '' : termLabel(g.term);
-    // A term you're still inside hasn't banked its weight yet, and the header says
-    // which of the two numbers it is rather than quietly picking one. The untagged
-    // pile isn't a term at all, so it gets no total: a single figure over a stack
-    // of unrelated classes would read as the weight of the first one.
-    // A term of nothing but skill courses carries no exam weight, and "0% of the
-    // exam" reads as a verdict on the class rather than a fact about AAMC's
-    // question counts.
-    const worth = unset || g.weight === 0 ? ''
-                : g.now ? `worth ${g.weight}% when you finish`
-                        : `${g.weight}% of the exam`;
-
-    // Laid out by course, not by topic: the chip that fixes this belongs to a
-    // class, and the tiles under it show exactly what dating that class would
-    // place on the timeline. Every other group needs only its course names.
-    const body = unset
-      ? g.courses.map(c => {
-          const ts = TOPICS.filter(t => t.course === c.id);
-          const w  = ts.reduce((s, t) => s + t.w, 0);
-          return `
-        <div style="margin-bottom:12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-            <span style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;">
-              <span style="font-size: var(--fs-13);font-weight:600;color:var(--ink-2);">${c.name}</span>
-              ${S._whenOpen === c.id ? '' : `<button class="term-chip quiet" style="min-height:24px;font-size: var(--fs-11);font-weight:600;padding:0;border-color:transparent;background:none;color:var(--muted);" onclick="toggleWhen('${c.id}')">Add the term</button>`}
-            </span>
-            <span style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${w}%</span>
-          </div>
-          ${S._whenOpen === c.id ? `<div style="margin-bottom:8px;">${termPickerHTML(c.id)}</div>` : ''}
-          <div style="${TILE_ROW}">${ts.map(t => coveredTileHTML(t, live, open)).join('')}</div>
-        </div>`;
-        }).join('')
-      : `<div style="${TILE_ROW}">${g.topics.map(t => coveredTileHTML(t, live, open)).join('')}</div>`;
-
+  const rows = groups.flatMap(g => g.courses.map(c => {
+    const w = TOPICS.filter(t => t.course === c.id).reduce((n, t) => n + t.w, 0);
+    const undated = g.term === 'unset';
+    // The term slot carries the term, or the one control that supplies it.
+    const when = undated
+      ? (S._whenOpen === c.id ? '' : `<button class="link-btn quiet" style="min-height:0;padding:0;font-size: var(--fs-11);font-weight:600;" onclick="toggleWhen('${c.id}')">Add the term</button>`)
+      : `<span style="font-size: var(--fs-13);color:var(--muted);">${termLabel(g.term)}${g.now ? ', now' : ''}</span>`;
     return `
-      <div style="margin-bottom:20px;">
-        ${unset ? '' : `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">
-          <div style="display:flex;align-items:center;gap:4px;font-size: var(--fs-13);font-weight:600;color:var(--ink-2);">
-            ${g.now ? '<span class="pulse-dot" style="width:5px;height:5px;margin-right:0;"></span>' : ''}${label}
-          </div>
-          ${worth ? `<div style="font-size: var(--fs-11);color:var(--faint);flex-shrink:0;">${worth}</div>` : ''}
-        </div>`}
-        ${unset ? '' : `<p style="font-size: var(--fs-11);color:var(--faint);margin:0 0 8px;line-height:1.45;">${g.courses.map(c => c.name).join(', ')}</p>`}
-        ${body}
-        ${open && g.topics.some(t => t.id === open) ? freshDetailHTML(open) : ''}
-      </div>`;
-  }).join('');
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);">
+        <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${c.name}</span>
+        <span style="display:flex;align-items:baseline;gap:12px;flex-shrink:0;">
+          ${when}
+          <span style="font-size: var(--fs-13);color:var(--faint);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;">${w}%</span>
+        </span>
+      </div>${S._whenOpen === c.id ? `<div style="padding:4px 0 10px;">${termPickerHTML(c.id)}</div>` : ''}`;
+  }));
+
+  return rows.join('');
 }
 
-// ── SECTION BALANCE ───────────────────────────────────────────────────────────
-// Where the coverage sits, section by section. The One Number sprint took these
-// bars out of the Route sidebar because three percentages beside the headline
-// competed with it, and that decision stands: this lives at the foot of the map,
-// below the timeline and below what's still ahead, where nothing it says is
-// arguing with the hero.
-//
-// The arithmetic is sectionCoverage()'s, not a second copy of it — the same
-// weighted credit the headline uses, so a section can never disagree with the
-// number it is part of. CARS is absent for the reason it is absent everywhere:
-// no course teaches it.
-
-// Which section a student's coursework is thinnest in, stated as a fact about
-// the coursework and never as a deficiency. Ties are named together rather than
-// resolved arbitrarily, and a route that sits evenly says so instead of
-// inventing a weak spot. EVEN_SPREAD is the gap below which "thinnest" would be
-// a rounding artefact dressed up as a finding.
-const EVEN_SPREAD = 10;
 function sectionBalanceLine(sec) {
   const keys = ['bb', 'cp', 'ps'];
   const vals = keys.map(k => sec[k]);
@@ -6848,12 +6777,10 @@ function sectionedMapHTML() {
   const open = live ? S._freshOpen : null;
   const timeline = termTimelineHTML(live, open);
   const head = text => `<p style="font-size: var(--fs-13);font-weight:600;color:var(--muted);margin:0 0 12px;">${text}</p>`;
-  const balance = sectionBalanceHTML();
   // "Your semesters", not "where you've been": the newest group is the term the
   // student is sitting in right now, and a past-tense heading would misname it.
-  if (!timeline) return balance;
-  // Held closes the covered ground it describes, next to the tiles it summarises.
-  return head('Your semesters') + timeline + standingLineHTML() + balance;
+  if (!timeline) return '';
+  return head('Your semesters') + timeline + standingLineHTML();
 }
 
 // ── JOURNEY PATH (waypoint map) ────────────────────────────────────────────────
@@ -10119,7 +10046,7 @@ function screenCoverage() {
       <!-- Sources is already offered twice above — as the closing move of the
            opening block, and under the weights table that cites it. A third
            link at the foot was the same destination wearing a third label. -->
-      <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
+      <button class="btn btn-ghost" onclick="go('reveal')">Back to my route</button>
     </div>`;
 }
 
@@ -10254,7 +10181,7 @@ function screenExplain() {
       <div class="section-divider"></div>
       <button onclick="openSources()" class="link-btn full">See the whole derivation</button>
       <button onclick="go('coverage')" class="link-btn full quiet">How the Coverage Model works</button>
-      <button class="btn btn-ghost" onclick="go('reveal')">← Back to my route</button>
+      <button class="btn btn-ghost" onclick="go('reveal')">Back to my route</button>
     </div>`;
 }
 
@@ -10381,7 +10308,7 @@ function screenSources() {
 
       <p style="text-align:center;font-size: var(--fs-11);color:var(--faint);margin-top:32px;line-height:1.55;">MCAT® is a registered trademark of the Association of American Medical Colleges (AAMC). Waypoint is an independent study tool and is not affiliated with, endorsed by, or sponsored by the AAMC.</p>
 
-      <button class="btn btn-ghost" style="margin-top:20px;" onclick="backFromSources()">← Back</button>
+      <button class="btn btn-ghost" style="margin-top:20px;" onclick="backFromSources()">Back</button>
     </div>`;
 }
 
@@ -10648,7 +10575,7 @@ function termsGridHTML() {
         }).join('')}
       </div>
       <div style="display:flex;gap:16px;align-items:center;margin-top:8px;">
-        ${page < TERM_GRID_PAGES - 1 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page + 1})">← Earlier</button>` : ''}
+        ${page < TERM_GRID_PAGES - 1 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page + 1})">Earlier</button>` : ''}
         ${page > 0 ? `<button class="term-chip quiet" style="min-height:36px;font-size: var(--fs-11);padding:0 12px;" onclick="termsPage(${page - 1})">Recent</button>` : ''}
       </div>`;
 }
@@ -10886,7 +10813,7 @@ function screenReveal() {
   // progress to share. A milestone card keeps its own "Share this".
   const tail = `      ${cov > 0 && practiceSessions() >= HELD_MIN_SESSIONS ? `<button class="btn btn-share" onclick="shareCoverageCard('coverage', this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:8px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>Share my progress</button>` : ''}
       ${termsLinkHTML()}
-      <button class="btn btn-ghost" onclick="go('courses')">← Update my courses</button>`;
+      <button class="btn btn-ghost" onclick="go('courses')">Update my courses</button>`;
 
   const middle = first ? [cta, ask, body] : [ask, body, cta];
 
