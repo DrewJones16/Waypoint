@@ -1053,18 +1053,6 @@
         var(--bg);
       background-attachment: fixed;
     }
-    /* Faint dot-grid "map" texture behind the app column */
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      background-image: radial-gradient(var(--wash-2) 1px, transparent 1.6px);
-      background-size: 26px 26px;
-      -webkit-mask-image: radial-gradient(120% 90% at 50% 42%, rgba(0,0,0,1) 25%, transparent 75%);
-      mask-image: radial-gradient(120% 90% at 50% 42%, rgba(0,0,0,1) 25%, transparent 75%);
-    }
     #app {
       position: relative;
       z-index: 1;
@@ -1080,12 +1068,16 @@
 
   /* Persistent desktop dashboard rail — sibling of #app, hidden below 1000px */
   .dt-shell { display: none; }
+  /* Hidden until onboarding is done, at every width. */
+  .dt-shell.dt-prelaunch { display: none !important; }
 
   @media (min-width: 1000px) {
     /* Reserve the rail's width on the left; #app stays flex-centered in the
        space that remains, so the reading column is anchored to real app chrome
        instead of floating in a void. */
     body { padding-left: 280px; }
+    /* No rail, no gutter for it. */
+    body.pre-launch { padding-left: 0; }
 
     .dt-shell {
       display: flex;
@@ -12328,6 +12320,12 @@ function syncDesktopShell() {
     b.classList.toggle('active', !!m && m.includes(S.screen));
   });
 
+  // A visitor is pre-launch until they have a route. The landing, year picker
+  // and course picker are the whole product at that point, and app chrome
+  // around them is furniture for an app they have not started.
+  const preLaunch = !S.courses.size && ['landing', 'year', 'courses'].includes(S.screen);
+  shell.classList.toggle('dt-prelaunch', preLaunch);
+  document.body.classList.toggle('pre-launch', preLaunch);
   shell.classList.toggle('dt-empty', S.courses.size === 0);
   shell.classList.toggle('dt-on-route', S.screen === 'reveal');
 
