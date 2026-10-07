@@ -516,6 +516,11 @@
   .ccard.picked { border-color: var(--green-line); background: var(--green-wash); }
   .ccard-head { display: flex; align-items: center; gap: 8px; }
   .ccard-name { flex: 1; min-width: 0; font-size: var(--fs-15); color: var(--ink); line-height: 1.3; }
+  /* The code is what is printed on the student's own schedule, so it leads and
+     keeps the body face. The title is how they know which class that is. */
+  .ccard-title { color: var(--faint); font-size: var(--fs-13); }
+  /* One plain line above a run of courses that answer the same requirement. */
+  .alt-note { font-size: var(--fs-11); color: var(--faint); line-height: 1.5; margin: 10px 2px 2px; }
 
   /* Three states, three buttons, always all three visible. "Not yet" is the
      default and a real answer, so it is a control like the other two rather
@@ -1813,6 +1818,8 @@ function catalogWeight(courseId) {
 // How to say a course's name. The code where there is one, because that is
 // what is printed on a student's own schedule.
 function courseLabel(c)  { return c ? (c.code || c.name) : ''; }
+// The long form, for a screen reader and anywhere a row has space for both.
+function courseFull(c)   { return c ? (c.code ? c.code + ', ' + c.title : c.name) : ''; }
 
 const MCAT_SECTIONS = [
   { id:'bb',   short:'Bio & Biochem',   long:'Biological & Biochemical Foundations'      },
@@ -9837,7 +9844,7 @@ function screenSyllabus() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4A2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span style="min-width:0;">
               <span style="display:block;font-size: var(--fs-13);color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.file.name)}</span>
-              <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${(d.file.size / 1048576).toFixed(1)}MB · ready to read</span>
+              <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${(d.file.size / 1048576).toFixed(1)}MB, ready to read</span>
             </span>
           </span>
           <button onclick="sylClearFile()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--faint);cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;">Remove</button>
@@ -10114,7 +10121,7 @@ function practicedToday() {
 // an empty card, or the card they just finished, is the worse answer.
 function doneForTodayHTML() {
   if (!practicedToday() || pickedCount() === 0) return '';
-  const kicker = `Done for today${S.streak > 1 ? ` · ${S.streak} days` : ''}`;
+  const kicker = `Done for today${S.streak > 1 ? `, ${S.streak} days running` : ''}`;
   // The link sits outside the card: the reward is the card, this is the aside.
   const keepGoingLink = `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going with another 5</button>`;
 
@@ -10987,6 +10994,45 @@ function paintCourseCount() {
   if (cta) cta.disabled = n === 0;
 }
 
+// TODO(Drew): no destination yet. Waypoint has never had a feedback route, so
+// there is nothing here to link to, and inventing one — a mailto to an address
+// nobody reads, a form that does not exist — would be worse than telling the
+// student what they can actually do right now. Set this to a real URL and the
+// row below becomes a link to it. `npm run check` prints it on every run.
+const FEEDBACK_URL = null;
+
+// How the table gets corrected during the validation season.
+//
+// The count is the signal; the copy is the help. It never says a message was
+// sent, because until FEEDBACK_URL exists no message is — an app that thanks
+// you for a report it did not file has told you something untrue about itself.
+function missingCourseHTML() {
+  if (schoolId() === 'generic') return '';
+  const open = !!S._missingOpen;
+  const tell = FEEDBACK_URL
+    ? `<a href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="trackMissingCourse()" style="font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;">Tell us which class</a>`
+    : '';
+  const school = catalog().name;
+  return `
+          <div style="margin-top:16px;">
+            <button type="button" onclick="toggleMissingCourse()" aria-expanded="${open}"
+                    style="width:100%;text-align:left;background:none;border:none;padding:10px 2px;min-height:44px;cursor:pointer;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);-webkit-tap-highlight-color:transparent;">Taking something not on this list?</button>
+            ${open ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 2px 4px;">This is ${school}'s premed coursework. A class for your major, or one only some medical schools ask for, will not be on it. Switch to the standard list in Settings and mark the nearest equivalent — your ${school} answers are kept.</p>${tell}` : ''}
+          </div>`;
+}
+
+function toggleMissingCourse() {
+  S._missingOpen = !S._missingOpen;
+  if (S._missingOpen) trackMissingCourse();
+  render();
+}
+
+// A count, not a message: how often a student finds their school's list short.
+// No course name, because nothing on this screen knows one.
+function trackMissingCourse() {
+  if (window.plausible) plausible('course_missing', { props: { school: schoolId() } });
+}
+
 function screenCourses() {
   const sections = [...new Set(allCourses().map(c => c.section))];
   const n = pickedCount();
@@ -11025,28 +11071,40 @@ function screenCourses() {
           const secCourses = allCourses().filter(c => c.section === sec);
           return `
           <div class="section-head"><p class="section-label">${sec}</p></div>
-          ${secCourses.map(c => {
+          ${secCourses.map((c, i) => {
             const st   = courseState(c.id);
             const open = !!(S._expandedCourses && S._expandedCourses.has(c.id));
             const m    = REQ_META[COURSE_REQ[c.id]];
-            return `
+            // Courses answering the same requirement sit together under one
+            // line, said once at the head of the run. Without it the list
+            // reads as six biology courses a premed is expected to take,
+            // which is both wrong and daunting. The grouping is the catalog's.
+            const alt  = c.alt && (i === 0 || secCourses[i - 1].alt !== c.alt)
+              ? `<p class="alt-note">Most premeds take one of these</p>` : '';
+            // Code first, in the body face, because that is what is printed on
+            // the student's own schedule; the title, muted, is how they know
+            // which class it is. The generic list has no codes and so reads
+            // exactly as it always has.
+            const nameHTML = c.code ? `${c.code}<span class="ccard-title"> · ${c.title}</span>` : c.name;
+            return `${alt}
             <div class="ccard${st !== 'none' ? ' picked' : ''}" id="ccard-${c.id}">
               <div class="ccard-head">
                 <!-- Wraps rather than truncating: "General Chemistr…" is the same
                      string for two different classes, and this row is the only
                      place the difference gets decided. -->
-                <span class="ccard-name">${c.name}</span>
+                <span class="ccard-name">${nameHTML}</span>
                 ${m ? `<span class="cpick-badge" style="color:${m.color};background:${m.bg};">${m.short}</span>` : ''}
                 <button type="button" class="cpick-info${open ? ' open' : ''}" onclick="toggleCourseExpand('${c.id}')"
-                        aria-expanded="${open}" aria-label="What ${c.name} covers on the MCAT">
+                        aria-expanded="${open}" aria-label="What ${courseFull(c)} covers on the MCAT">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                 </button>
               </div>
-              <div class="cst-group" id="cst-${c.id}" role="group" aria-label="${c.name}">${courseStateHTML(c.id)}</div>
+              <div class="cst-group" id="cst-${c.id}" role="group" aria-label="${courseFull(c)}">${courseStateHTML(c.id)}</div>
               ${open ? `<div class="course-topics-panel" style="margin:12px 8px 0 0;">${courseTopicsBreakdown(c.id)}</div>` : ''}
             </div>`;
           }).join('')}
         `;}).join('')}
+        ${missingCourseHTML()}
         <div style="height:12px;"></div>
       </div>
 

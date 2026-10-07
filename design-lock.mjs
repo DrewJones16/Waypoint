@@ -61,8 +61,14 @@ function uiVoice(src) {
   // Comments are not said out loud — including the ones trailing a line of
   // code, which is where the question picks keep their "ETC toxin · Tay-Sachs"
   // notes. The lookbehind spares "https://".
+  // A block comment opens after whitespace or an opening bracket, never mid-
+  // token. `accept="image/*"` is not a comment, and treating it as one paired
+  // its "/*" with a real "*/" 165,000 characters later — silently deleting the
+  // course picker, the Route, Settings and the share card from everything
+  // below, which is to say from every voice rule. The rules passed because
+  // they were looking at a third less app than they thought.
   v = v.replace(/<!--[\s\S]*?-->/g, '')
-       .replace(/\/\*[\s\S]*?\*\//g, '')
+       .replace(/(^|[\s{;(])\/\*[\s\S]*?\*\//g, '$1')
        .replace(/(?<!:)\/\/.*$/gm, '');
   return v;
 }
@@ -71,6 +77,11 @@ function uiVoice(src) {
 const VOICE_ALLOW = [
   // The AAMC disclaimer is quoted wording and is not ours to restyle.
   'MCAT® is a registered trademark',
+  // A course row carries two facts about one thing: the code printed on the
+  // student's schedule and the title that says which class it is. That is the
+  // case the middle dot is actually for, and it is the only one in the app —
+  // the rule exists to stop two UNRELATED facts being welded together.
+  'ccard-title',
 ];
 
 // Report a finding with the line it is on, counted in the original file.
