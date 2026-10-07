@@ -10592,10 +10592,15 @@ function screenYear() {
 // One school for one validation season. Everyone else keeps the generic list
 // unchanged, which is what "Somewhere else" means: not a lesser answer, the
 // same answer Waypoint has always given.
-const SCHOOL_CHOICES = [
-  { val:'byu',     label:'BYU',            hint:'Pick your real classes'   },
-  { val:'generic', label:'Somewhere else', hint:'The standard list'    },
-];
+// Built from CATALOGS, not listed. The second school arrived the day after the
+// first, and a list written by hand is a list that forgets one of them.
+// Schools alphabetically, the standard list last — it is the fallback, not a
+// competitor, and it is where anybody who scrolls past their own school lands.
+const SCHOOL_CHOICES = Object.keys(CATALOGS)
+  .filter(id => id !== 'generic')
+  .map(id => ({ val: id, label: CATALOGS[id].name, hint: 'Pick your real classes' }))
+  .sort((a, b) => a.label.localeCompare(b.label))
+  .concat([{ val: 'generic', label: 'Somewhere else', hint: 'The standard list' }]);
 
 function screenSchool() {
   const picked = schoolId();
@@ -11239,8 +11244,13 @@ function trackMissingCourse() {
 function schoolOfferHTML() {
   const here = schoolId();
   const other = SCHOOL_CHOICES.find(c => c.val !== here);
+  // Named from the catalogs, so adding a school adds it to the offer.
+  const schools = SCHOOL_CHOICES.filter(c => c.val !== 'generic').map(c => c.label);
+  const list = schools.length > 1
+    ? schools.slice(0, -1).join(', ') + ' or ' + schools[schools.length - 1]
+    : schools[0];
   const text = here === 'generic'
-    ? 'At BYU? Pick your actual class codes instead'
+    ? `At ${list}? Pick your real classes`
     : 'Not at ' + catalog().name + '? Use the standard course list';
   if (!other) return '';
   return `
@@ -11264,7 +11274,7 @@ function screenCourses() {
   const switchNote = !S._schoolSwitched ? '' : `
       <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);padding:12px 12px;margin:0 0 20px;">${
         n === 0
-          ? `Pick your ${catalog().name === 'BYU' ? 'BYU' : 'generic'} courses. Your old selections are kept in case you switch back.`
+          ? `Pick your ${schoolId() === 'generic' ? 'generic' : catalog().name} courses. Your old selections are kept in case you switch back.`
           : 'Your courses on this list are as you left them.'}</p>`;
 
   return `

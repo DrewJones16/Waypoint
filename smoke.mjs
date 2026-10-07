@@ -84,18 +84,21 @@ const STATES = [
   { name: 'byu',       store: BYU },
 ];
 
-// ── No generic course name reaches a BYU student ───────────────────────────
+// ── No other catalog's course name reaches a student ───────────────────────
+// A student on a school's list sees that school's codes and nothing else: not
+// the generic names their list replaced, and not another school's codes.
+//
 // Two screens may, and only these two, each for a reason that is about someone
 // other than the student reading it:
 //
 //   landing — the example route on the marketing card is a DIFFERENT, made-up
 //     student, described in the generic terms their route is built from. (It
-//     is computed in the generic catalog too; without that a BYU visitor was
-//     shown the card at 0%.)
+//     is computed in the generic catalog too; without that a school's visitor
+//     was shown the card at 0%.)
 //   sources — the weight model itself. Its splits are written for a standard
 //     two-semester sequence, because that is what they were derived from, and
 //     a school's courses are mapped ONTO that model rather than replacing it.
-//     Renaming them in BYU's terms would claim a derivation that does not
+//     Renaming them in a school's terms would claim a derivation that does not
 //     exist. The screen says so, in a paragraph only non-generic students see.
 const LEAK_OK = ['landing', 'sources'];
 
@@ -237,17 +240,24 @@ for (const variant of VARIANTS) {
         failures.push(`${where}  focus button: landed on "${landed}"${asked ? '' : ' with no answer options'}, expected a question`);
     }
 
-    // ── No generic course name reaches a BYU student ────────────────────────
-    if (state.name === 'byu') {
+    // ── No other catalog's course name reaches this student ─────────────────
+    if (state.store.wp_school) {
       // Derived in the page from the real tables rather than listed here, so a
-      // course renamed in either catalog cannot slip past a stale constant.
-      // Anything that is also a topic name, a tile name or a section heading is
-      // not a generic course name leaking; it is the map's own vocabulary.
+      // course renamed in any catalog cannot slip past a stale constant.
+      // Anything that is also a topic name, a tile name, a section heading or
+      // one of THIS student's own course names is not a leak; it is the map's
+      // own vocabulary.
       const words = await page.evaluate(() => {
         const ok = new Set([...TOPICS.map(t => t.name), ...Object.values(TILE_NAMES), ...Object.values(MAP_NAMES),
-                            ...allCourses().map(c => c.section), ...MCAT_SECTIONS.map(s => s.short), ...MCAT_SECTIONS.map(s => s.long)]);
+                            ...allCourses().map(c => c.section), ...MCAT_SECTIONS.map(s => s.short), ...MCAT_SECTIONS.map(s => s.long),
+                            ...allCourses().map(c => c.name)]);
         const out = new Set();
-        CATALOGS.generic.courses.forEach(c => { if (!ok.has(c.name)) out.add(c.name); });
+        // Every catalog the student is NOT on — the generic list their codes
+        // replaced, and every other school's codes.
+        for (const cat of Object.values(CATALOGS)) {
+          if (cat.id === schoolId()) continue;
+          cat.courses.forEach(c => { if (!ok.has(c.name)) out.add(c.name); });
+        }
         // Only a topic that HAS a generic course has a generic course name to
         // leak. CARS has none, and its "Ongoing" is a state word.
         TOPICS.forEach(t => { if (t.disp && t.course && !ok.has(t.disp)) out.add(t.disp); });
@@ -260,7 +270,7 @@ for (const variant of VARIANTS) {
         await page.evaluate(s => window.go(s), screen).catch(() => {});
         await page.waitForTimeout(130);
         const text = await page.evaluate(() => document.getElementById('app').innerText || '').catch(() => '');
-        for (const w of words) if (text.includes(w)) failures.push(`${where}  ${screen}: shows the generic course "${w}"`);
+        for (const w of words) if (text.includes(w)) failures.push(`${where}  ${screen}: shows another catalog's course "${w}"`);
       }
       // And every parcel's study panel, which is where a course is named most.
       const topics = await page.evaluate(() => TOPICS.map(t => t.id)).catch(() => []);
@@ -269,7 +279,7 @@ for (const variant of VARIANTS) {
           S.screen = 'reveal'; S._mapOpen = x; render();
           return (document.getElementById('parcel-detail') || {}).innerText || '';
         }, tid).catch(() => '');
-        for (const w of words) if (text.includes(w)) failures.push(`${where}  panel ${tid}: shows the generic course "${w}"`);
+        for (const w of words) if (text.includes(w)) failures.push(`${where}  panel ${tid}: shows another catalog's course "${w}"`);
       }
       await page.evaluate(() => { S._mapOpen = null; }).catch(() => {});
     }
