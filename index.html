@@ -1731,7 +1731,10 @@ const CATALOGS = {
 
 // No stored school, or one this build does not know, means generic. Every
 // student who has ever used Waypoint is generic until they say otherwise.
-function schoolId()  { return CATALOGS[S.school] ? S.school : 'generic'; }
+// hasOwnProperty, not a plain lookup: a restored backup supplies this value,
+// and CATALOGS['constructor'] is truthy on any object. That would hand catalog()
+// a function with no courses on it and throw on the first render.
+function schoolId()  { return Object.prototype.hasOwnProperty.call(CATALOGS, S.school) ? S.school : 'generic'; }
 function catalog()   { return CATALOGS[schoolId()]; }
 function allCourses(){ return catalog().courses; }
 function courseById(id) { return allCourses().find(c => c.id === id) || null; }
@@ -1780,6 +1783,21 @@ function topicCourse(tid) {
   return mine.find(c => S.courseStatus[c.id] !== 'in-progress') || mine[0] || covering[0] || null;
 }
 function topicCourseId(tid) { const c = topicCourse(tid); return c ? c.id : null; }
+
+// The student's selected courses IN THEIR CATALOG.
+//
+// S.courses can hold ids from a catalog they are not on. Switching school never
+// deletes the other school's answers — course ids are unique across catalogs,
+// so both sets sit in the same list and the inactive one is simply invisible.
+// That is what lets a student switch to BYU, change their mind, and find their
+// generic route exactly as they left it, without a second storage key and
+// without anything ever being translated between the two.
+//
+// So anything asking "what has this student picked" asks here, never the raw
+// set — otherwise a BYU student with an old generic route reads as having
+// chosen courses they cannot see.
+function pickedCourses() { return allCourses().filter(c => S.courses.has(c.id)); }
+function pickedCount()   { return pickedCourses().length; }
 
 // What a course is worth: the weight of the topics attributed to it, so two
 // courses covering the same ground never bill for it twice.
@@ -5602,6 +5620,7 @@ const QUESTIONS = [
 const S = {
   screen:         'landing',
   year:           null,
+  school:         'generic',   // which course catalog this student picks from
   courses:        new Set(),
   courseStatus:   {},          // {courseId: 'in-progress'|'completed'}
   courseWhen:     {},          // {courseId: '2025-fall'} — the term a done course was taken
@@ -5645,7 +5664,7 @@ const S = {
 // Single source of truth for the keys Waypoint owns. Backup, restore and reset
 // all read from here (or from the wp_ prefix scan below), so a key added in a
 // future release is covered everywhere the moment it's listed.
-const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_streak','wp_lastDate','wp_qstats',
+const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_school','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
                  'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
@@ -5681,6 +5700,7 @@ function save() {
   localStorage.setItem('wp_course_when',   JSON.stringify(S.courseWhen));
   localStorage.setItem('wp_syllabus',      JSON.stringify(S.syllabus));
   localStorage.setItem('wp_year',     S.year || '');
+  localStorage.setItem('wp_school',   S.school || 'generic');
   localStorage.setItem('wp_streak',   String(S.streak));
   localStorage.setItem('wp_lastDate', S.lastDate || '');
   localStorage.setItem('wp_qstats',   JSON.stringify(S.qStats));
@@ -5759,6 +5779,9 @@ function load() {
       } catch(e) { console.warn('[Waypoint] wp_syllabus unreadable — ignoring:', e); }
     }
     S.year     = localStorage.getItem('wp_year')     || null;
+    // The one new key this feature adds. Absent means generic, which is every
+    // student who has ever used Waypoint until they say otherwise.
+    S.school   = localStorage.getItem('wp_school')   || 'generic';
     S.streak   = parseInt(localStorage.getItem('wp_streak')   || '0', 10);
     S.lastDate = localStorage.getItem('wp_lastDate') || null;
 
@@ -6377,7 +6400,7 @@ function firstSessionCourse() {
   const weightOf = id => catalogWeight(id);
   const pick = list => list.filter(id => FIRST_SESSION[id])
                            .sort((a, b) => weightOf(b) - weightOf(a))[0] || null;
-  const mine = [...S.courses];
+  const mine = pickedCourses().map(c => c.id);
   return pick(mine.filter(id => S.courseStatus[id] === 'in-progress')) || pick(mine);
 }
 
@@ -6805,7 +6828,7 @@ function nextParcel() {
 }
 
 function routeFocus() {
-  if (!S.courses.size) return null;
+  if (!pickedCount()) return null;
   // With practice on, the recommender that drives it still chooses; with
   // practice off there is no record to recommend from, so weight and state do.
   const pick = PRACTICE ? getDirectiveTopic() : nextParcel();
@@ -7992,7 +8015,7 @@ function courseWeekUnits(courseId, ew) {
 function thisWeekUnits(week = semesterWeek()) {
   if (!week) return [];
   const out = [];
-  for (const courseId of S.courses) {
+  for (const { id: courseId } of pickedCourses()) {
     if (S.courseStatus[courseId] !== 'in-progress') continue;
     // A course with a syllabus needs no pacing table; one without needs both.
     if (!S.syllabus[courseId] && !PACING[courseId]) continue;
@@ -8307,7 +8330,7 @@ function hasAWeek(now = new Date()) {
 function shouldShowBrief(now = new Date()) {
   const day = now.getDay();
   if (day !== 0 && day !== 1) return false;
-  if (S.courses.size === 0) return false;
+  if (pickedCount() === 0) return false;
   if (!hasAWeek(now)) return false;
   return S.briefSeen !== weekStartISO(now);
 }
@@ -8417,7 +8440,7 @@ function briefCardHTML() {
   const cta = b.action
     ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;"
                onclick="briefActionStart('${b.action.topic.id}', ${b.action.subId ? `'${b.action.subId}'` : 'null'})">Start</button>`
-    : S.courses.size === 0
+    : pickedCount() === 0
       ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="go('courses')">Add a course to your route</button>`
       : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">That's today's ground covered. Come back tomorrow and the week keeps building.</p>`;
 
@@ -8657,8 +8680,9 @@ function mtSetSemester(v) {
 }
 
 function startMidtermSetup() {
-  const inProg = [...S.courses].filter(c => S.courseStatus[c] === 'in-progress');
-  const pick = S.midterm ? S.midterm.courseId : (inProg[0] || [...S.courses][0] || null);
+  const mine   = pickedCourses().map(c => c.id);
+  const inProg = mine.filter(c => S.courseStatus[c] === 'in-progress');
+  const pick = S.midterm ? S.midterm.courseId : (inProg[0] || mine[0] || null);
   S.mtDraft = S.midterm
     ? { courseId: S.midterm.courseId, subIds: S.midterm.subIds.slice(), date: S.midterm.date }
     : { courseId: pick, subIds: [], date: '' };
@@ -8785,7 +8809,7 @@ function startMidtermDrill(topicId, subId) {
 
 function screenMidterm() {
   const d = S.mtDraft || { courseId: null, subIds: [], date: '' };
-  const picks = [...S.courses];
+  const picks = pickedCourses().map(c => c.id);
   const units = d.courseId ? courseUnits(d.courseId) : [];
   const days  = d.date ? daysUntil(d.date) : null;
   const ready = !!(d.courseId && d.date && days !== null && days >= 0);
@@ -10089,7 +10113,7 @@ function practicedToday() {
 // bank has nothing for this route, the acknowledgement still stands on its own —
 // an empty card, or the card they just finished, is the worse answer.
 function doneForTodayHTML() {
-  if (!practicedToday() || S.courses.size === 0) return '';
+  if (!practicedToday() || pickedCount() === 0) return '';
   const kicker = `Done for today${S.streak > 1 ? ` · ${S.streak} days` : ''}`;
   // The link sits outside the card: the reward is the card, this is the aside.
   const keepGoingLink = `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going with another 5</button>`;
@@ -10117,7 +10141,7 @@ function routeFootHTML() {
     ? (unmappedCourses().length
       ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
       : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus</button>`)
-    : (S.courses.size
+    : (pickedCount()
       ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking</button>`
       : '');
   const sem = S.semStart ? '' : `<button class="link-btn full quiet" onclick="go('pace')">Set your semester start</button>`;
@@ -10252,6 +10276,16 @@ function screenSettings() {
 
       <div class="section-divider"></div>
 
+      <p class="label" style="margin-bottom:8px;">School</p>
+      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Which course list you pick from. Switching keeps the other list's answers, so you can switch back and find your route as you left it.</p>
+      ${SCHOOL_CHOICES.map(c => `
+        <button class="year-btn${schoolId() === c.val ? ' selected' : ''}" onclick="setSchoolFromSettings('${c.val}')">
+          <span>${c.label}</span>
+          <span class="year-hint">${schoolId() === c.val ? 'current' : c.hint}</span>
+        </button>`).join('')}
+
+      <div class="section-divider"></div>
+
       <p class="label" style="margin-bottom:8px;">Daily reminder</p>
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Add a recurring calendar event so a quick session becomes a habit.</p>
       <button class="btn btn-primary" id="reminder-btn" onclick="setReminder(this)">Set a daily reminder</button>
@@ -10378,6 +10412,67 @@ function screenYear() {
           <span class="year-hint">${y.hint}</span>
         </button>`).join('')}
     </div>`;
+}
+
+// ── WHERE DO YOU GO TO SCHOOL? ───────────────────────────────────────────────
+// One question, two answers, between the year and the course picker.
+//
+// A BYU premed's schedule says CELL 305, not "Biology II". Asking them to work
+// out which generic label their class corresponds to is asking them to do the
+// translating this app exists to do for them — and to guess, which is worse,
+// because a wrong guess puts a wrong claim on their own map.
+//
+// One school for one validation season. Everyone else keeps the generic list
+// unchanged, which is what "Somewhere else" means: not a lesser answer, the
+// same answer Waypoint has always given.
+const SCHOOL_CHOICES = [
+  { val:'byu',     label:'BYU',            hint:'Pick your real classes'   },
+  { val:'generic', label:'Somewhere else', hint:'The standard list'    },
+];
+
+function screenSchool() {
+  const picked = schoolId();
+  const CHOICES = SCHOOL_CHOICES;
+  return `
+    <div class="screen">
+      <button onclick="go('year')" class="back-btn quiet">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+      <p class="label">About you</p>
+      <h2>Where do you go to school?</h2>
+      <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 24px;line-height:1.5;">If we know your school, you can pick the classes on your own schedule instead of translating them.</p>
+      ${CHOICES.map(c => `
+        <button class="year-btn${picked === c.val && S._schoolAsked ? ' selected' : ''}" onclick="selectSchool('${c.val}')">
+          <span>${c.label}</span>
+          <span class="year-hint">${c.hint}</span>
+        </button>`).join('')}
+      <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin-top:16px;">More schools as students ask for them. You can change this in Settings.</p>
+    </div>`;
+}
+
+function selectSchool(id) {
+  S.school = Object.prototype.hasOwnProperty.call(CATALOGS, id) ? id : 'generic';
+  S._schoolAsked = true;
+  save();
+  go('courses');
+}
+
+// Changing school from Settings. The two course lists live side by side in
+// S.courses and NOTHING is translated between them: "Biology II" does not say
+// which BYU classes someone sat, and a guessed translation would be a wrong
+// claim on their map wearing the authority of their own answer.
+//
+// So the old selections are left exactly where they are, invisible until the
+// student switches back, and the picker opens on the new list.
+function setSchoolFromSettings(id) {
+  const next = Object.prototype.hasOwnProperty.call(CATALOGS, id) ? id : 'generic';
+  if (next === schoolId()) return;
+  S.school = next;
+  S._schoolAsked = true;
+  S._schoolSwitched = true;
+  save();
+  go('courses');
 }
 
 // Statistics in one sentence. AAMC lists a discipline percentage for every
@@ -10591,7 +10686,7 @@ function screenExplain() {
   // the courses were cleared. Hand back the Route's own markup rather than
   // calling go(): go() re-renders, and then this render finishes and paints its
   // own empty string over the top, which is a blank screen.
-  if (S.courses.size === 0) { S.screen = 'reveal'; return screenReveal(); }
+  if (pickedCount() === 0) { S.screen = 'reveal'; return screenReveal(); }
 
   const cov = coverage(S.courses, true);
   const { groups, raw } = coverageContributions();
@@ -10882,7 +10977,7 @@ function setCourseState(id, state) {
 // Hidden rather than removed: a counter that appears on the first tap moves the
 // button under the finger reaching for it.
 function paintCourseCount() {
-  const n = S.courses.size;
+  const n = pickedCount();
   const counter = document.getElementById('course-counter');
   if (counter) {
     counter.textContent = n + ' course' + (n !== 1 ? 's' : '') + ' selected';
@@ -10894,7 +10989,7 @@ function paintCourseCount() {
 
 function screenCourses() {
   const sections = [...new Set(allCourses().map(c => c.section))];
-  const n = S.courses.size;
+  const n = pickedCount();
 
   // Framing only. A junior's route is mostly behind them, so leading with "what
   // have you taken?" is the honest opening question for them and "what are you
@@ -10902,6 +10997,15 @@ function screenCourses() {
   // the same three states, all starting at Not yet.
   const doneLead = DONE_FIRST_YEARS.includes(S.year);
   const back = S._coursesFrom || 'brief';
+
+  // Arriving here from a school change. The other list is still underneath,
+  // untouched, and saying so is the difference between "your route was wiped"
+  // and "you are looking at a different list".
+  const switchNote = !S._schoolSwitched ? '' : `
+      <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);padding:12px 12px;margin:0 0 20px;">${
+        n === 0
+          ? `Pick your ${catalog().name === 'BYU' ? 'BYU' : 'generic'} courses. Your old selections are kept in case you switch back.`
+          : 'Your courses on this list are as you left them.'}</p>`;
 
   return `
     <div class="screen">
@@ -10914,6 +11018,7 @@ function screenCourses() {
       <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 20px;line-height:1.5;">${doneLead
         ? 'Mark what you’ve finished <strong style="color:var(--ink-2);">Done</strong> and this term’s classes <strong style="color:var(--ink-2);">Taking</strong>. Everything starts at Not yet — nothing is assumed.'
         : 'Mark this term’s classes <strong style="color:var(--ink-2);">Taking</strong> and anything you’ve finished <strong style="color:var(--ink-2);">Done</strong>. Everything starts at Not yet — nothing is assumed.'}</p>
+      ${switchNote}
 
       <div class="courses-scroll">
         ${sections.map(sec => {
@@ -11171,7 +11276,7 @@ function screenReveal() {
     // skill rather than as its own share of questions, so it carries no weight.
     // Telling that student to "add your courses" would be telling them their
     // class didn't count.
-    subhead  = S.courses.size
+    subhead  = pickedCount()
       ? 'Those are tested as skills rather than as their own share of questions. Coverage counts the science courses you\'ve taken or are taking.'
       : 'Add your courses to see your coverage.';
   } else {
@@ -11900,7 +12005,7 @@ function screenError() {
 // The logo is a way home, not a way out. Only someone with no route yet has any
 // business landing back on the marketing page.
 function logoTap() {
-  go(S.courses.size > 0 ? 'brief' : 'landing');
+  go(pickedCount() > 0 ? 'brief' : 'landing');
 }
 
 // One event per onboarding screen, fired on arrival rather than on render — a
@@ -11936,7 +12041,9 @@ function go(screen) {
   // The picker is reachable from onboarding, from Home and from the Route, and
   // each of those is a different "back". Recorded on the way in, while S.screen
   // is still the screen being left.
-  if (screen === 'courses') S._coursesFrom = ['year', 'brief', 'reveal'].includes(S.screen) ? S.screen : 'brief';
+  if (screen === 'courses') S._coursesFrom = ['year', 'school', 'brief', 'reveal'].includes(S.screen) ? S.screen : 'brief';
+  // The switch note belongs to the one visit the switch opened.
+  if (screen !== 'courses') S._schoolSwitched = false;
   // The first reveal keeps its own order for as long as the student is on it —
   // through the account ask, through a re-render — and ends when they leave.
   if (screen !== 'reveal') { S._firstReveal = false; S._revealAnimated = false; S._covMilestone = undefined; }
@@ -11955,7 +12062,7 @@ function go(screen) {
 function selectYear(year) {
   S.year = year;
   save();
-  go('courses');
+  go('school');
 }
 
 // There is nothing left to confirm. Every course carries its own answer now, so
@@ -11966,7 +12073,7 @@ function finishCourses() {
 
 // The end of both paths: whatever the statuses now are, this is the reveal.
 function revealCourses() {
-  if (S.year && S.courses.size > 0) {
+  if (S.year && pickedCount() > 0) {
     if (window.plausible) plausible('onboarding_complete');
   }
   // Transient, like _coursesFrom — never persisted, so it cannot survive into a
@@ -12843,10 +12950,10 @@ function syncDesktopShell() {
   // A visitor is pre-launch until they have a route. The landing, year picker
   // and course picker are the whole product at that point, and app chrome
   // around them is furniture for an app they have not started.
-  const preLaunch = !S.courses.size && ['landing', 'year', 'courses'].includes(S.screen);
+  const preLaunch = !pickedCount() && ['landing', 'year', 'school', 'courses'].includes(S.screen);
   shell.classList.toggle('dt-prelaunch', preLaunch);
   document.body.classList.toggle('pre-launch', preLaunch);
-  shell.classList.toggle('dt-empty', S.courses.size === 0);
+  shell.classList.toggle('dt-empty', pickedCount() === 0);
   shell.classList.toggle('dt-on-route', S.screen === 'reveal');
 
   const cov = coverage(S.courses, true);
@@ -13003,6 +13110,7 @@ function render() {
     case 'landing':  html += screenLanding();  break;
     case 'brief':    html += screenBrief();    break;
     case 'year':     html += screenYear();     break;
+    case 'school':   html += screenSchool();   break;
     case 'courses':  html += screenCourses();  break;
     case 'terms':    html += screenTerms();    break;
     // Retired: one course screen carries all three states now, so there is
@@ -13104,7 +13212,7 @@ try { captureAuthRedirect(); } catch(e) { console.warn('[Waypoint] auth redirect
 
 load();
 // Route: anyone with courses lands on the map; a new visitor gets the landing.
-if (S.courses.size > 0) {
+if (pickedCount() > 0) {
   S.screen = 'reveal';
   if (window.plausible) plausible('app_open');
 }
