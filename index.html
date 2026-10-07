@@ -5723,7 +5723,12 @@ function save() {
   localStorage.setItem('wp_course_when',   JSON.stringify(S.courseWhen));
   localStorage.setItem('wp_syllabus',      JSON.stringify(S.syllabus));
   localStorage.setItem('wp_year',     S.year || '');
-  localStorage.setItem('wp_school',   S.school || 'generic');
+  // Written once the student has ANSWERED, and not a moment before. The key's
+  // absence is the record of never having been asked, which is what makes an
+  // existing student generic without anything being decided for them — and it
+  // is the only way to tell "answered Somewhere else" from "never saw the
+  // question", which the event below depends on.
+  if (S._schoolAsked || schoolAnswered()) localStorage.setItem('wp_school', S.school || 'generic');
   localStorage.setItem('wp_streak',   String(S.streak));
   localStorage.setItem('wp_lastDate', S.lastDate || '');
   localStorage.setItem('wp_qstats',   JSON.stringify(S.qStats));
@@ -7029,7 +7034,11 @@ function trackStudyLink(source, topicId) {
   const t = TOPICS.find(x => x.id === topicId);
   const covered = !!t && topicCovered(t.id);
   const state = !covered ? 'ahead' : topicTaking(t.id) ? 'taking' : 'finished';
-  if (window.plausible) plausible('study_link', { props: { source, parcel: topicId, state } });
+  // The school rides along because the question school_chosen opens is only
+  // half answered by it: whether BYU students pick BYU, and then whether the
+  // BYU path changes what they do next. Without this prop the second half
+  // cannot be segmented at all.
+  if (window.plausible) plausible('study_link', { props: { source, parcel: topicId, state, school: schoolId() } });
 }
 
 // A twist belonging to this parcel: the first question on the topic that has
@@ -10490,10 +10499,30 @@ function screenSchool() {
     </div>`;
 }
 
+// The validation question in one event: do BYU students pick BYU?
+//
+// Fired on a choice, never on a render, and never on a re-tap of the answer
+// already given — otherwise the rate it measures is a rate of taps. Answering
+// for the first time counts even when the answer is "Somewhere else", because
+// choosing the default is still choosing.
+// Has the student ever answered the school question? The stored key, not the
+// value: "generic" is an answer, and its absence is not.
+function schoolAnswered() {
+  try { return !!localStorage.getItem('wp_school'); } catch (e) { return false; }
+}
+
+function trackSchool(school) {
+  if (window.plausible) plausible('school_chosen', { props: { school } });
+}
+
 function selectSchool(id) {
-  S.school = Object.prototype.hasOwnProperty.call(CATALOGS, id) ? id : 'generic';
+  const next   = Object.prototype.hasOwnProperty.call(CATALOGS, id) ? id : 'generic';
+  const answered = schoolAnswered();
+  const change = next !== schoolId();
+  S.school = next;
   S._schoolAsked = true;
   save();
+  if (!answered || change) trackSchool(next);
   go('courses');
 }
 
@@ -10511,6 +10540,7 @@ function setSchoolFromSettings(id) {
   S._schoolAsked = true;
   S._schoolSwitched = true;
   save();
+  trackSchool(next);
   go('courses');
 }
 
@@ -12103,7 +12133,12 @@ function logoTap() {
 // re-render (tapping a course, opening a term picker) is not a new visit. Names
 // only: no course selections, no coverage numbers, nothing about the person.
 // Enough to see where the first two minutes leak, and nothing more.
+// A step was added between the year and the picker, so the funnel needs a rung
+// for it. Without one, everybody who leaves at the school question disappears
+// into the gap between onboard_year and onboard_courses, and that gap is the
+// first thing this season is meant to measure.
 const ONBOARD_EVENTS = { landing: 'onboard_landing', year: 'onboard_year',
+                         school: 'onboard_school',
                          courses: 'onboard_courses', reveal: 'onboard_reveal' };
 
 function trackScreen(screen) {
