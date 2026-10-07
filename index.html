@@ -1821,6 +1821,22 @@ function courseLabel(c)  { return c ? (c.code || c.name) : ''; }
 // The long form, for a screen reader and anywhere a row has space for both.
 function courseFull(c)   { return c ? (c.code ? c.code + ', ' + c.title : c.name) : ''; }
 
+// Several courses, read as a person would say them: "MMBIO 240 and PWS 340".
+function courseList(cs) {
+  const names = cs.map(courseLabel).filter(Boolean);
+  if (names.length < 2) return names[0] || '';
+  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+}
+
+// The short label for whatever covers a topic, in the student's own catalog.
+// TOPICS[].disp is the GENERIC catalog's short form — "Bio II" — tuned to fit a
+// tile, so it stays the answer there and nowhere else. A course code is shorter
+// than any short form we could invent, so every other catalog uses it.
+function topicCourseLabel(t) {
+  if (schoolId() === 'generic') return t.disp;
+  return courseLabel(topicCourse(t.id)) || t.disp;
+}
+
 const MCAT_SECTIONS = [
   { id:'bb',   short:'Bio & Biochem',   long:'Biological & Biochemical Foundations'      },
   { id:'cp',   short:'Chem & Physics',  long:'Chemical & Physical Foundations'           },
@@ -6232,16 +6248,20 @@ function exampleRoute() {
   EXAMPLE_ROUTE.taking.forEach(c => status[c] = 'in-progress');
   // Stand S in the example's shoes for the length of the call, the way
   // coverageAfterCourse() does, rather than reimplementing credit handling.
-  const prevStatus = S.courseStatus, prevCourses = S.courses;
+  // The catalog goes into the example's shoes too. Without it a BYU visitor
+  // was shown the marketing card at 0%: the example's course ids are generic,
+  // and nothing in the BYU catalog covers anything they name.
+  const prevStatus = S.courseStatus, prevCourses = S.courses, prevSchool = S.school;
   S.courseStatus = status;
   S.courses = courses;
+  S.school = 'generic';
   try {
     // The map is rendered here, inside the example's shoes, for the same reason
     // the figures are: one renderer, one model, and a marketing card that cannot
     // drift from the app it is advertising.
     return { cov: coverage(courses, true), sections: sectionCoverage(courses),
              map: routeMapHTML({ idPrefix: 'ex', frame: false, names: false, static: true }) };
-  } finally { S.courseStatus = prevStatus; S.courses = prevCourses; }
+  } finally { S.courseStatus = prevStatus; S.courses = prevCourses; S.school = prevSchool; }
 }
 
 function coverage(courses, statusAware = false) {
@@ -6609,7 +6629,7 @@ function mapHTML(mini, highlightTopics = new Set()) {
 
     return `<div style="background:${bg};border:1px solid transparent;border-radius: var(--r-ctl);padding:8px 12px;min-width:0;">
       <div style="font-size: var(--fs-13);color:${nc};font-weight:600;line-height:1.3;">${t.name}${dot}</div>
-      <div style="font-size: var(--fs-11);color:${dc};margin-top:4px;line-height:1.3;">${covered ? '✓ ' : ''}${t.disp}</div>
+      <div style="font-size: var(--fs-11);color:${dc};margin-top:4px;line-height:1.3;">${covered ? '✓ ' : ''}${topicCourseLabel(t)}</div>
     </div>`;
   }).join('');
 }
@@ -6885,15 +6905,17 @@ function routeFocus() {
             : (unpractised ? "The largest parcel your courses cover and you haven't practised."
                            : 'The largest parcel your courses cover.');
 
-  // The concept's line named a course code — "PSYC 111" — and the app has never
-  // collected one, so this says what it actually knows. Where the course and the
-  // topic share a name, as Psychology does, naming both reads as a stutter.
+  // The concept's line named a course code — "PSYC 111" — which the app had no
+  // way of knowing. Now, at a school, it does: the code is the student's own.
+  // Where the course and the topic share a name, as generic Psychology does,
+  // naming both still reads as a stutter.
   const same = course.name.toLowerCase() === t.name.toLowerCase();
+  const held = coursesCovering(t.id).filter(c => S.courses.has(c.id));
   const counts = `so it counts ${taking ? 'half' : 'whole'}`;
   return { topic: t, course, why,
            detail: same
              ? `<b>${t.name}.</b> ${taking ? 'In progress' : 'Finished'}, ${counts}. ${practice}`
-             : `<b>${t.name}.</b> ${course.name}, ${taking ? 'in progress' : 'finished'}, ${counts}. ${practice}`,
+             : `<b>${t.name}.</b> Covered by ${courseList(held)}, ${taking ? 'in progress' : 'finished'}, ${counts}. ${practice}`,
            n: sessionSize(t.id, null) };
 }
 
@@ -6948,7 +6970,7 @@ function routeMapHTML(opts) {
       // student had not asked; now it explains itself and offers the link.
       const course = topicCourse(t.id);
       const tag    = flat ? 'div' : 'button';
-      const tip    = fill === 0 && course && !cars ? `Covered when you take ${course.name}` : t.name;
+      const tip    = fill === 0 && course && !cars ? `Covered when you take ${courseLabel(course)}` : t.name;
       const click  = flat ? '' : ` onclick="toggleMapTile('${t.id}')"`;
       const expand = flat ? '' : ` aria-expanded="${S._mapOpen === t.id}"`;
 
@@ -7053,10 +7075,20 @@ function parcelDetailHTML(tid) {
   // "Not covered by any class. No class covers this." was the same sentence
   // twice with the words in a different order.
   const same = !!course && course.name.toLowerCase() === t.name.toLowerCase();
+  // Every course the student has that covers this, not just the one its weight
+  // is counted under. At a real school two classes can reach the same ground,
+  // and naming one of them would read as a mistake to the student who sat both.
+  const held = coursesCovering(tid).filter(c => S.courses.has(c.id));
+  // A topic no course in this catalog reaches. CARS everywhere; at a school,
+  // anything its premed sequence does not cover. An honest gap, not an error —
+  // and the study links below are exactly what it needs.
+  const gap  = !cars && noCourse(tid);
   const standing = cars ? 'Not covered by any class.'
-    : covered ? (same ? `${taking ? 'In progress' : 'Finished'}.` : `${cname}, ${taking ? 'in progress' : 'finished'}.`)
+    : gap     ? `Not covered by a ${catalog().name} premed course.`
+    : covered ? (same ? `${taking ? 'In progress' : 'Finished'}.` : `Covered by ${courseList(held)}, ${taking ? 'in progress' : 'finished'}.`)
     : `Not on your route yet.`;
   const framing = cars    ? 'Practise reading here.'
+    : gap     ? 'Study it directly.'
     : taking  ? 'Study it alongside the class.'
     : covered ? 'Covered in class. Review it here when you start MCAT prep.'
     :           `Covered when you take ${cname}. Preview it here if you like.`;
@@ -7220,7 +7252,7 @@ const TILE_NAMES = {
 // sits under its course or section, so "Chem II" says the same thing and fits
 // with room for narrower phones. Every other course short-name fits as it is.
 const TILE_COURSE = { gc1: 'Chem I', gc2: 'Chem II' };
-const tileCourse = t => TILE_COURSE[topicCourseId(t.id)] || t.disp;
+const tileCourse = t => TILE_COURSE[topicCourseId(t.id)] || topicCourseLabel(t);
 
 // 92px floor, not 72: the state word has to fit beside the weight at 375px.
 // Six and nine topics wrap to the same number of rows three-across as they did
@@ -7278,7 +7310,7 @@ function termTimelineHTML(live, open) {
       : `<span style="font-size: var(--fs-13);color:var(--muted);">${termLabel(g.term)}${g.now ? ', now' : ''}</span>`;
     return `
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);">
-        <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${c.name}</span>
+        <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${courseFull(c)}</span>
         <span style="display:flex;align-items:baseline;gap:12px;flex-shrink:0;">
           ${when}
           <span style="font-size: var(--fs-13);color:var(--faint);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;">${w}%</span>
@@ -10862,6 +10894,7 @@ function screenSources() {
       </div>
       ${p(`Rounded by largest remainder so the integers still sum to ${total}.`)}
       ${p(`<strong style="color:var(--ink-2);">Still Waypoint's judgment:</strong> the split of a discipline across courses and topics. AAMC publishes no course-level breakdown, so intro biology's 19 becoming Bio I 9 and Bio II 10, or general chemistry's 9 becoming Gen Chem I 7 and Gen Chem II 2, is ours — and the part to argue with.`)}
+      ${schoolId() === 'generic' ? '' : p(`Those splits are written for a standard two-semester sequence, which is why this page names courses you may never have taken. Your school's own courses are <strong style="color:var(--ink-2);">mapped onto</strong> that model rather than replacing it: ${catalog().name}'s list says which of these topics each of its classes covers, and the weights underneath are the same ones above. That mapping was read from ${catalog().name}'s course catalog on ${catalog().retrieved}, and it is the newest and least settled thing on this page.`)}
       ${p(`<strong style="color:var(--ink-2);">Statistics.</strong> ${STATS_NOTE}`)}
       ${p(`Your percentage is the share of this content your coursework covers — not the share of questions you would answer correctly, and never a predicted score. The table below groups these weights by class; it is not the exam's four equal quarters, because several disciplines span more than one section.`)}
       <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;">
@@ -11528,7 +11561,7 @@ function screenQuestion() {
       <div class="q-meta">
         <span class="q-count">${S.quickLog ? (S.quickLog.repin ? (S.quickLog.repin === 'unpinned' ? 'Check' : 'Re-pin') : 'Quick check') : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
         <div style="display:flex;gap:8px;align-items:center;">
-          <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicObj.disp : ''}</span>
+          <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicCourseLabel(topicObj) : ''}</span>
         </div>
       </div>
 
@@ -11961,7 +11994,7 @@ function screenQuickLog() {
 
     return `
       <div style="display:flex;align-items:center;gap:8px;margin:24px 0 8px;">
-        <span class="q-tag ${sectionTag(t.mcat)}">${sectionIcon(t.mcat)}${t.disp}</span>
+        <span class="q-tag ${sectionTag(t.mcat)}">${sectionIcon(t.mcat)}${topicCourseLabel(t)}</span>
         <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);letter-spacing:-0.01em;">${t.name}</span>
       </div>
       ${rows}${all}`;

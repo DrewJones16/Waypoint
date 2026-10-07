@@ -66,11 +66,38 @@ const JUNIOR = {
   wp_course_status: RETURNING.wp_course_status,
 };
 
+// The same student at BYU: the equivalent courses, in the codes on their own
+// schedule. Their coverage is the same 38% the generic junior reads, which is
+// the arithmetic half of "the map speaks BYU". The other half is below.
+const BYU = {
+  wp_school: 'byu',
+  wp_year: 'junior',
+  wp_courses: '["bio130","cell305","chem105","chem106","chem351","psych111"]',
+  wp_course_status: '{"bio130":"completed","cell305":"completed","chem105":"completed","chem106":"completed","chem351":"in-progress","psych111":"in-progress"}',
+  wp_course_when: '{"bio130":"2025-fall","cell305":"2026-spring","chem105":"2025-fall","chem106":"2026-spring"}',
+};
+
 const STATES = [
   { name: 'cleared',   store: {} },
   { name: 'junior',    store: JUNIOR },
   { name: 'returning', store: RETURNING },
+  { name: 'byu',       store: BYU },
 ];
+
+// ── No generic course name reaches a BYU student ───────────────────────────
+// Two screens may, and only these two, each for a reason that is about someone
+// other than the student reading it:
+//
+//   landing — the example route on the marketing card is a DIFFERENT, made-up
+//     student, described in the generic terms their route is built from. (It
+//     is computed in the generic catalog too; without that a BYU visitor was
+//     shown the card at 0%.)
+//   sources — the weight model itself. Its splits are written for a standard
+//     two-semester sequence, because that is what they were derived from, and
+//     a school's courses are mapped ONTO that model rather than replacing it.
+//     Renaming them in BYU's terms would claim a derivation that does not
+//     exist. The screen says so, in a paragraph only non-generic students see.
+const LEAK_OK = ['landing', 'sources'];
 
 // Every screen the router knows about, read from the router rather than listed
 // here — a screen added without a line in this file would otherwise go unwalked.
@@ -208,6 +235,43 @@ for (const variant of VARIANTS) {
       if (pressed) failures.push(`${where}  focus button: ${pressed}`);
       else if (landed !== 'question' || !asked)
         failures.push(`${where}  focus button: landed on "${landed}"${asked ? '' : ' with no answer options'}, expected a question`);
+    }
+
+    // ── No generic course name reaches a BYU student ────────────────────────
+    if (state.name === 'byu') {
+      // Derived in the page from the real tables rather than listed here, so a
+      // course renamed in either catalog cannot slip past a stale constant.
+      // Anything that is also a topic name, a tile name or a section heading is
+      // not a generic course name leaking; it is the map's own vocabulary.
+      const words = await page.evaluate(() => {
+        const ok = new Set([...TOPICS.map(t => t.name), ...Object.values(TILE_NAMES), ...Object.values(MAP_NAMES),
+                            ...allCourses().map(c => c.section), ...MCAT_SECTIONS.map(s => s.short), ...MCAT_SECTIONS.map(s => s.long)]);
+        const out = new Set();
+        CATALOGS.generic.courses.forEach(c => { if (!ok.has(c.name)) out.add(c.name); });
+        // Only a topic that HAS a generic course has a generic course name to
+        // leak. CARS has none, and its "Ongoing" is a state word.
+        TOPICS.forEach(t => { if (t.disp && t.course && !ok.has(t.disp)) out.add(t.disp); });
+        return [...out];
+      }).catch(() => []);
+      if (!words.length) failures.push(`${where}  could not work out which names would be a leak`);
+
+      for (const screen of SCREENS) {
+        if (LEAK_OK.includes(screen)) continue;
+        await page.evaluate(s => window.go(s), screen).catch(() => {});
+        await page.waitForTimeout(130);
+        const text = await page.evaluate(() => document.getElementById('app').innerText || '').catch(() => '');
+        for (const w of words) if (text.includes(w)) failures.push(`${where}  ${screen}: shows the generic course "${w}"`);
+      }
+      // And every parcel's study panel, which is where a course is named most.
+      const topics = await page.evaluate(() => TOPICS.map(t => t.id)).catch(() => []);
+      for (const tid of topics) {
+        const text = await page.evaluate(x => {
+          S.screen = 'reveal'; S._mapOpen = x; render();
+          return (document.getElementById('parcel-detail') || {}).innerText || '';
+        }, tid).catch(() => '');
+        for (const w of words) if (text.includes(w)) failures.push(`${where}  panel ${tid}: shows the generic course "${w}"`);
+      }
+      await page.evaluate(() => { S._mapOpen = null; }).catch(() => {});
     }
 
     // ── The generic promise, checked ────────────────────────────────────────
