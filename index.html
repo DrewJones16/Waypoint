@@ -1561,65 +1561,125 @@ const GENERIC_COURSES = COURSES.map(c => ({
 // and II" on their schedule; they see BIO 130, CELL 305, CHEM 351. Making them
 // guess how their classes translate is the guess Waypoint exists to remove.
 //
-// SOURCE: BYU Pre-Professional Advisement, "Preparing for Medical School:
-// Coursework" (ppa.byu.edu/premedical-coursework), for which courses premeds
-// take and how the advising page pairs a lecture with its lab. Every code,
-// title and "still offered" CONFIRMED against the current university catalog
-// (catalog.byu.edu), course by course. Retrieved 2026-10-06.
+// WHICH COURSES, and how they group: BYU Pre-Professional Advisement,
+// "Preparing for Medical School: Coursework" (ppa.byu.edu/premedical-coursework),
+// the edition marked UPDATED JANUARY 2025. Its own headings set the three
+// alternatives groups below, in its own order. An older edition of the same
+// page, written for the 2015 MCAT, still circulates and lists different courses
+// under the retired PDBIO codes; where they disagree the 2025 edition wins.
 //
-// Titles are the catalog's, not the advising page's, where the two differ —
-// the catalog writes "Organic Chemistry 1", not "Organic Chemistry I". Two
-// further mismatches are recorded in this commit's message rather than
-// smoothed over here.
+// CODES AND TITLES: confirmed one at a time against the current university
+// catalog, catalog.byu.edu. Titles are the catalog's where the two sources
+// differ — the catalog writes "Organic Chemistry 1", the advising page
+// "Organic Chemistry I".
+//
+// WHICH TOPICS each course covers: DERIVED from the catalog's own course
+// descriptions, learning outcomes and published lesson lists, quoted in the
+// note beside each row. Read 2026-10-06 and 2026-10-07.
+//
+// That provenance matters, so it is stated plainly: these are not the
+// confirmations of students who sat the classes. A description can promise
+// ground a section never reaches. Any row here is one word to change, and the
+// first BYU student to say otherwise outranks the catalog.
 //
 // A lecture and its lab are ONE row, the way the advising page lists them:
 // "CHEM 106 & 107". A lab adds no MCAT content of its own, so no row's topics
 // depend on whether its lab is taken.
 //
-// TODO(Drew): covers: [] is not "this course teaches nothing". It is "nobody
-// who has taken it has said yet". Which MCAT ground a course actually reaches
-// is a judgement only a BYU student can make, and a guess here would put a
-// wrong claim on somebody's map — the one thing this app is built not to do.
-// Each empty row carries the question it is waiting on. `npm run check`
-// prints the table, and every unanswered row with it, on every run.
+// TWO KINDS OF EMPTY, and the lock keeps them apart:
+//   nothing: — answered. The course reaches no AAMC content category. Two of
+//     BYU's accepted Biology II options are like this, and saying so is the
+//     most useful thing this app can tell the student who took one.
+//   todo:    — unanswered. Nobody has said yet, and the map is short by that
+//     much until they do. `npm run check` prints every one.
 const BYU_COURSES = [
   // ── Biology ──────────────────────────────────────────────────────────────
-  // Three intro courses, one need. The advising page treats them as
-  // alternatives, so the picker will too.
-  { id:'bio130',   code:'BIO 130',          title:'Biology',                              section:'Biology',   alt:'intro-bio',
-    covers: [], todo:'Does BIO 130 cover cell biology, genetics and molecular biology at MCAT depth?' },
+  // "General Biology I options", in the advising page's order. Waypoint names
+  // the first of a group in "covered when you take —", so the order is BYU's,
+  // not ours.
   { id:'cell120',  code:'CELL 120',         title:'Science of Biology',                   section:'Biology',   alt:'intro-bio',
-    covers: [], todo:'Same question for CELL 120: cell biology, genetics, molecular biology?' },
+    // Lessons: central dogma, DNA replication, transcription and translation,
+    // mutation and repair, cell cycle and mitosis, meiosis, Mendelian genetics.
+    covers: ['cell-bio', 'genetics', 'mol-bio'] },
   { id:'mmbio121', code:'MMBIO 121',        title:'General Biology: Health and Disease',  section:'Biology',   alt:'intro-bio',
-    covers: [], todo:'Does MMBIO 121 reach cell biology at MCAT depth, or only survey it?' },
+    // The least certain row in the table. BYU accepts it for the same
+    // requirement as CELL 120, but its description is a survey for non-majors
+    // — "the living world and how it functions and adapts in the context of
+    // human health and disease" — and names neither genetics nor the central
+    // dogma, which CELL 120's lesson list does. Cell biology only, until a
+    // student who took it says otherwise.
+    covers: ['cell-bio'] },
+  { id:'bio130',   code:'BIO 130',          title:'Biology',                              section:'Biology',   alt:'intro-bio',
+    // Outcomes name Cell Theory, Mendelian Theories of Inheritance, DNA
+    // Structure and Replication, Protein Synthesis Theory, Cell Division and
+    // Meiotic Theories. The majors' version of the same ground.
+    covers: ['cell-bio', 'genetics', 'mol-bio'] },
 
+  // "General Biology II options", same order. MMBIO 240 is marked preferred.
   { id:'mmbio240', code:'MMBIO 240 & 241',  title:'Molecular Biology & Lab',              section:'Biology',
-    covers: [], todo:'Molecular biology, and cell biology too?' },
+    // "Functions and molecular structures of DNA, RNA and protein, and the
+    // processes and regulatory mechanisms governing the synthesis of each":
+    // replication, transcription, translation, gene regulation, repair. Almost
+    // unit for unit Waypoint's molecular biology. Molecular, not cellular, so
+    // not cell biology.
+    covers: ['mol-bio'] },
+  { id:'mmbio221', code:'MMBIO 221 & 222',  title:'General Microbiology & Lab',           section:'Biology',
+    nothing:'The microbial world and communicable disease. The MCAT outline has no microbiology category; immune defence is one outcome of five here.',
+    covers: [] },
+  { id:'cell220',  code:'CELL 220',         title:'Human Anatomy',                        section:'Biology',
+    nothing:'Gross and microscopic structure. Physiology is only "introduced" in each system, and the MCAT tests almost no anatomy.',
+    covers: [] },
+  { id:'cell305',  code:'CELL 305',         title:'Human Physiology',                     section:'Biology',   alt:'physiology',
+    // Four of its fourteen modules are nervous system: Membrane and Action
+    // Potentials, the CNS, the Peripheral and Autonomic, the Somatic. The rest
+    // are heart, cardiovascular, respiratory, urinary, gastrointestinal,
+    // endocrine, immune, reproduction.
+    covers: ['physio', 'neuro'] },
+  { id:'cell362',  code:'CELL 362 & 363',   title:'Advanced Physiology & Lab',            section:'Biology',   alt:'physiology',
+    // The advising page's alternative to CELL 305, for students who have had
+    // molecular biology and biochemistry: "an integrated approach to organ
+    // system and cellular physiology". Its module list is not published, so
+    // neuroscience here is INFERRED from its being the advanced form of the
+    // same requirement — the one row below not resting on a quotation. Giving
+    // the harder course less credit than CELL 305 would read as a fault.
+    covers: ['physio', 'neuro'] },
 
-  // Two genetics courses; PWS 340 is the one the advising page names.
-  { id:'pws275',   code:'PWS 275',          title:'Genetics and Reproduction',            section:'Biology',   alt:'genetics',
-    covers: [], todo:'Does PWS 275 cover genetics the way PWS 340 does?' },
   { id:'pws340',   code:'PWS 340',          title:'Genetics',                             section:'Biology',   alt:'genetics',
+    // "Genetic mechanisms, their fundamental nature, interactions, and
+    // applications to human affairs."
+    covers: ['genetics'] },
+  { id:'pws275',   code:'PWS 275',          title:'Genetics and Reproduction',            section:'Biology',   alt:'genetics',
+    // "Principles of inheritance." Listed by the advising page as the
+    // alternative to PWS 340, though its outcomes are written for natural
+    // resource management rather than medicine.
     covers: ['genetics'] },
 
-  { id:'cell305',  code:'CELL 305',         title:'Human Physiology',                     section:'Biology',
-    covers: [], todo:'Physiology, certainly. Does CELL 305 also cover neuroscience?' },
-  { id:'cell220',  code:'CELL 220',         title:'Human Anatomy',                        section:'Biology',
-    covers: [], todo:'Does anatomy reach any MCAT content category, or none?' },
-  { id:'mmbio221', code:'MMBIO 221 & 222',  title:'General Microbiology & Lab',           section:'Biology',
-    covers: [], todo:'Does microbiology reach any MCAT content category, or none?' },
   { id:'neuro205', code:'NEURO 205',        title:'Neurobiology',                         section:'Biology',
-    covers: [], todo:'Is NEURO 205 the neuroscience course premeds actually take?' },
+    // On neither edition of the advising page, so it is not premed coursework
+    // — but a neuroscience major has taken it, and "structure and function of
+    // the nervous system: cellular communication; sensory, motor, and
+    // autonomic systems" is the MCAT's neuroscience. Offering it costs a
+    // student nothing; leaving it out costs them 4%.
+    covers: ['neuro'] },
 
   // ── Chemistry ────────────────────────────────────────────────────────────
-  // Acid-base is the open question. Waypoint's generic catalog puts it in the
-  // first semester; the BYU catalog describes it in both 105 and 106, and
-  // where it is really taught decides which course gets it. Not copied from
-  // the generic placement, which would be inventing an answer.
   { id:'chem105',  code:'CHEM 105',         title:'General College Chemistry 1 with Lab', section:'Chemistry',
-    covers: [], todo:'Atomic structure, bonding, stoichiometry — and is acid-base in 105 or 106?' },
+    // Lessons: Covalent Bonding and Lewis Structures, Working with Moles and
+    // Masses, Chemical Equations and Stoichiometry, Limiting Reactant and
+    // Yield; plus "atomic and molecular structure including bonding and
+    // periodic properties".
+    //
+    // NOT acid-base, and not thermodynamics, though both appear here first.
+    // 105 gives acids and bases two introductory lessons (pH, simple
+    // titrations) and entropy and enthalpy one. 106 gives acid-base a unit of
+    // its own at the quantitative level the exam tests. The only student the
+    // distinction reaches is one part-way through the year, and for them "you
+    // do not have this yet" is the useful claim.
+    covers: ['atomic', 'bonding', 'stoich'] },
   { id:'chem106',  code:'CHEM 106 & 107',   title:'General College Chemistry 2 & Lab',    section:'Chemistry',
-    covers: [], todo:'Thermodynamics, and acid-base if it is not in 105.' },
+    // Unit 4 is Equilibrium and Thermodynamics; Unit 5 is Acids, Bases and
+    // Buffers — weak acids, polyprotic acids, salts, buffers, titrations.
+    covers: ['thermo', 'acid-base'] },
   { id:'chem351',  code:'CHEM 351',         title:'Organic Chemistry 1',                  section:'Chemistry',
     covers: ['orgo'] },
   { id:'chem352',  code:'CHEM 352 & 353',   title:'Organic Chemistry 2 & Lab',            section:'Chemistry',
@@ -1641,7 +1701,13 @@ const BYU_COURSES = [
 
   // ── Statistics ───────────────────────────────────────────────────────────
   { id:'stat121',  code:'STAT 121',         title:'Principles of Statistics',             section:'Statistics',
-    covers: [], todo:'Is STAT 121 the statistics course premeds take?' },
+    // Neither edition of the advising page names a statistics course; it says
+    // only that maths requirements vary by school. STAT 121 is BYU's standard
+    // introduction, and its content — data collection, sampling distributions,
+    // confidence intervals, hypothesis testing, regression — is what research
+    // methods is on the exam. Research methods carries no weight of its own,
+    // so this row adds territory to a route and not a percentage.
+    covers: ['research'] },
 ].map(c => ({ ...c, name: c.code }));
 
 const CATALOGS = {
@@ -1657,8 +1723,8 @@ const CATALOGS = {
   byu: {
     id: 'byu',
     name: 'BYU',
-    source: 'BYU Pre-Professional Advisement premed coursework; codes and titles from catalog.byu.edu.',
-    retrieved: '2026-10-06',
+    source: 'BYU Pre-Professional Advisement premed coursework, January 2025 edition; codes, titles and coverage from catalog.byu.edu.',
+    retrieved: '2026-10-07',
     courses: BYU_COURSES,
   },
 };

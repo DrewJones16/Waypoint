@@ -247,7 +247,9 @@ function byuRows(source) {
     code:   (/code:'([^']+)'/.exec(chunk) || [])[1],
     title:  (/title:'([^']+)'/.exec(chunk) || [])[1],
     covers: ((/covers: \[([^\]]*)\]/.exec(chunk) || [, ''])[1].match(/'([^']+)'/g) || []).map(x => x.slice(1, -1)),
-    todo:   (/todo:'([^']+)'/.exec(chunk) || [])[1] || null,
+    // Two kinds of empty: answered with nothing, and not answered at all.
+    nothing:(/(?:^|[\s,{])nothing:'([^']+)'/m.exec(chunk) || [])[1] || null,
+    todo:   (/(?:^|[\s,{])todo:'([^']+)'/m.exec(chunk) || [])[1] || null,
   }));
 }
 
@@ -255,14 +257,17 @@ function printCatalog(source) {
   const rows = byuRows(source);
   if (!rows) return;
   const when = (/retrieved: '([\d-]+)'/.exec(source) || [])[1];
-  console.log(`\nBYU catalog — ${rows.length} rows, codes and titles confirmed against catalog.byu.edu${when ? ' on ' + when : ''}:`);
+  console.log(`\nBYU catalog — ${rows.length} rows, read against catalog.byu.edu${when ? ' on ' + when : ''}:`);
   for (const r of rows)
-    console.log('  ' + (r.code || '?').padEnd(16) + (r.covers.length ? r.covers.join(' ') : '—'));
-  const open = rows.filter(r => !r.covers.length);
+    console.log('  ' + (r.code || '?').padEnd(16) + (r.covers.length ? r.covers.join(' ') : r.nothing ? 'no MCAT content' : 'NOT ANSWERED'));
+  const open = rows.filter(r => !r.covers.length && !r.nothing);
   if (open.length) {
     console.log(`\nTODO(Drew) — ${open.length} BYU rows have no topics yet, so they add nothing to a BYU student's coverage:`);
     for (const r of open) console.log(`  ${(r.code || '?').padEnd(16)} ${r.todo || 'no question recorded'}`);
   }
+  // Coverage is derived from course descriptions, not from students. Printing
+  // the ceiling is how that stays visible: a BYU route that cannot reach what
+  // a generic route reaches is a mapping problem, not a student's.
 }
 
 let failed = 0;
@@ -323,9 +328,24 @@ console.log('');
   ok('every BYU row covers real topics', rows.length > 0 && bad.length === 0,
      rows.length === 0 ? 'no BYU rows parsed' : bad.length ? bad.join('; ') : `${rows.length} rows`);
   ok('every BYU course id is its own', dupes.length === 0, dupes.length ? dupes.join(', ') : '');
-  // An empty row that says nothing about why is a row nobody will ever fill.
-  const silent = rows.filter(r => !r.covers.length && !r.todo).map(r => r.code);
-  ok('every unanswered BYU row carries its question', silent.length === 0, silent.join(', '));
+  // An empty row has to say WHICH empty it is. "Answered: nothing" and "nobody
+  // has said yet" look identical in the data and mean opposite things, and the
+  // second one is the one that must never go quiet.
+  const silent = rows.filter(r => !r.covers.length && !r.todo && !r.nothing).map(r => r.code);
+  ok('every empty BYU row says which kind of empty', silent.length === 0, silent.join(', '));
+  const both = rows.filter(r => r.todo && r.nothing).map(r => r.code);
+  ok('no BYU row is answered and unanswered at once', both.length === 0, both.join(', '));
+
+  // The reachable ceiling. Every weighted topic the catalog can cover, against
+  // every weighted topic there is — so a row quietly going empty shows up as a
+  // number rather than as a student's map being short for no stated reason.
+  const covered = new Set(rows.flatMap(r => r.covers));
+  const weights = [...(tblock ? tblock[1] : '').matchAll(/id:'([a-z0-9-]+)',\s*name:'[^']*',\s*w:(\d+)/g)]
+    .map(m => ({ id: m[1], w: +m[2] }));
+  const reach = weights.filter(t => covered.has(t.id)).reduce((n, t) => n + t.w, 0);
+  const whole = weights.filter(t => t.id !== 'cars').reduce((n, t) => n + t.w, 0);
+  ok('BYU coursework can reach the whole exam', weights.length > 0 && reach === whole,
+     weights.length === 0 ? 'could not read the weights' : `${reach}% of ${whole}% outside CARS`);
 }
 
 printStudyLinks(src);
