@@ -1607,13 +1607,12 @@ const BYU_COURSES = [
     // mutation and repair, cell cycle and mitosis, meiosis, Mendelian genetics.
     covers: ['cell-bio', 'genetics', 'mol-bio'] },
   { id:'mmbio121', code:'MMBIO 121',        title:'General Biology: Health and Disease',  section:'Biology',   alt:'intro-bio',
-    // The least certain row in the table. BYU accepts it for the same
-    // requirement as CELL 120, but its description is a survey for non-majors
-    // — "the living world and how it functions and adapts in the context of
-    // human health and disease" — and names neither genetics nor the central
-    // dogma, which CELL 120's lesson list does. Cell biology only, until a
-    // student who took it says otherwise.
-    covers: ['cell-bio'] },
+    // Was cell biology only, from reading the catalog description — a survey
+    // for non-majors that names neither genetics nor the central dogma. A
+    // student who has taken it says it reaches all three, and a student who
+    // sat the class outranks a description written to fit one paragraph. This
+    // is the row that comment said to come back to.
+    covers: ['cell-bio', 'genetics', 'mol-bio'] },
   { id:'bio130',   code:'BIO 130',          title:'Biology',                              section:'Biology',   alt:'intro-bio',
     // Outcomes name Cell Theory, Mendelian Theories of Inheritance, DNA
     // Structure and Replication, Protein Synthesis Theory, Cell Division and
@@ -1629,8 +1628,11 @@ const BYU_COURSES = [
     // not cell biology.
     covers: ['mol-bio'] },
   { id:'mmbio221', code:'MMBIO 221 & 222',  title:'General Microbiology & Lab',           section:'Biology',
-    nothing:'The microbial world and communicable disease. The MCAT outline has no microbiology category; immune defence is one outcome of five here.',
-    covers: [] },
+    // The MCAT outline has no microbiology category, which is why this read as
+    // covering nothing. But the ground it teaches to get there — cell
+    // structure, membranes, metabolism — is the outline's cell biology,
+    // and a student who took it says so.
+    covers: ['cell-bio'] },
   { id:'cell220',  code:'CELL 220',         title:'Human Anatomy',                        section:'Biology',
     nothing:'Gross and microscopic structure. Physiology is only "introduced" in each system, and the MCAT tests almost no anatomy.',
     covers: [] },
@@ -1641,6 +1643,7 @@ const BYU_COURSES = [
     // endocrine, immune, reproduction.
     covers: ['physio', 'neuro'] },
   { id:'cell362',  code:'CELL 362 & 363',   title:'Advanced Physiology & Lab',            section:'Biology',   alt:'physiology',
+    inferred: true,
     // The advising page's alternative to CELL 305, for students who have had
     // molecular biology and biochemistry: "an integrated approach to organ
     // system and cellular physiology". Its module list is not published, so
@@ -1704,13 +1707,123 @@ const BYU_COURSES = [
     covers: ['soc'] },
 
   // ── Statistics ───────────────────────────────────────────────────────────
-  { id:'stat121',  code:'STAT 121',         title:'Principles of Statistics',             section:'Statistics',
+  { id:'stat121',  code:'STAT 121',         title:'Introduction to Statistical Data Analysis', section:'Statistics',
     // Neither edition of the advising page names a statistics course; it says
     // only that maths requirements vary by school. STAT 121 is BYU's standard
     // introduction, and its content — data collection, sampling distributions,
     // confidence intervals, hypothesis testing, regression — is what research
     // methods is on the exam. Research methods carries no weight of its own,
     // so this row adds territory to a route and not a percentage.
+    covers: ['research'] },
+].map(c => ({ ...c, name: c.code }));
+
+// ── UNIVERSITY OF UTAH ──────────────────────────────────────────────────────
+// The second school, and the first one nobody on this project has sat a class
+// at. Everything below is read, not remembered.
+//
+// WHICH COURSES: the U's Preprofessional Advising premed page,
+// explore.utah.edu/preprofessional/premed/general-preparation.php (the page
+// is marked updated 5/20/26), and its Premed Information Summary (April 2025).
+// PSY 1010 and SOC 1010 are not on either, and are here because a quarter of
+// the exam is psychology and sociology and a map without them is wrong.
+//
+// CODES, TITLES AND COVERAGE: Fall 2026 course descriptions on
+// class-schedule.app.utah.edu and catalog.utah.edu, read 2026-10-07. Every
+// covers below quotes the catalog's own words in the note beside it, except
+// where the note says otherwise.
+//
+// A lecture and its lab are one row, as at BYU. At the U the lab is a separate
+// enrolment, and it still adds no MCAT topic of its own.
+//
+// Honors equivalents ride on the row rather than doubling it: a student who
+// took CHEM 1211 is looking for 1210 and should find it.
+const UTAH_COURSES = [
+  // ── Biology ──────────────────────────────────────────────────────────────
+  { id:'ubiol1610', code:'BIOL 1610 & 1615',      title:'Fundamental Principles of Biology I & Lab', section:'Biology',
+    // "mitosis, meiosis, DNA replication, transcription, translation,
+    // regulation of gene expression, and laws of inheritance" — all three, by
+    // name, in one sentence.
+    covers: ['cell-bio', 'genetics', 'mol-bio'] },
+  { id:'ubiol2020', code:'BIOL 2020 (or 2021)',   title:'Principles of Cell Biology',   section:'Biology',
+    // "Structure of cells and organelles in prokaryotes and eukaryotes,
+    // function of cellular components." 2021 is the honors number.
+    covers: ['cell-bio'] },
+
+  { id:'ubiol2030', code:'BIOL 2030',             title:'Genetics',                     section:'Biology',   alt:'u-genetics',
+    // "rules of inheritance, transmission genetics, and genes in populations".
+    // It also names "molecular analysis of gene structure, function,
+    // expression", which is close to molecular biology — but close is not
+    // covered, and the student who has taken BIOL 1610 already has it.
+    covers: ['genetics'] },
+  { id:'ubiol2210', code:'BIOL 2210',             title:'Human Genetics',               section:'Biology',   alt:'u-genetics',
+    // The advising page's alternative to BIOL 2030. Code and title confirmed
+    // against the catalog; still offered.
+    covers: ['genetics'] },
+
+  { id:'ubiol2420', code:'BIOL 2420 & 2425',      title:'Human Physiology & Lab',       section:'Biology',
+    // The catalog description is five words — "Principles of human function" —
+    // so neuroscience here rests on the published section syllabus instead,
+    // which schedules "Nervous System (Part 1)", "Synapses (Nervous System
+    // Part 2)" and "Central Nervous System" as consecutive lectures, and
+    // covers action potentials, sensory transduction and the CNS, PNS and ANS.
+    // Quoted, not inferred.
+    covers: ['physio', 'neuro'] },
+  { id:'ubiol2325', code:'BIOL 2325',             title:'Human Anatomy',                section:'Biology',
+    nothing:'Structure of the human body. The MCAT tests function, which BIOL 2420 teaches.',
+    covers: [] },
+
+  { id:'ubiol3510', code:'BIOL 3510 or CHEM 3510', title:'Biological Chemistry I',      section:'Biology',
+    // "Structure and function of biomolecules, metabolism, and regulation."
+    // Cross-listed with the same description under both codes, so one row.
+    covers: ['biochem'] },
+
+  // ── Chemistry ────────────────────────────────────────────────────────────
+  { id:'uchem1210', code:'CHEM 1210 (or 1211) & 1215', title:'General Chemistry I & Lab',  section:'Chemistry',
+    // "atomic theory, bonding, nomenclature, periodicity, stoichiometry"
+    covers: ['atomic', 'bonding', 'stoich'] },
+  { id:'uchem1220', code:'CHEM 1220 & 1225',      title:'General Chemistry II & Lab',   section:'Chemistry',
+    // "general equilibrium, acid-base equilibrium, thermodynamics and
+    // electrochemistry" — the same split BYU's two semesters make.
+    covers: ['acid-base', 'thermo'] },
+  { id:'uchem2310', code:'CHEM 2310 (or 2311) & 2315', title:'Organic Chemistry I & Lab', section:'Chemistry',
+    // "reactions of organic molecules, shapes of molecules, and spectroscopic
+    // methods of identifying organic molecules"
+    covers: ['orgo'] },
+  { id:'uchem2320', code:'CHEM 2320 & 2325',      title:'Organic Chemistry II & Lab',   section:'Chemistry',
+    // "A continuation of Organic Chemistry I emphasizing reaction chemistry
+    // and mechanisms of reactions."
+    covers: ['orgo2'] },
+
+  // ── Physics ──────────────────────────────────────────────────────────────
+  // Two sequences, algebra-based and calculus-based, each a whole alternative
+  // to the other. The advising page lists both.
+  { id:'uphys2010', code:'PHYS 2010 & 2015',      title:'General Physics I & Lab',      section:'Physics',   alt:'u-physics-1',
+    // "kinematics, Newton's three laws of motion, circular motion, work and
+    // energy, momentum"
+    covers: ['physics'] },
+  { id:'uphys2210', code:'PHYS 2210 & 2215',      title:'Physics for Scientists and Engineers I & Lab', section:'Physics', alt:'u-physics-1',
+    // "a thorough understanding of mechanics" — the calculus-based sequence.
+    covers: ['physics'] },
+  { id:'uphys2020', code:'PHYS 2020 & 2025',      title:'General Physics II & Lab',     section:'Physics',   alt:'u-physics-2',
+    // "electricity, magnetism and light"
+    covers: ['physics2'] },
+  { id:'uphys2220', code:'PHYS 2220 & 2225',      title:'Physics for Scientists and Engineers II & Lab', section:'Physics', alt:'u-physics-2',
+    // "electricity and magnetism… geometric and physical optics"
+    covers: ['physics2'] },
+
+  // ── Social sciences ──────────────────────────────────────────────────────
+  { id:'upsy1010',  code:'PSY 1010',              title:'General Psychology',           section:'Social sciences',
+    // "The scientific study of human and animal behavior."
+    covers: ['psych'] },
+  { id:'usoc1010',  code:'SOC 1010',              title:'Introduction to Sociology',    section:'Social sciences',
+    // "how society functions and is organized"
+    covers: ['soc'] },
+
+  // ── Statistics ───────────────────────────────────────────────────────────
+  { id:'umath1070', code:'MATH 1070',             title:'Introduction to Statistical Inference', section:'Statistics',
+    // "descriptive statistics, estimation of the mean, or of the proportion,
+    // in one or two populations, simple linear regression, and one-way
+    // analysis of variance" — research methods as the exam reasons about it.
     covers: ['research'] },
 ].map(c => ({ ...c, name: c.code }));
 
@@ -1729,7 +1842,31 @@ const CATALOGS = {
     name: 'BYU',
     source: 'BYU Pre-Professional Advisement premed coursework, January 2025 edition; codes, titles and coverage from catalog.byu.edu.',
     retrieved: '2026-10-07',
+    // Read by a BYU student on 2026-10-07, who corrected four rows: MMBIO 121,
+    // MMBIO 221 & 222, STAT 121's title, and NEURO 205, which they removed as
+    // a neuroscience major's course. That is what checked means here — not
+    // "carefully derived", which the Utah table also is, but "somebody who
+    // sat these classes read the list and changed it".
+    checked: true,
     courses: BYU_COURSES,
+  },
+  utah: {
+    id: 'utah',
+    name: 'University of Utah',
+    // Some school names take an article in a sentence and none take one in a
+    // list. "At BYU or the University of Utah?" reads; "At BYU or University
+    // of Utah?" does not, and nor does a menu row reading "the University of
+    // Utah". So the article is data, used only where a sentence needs it.
+    article: 'the',
+    source: 'University of Utah Preprofessional Advising premed page and Premed Information Summary; codes, titles and coverage from catalog.utah.edu and class-schedule.app.utah.edu.',
+    retrieved: '2026-10-07',
+    // Nobody who has taken these classes has read this list. Every row is
+    // quoted from the catalog, which is the best anyone can do from outside,
+    // and it is still not the same thing — a description is written to fit a
+    // paragraph, and the four BYU rows a student corrected were all quoted
+    // from one too. The picker says so, in as many words, until this is true.
+    checked: false,
+    courses: UTAH_COURSES,
   },
 };
 
@@ -1817,6 +1954,15 @@ function catalogWeight(courseId) {
 // How to say a course's name. The code where there is one, because that is
 // what is printed on a student's own schedule.
 function courseLabel(c)  { return c ? (c.code || c.name) : ''; }
+
+// The school's name mid-sentence, with its article where it takes one: "at the
+// University of Utah", "at BYU". A list row wants the bare name instead, so
+// this is only for prose — and it is a function because three sentences have
+// now needed it and two of them were written without it first.
+function schoolInSentence(cat) {
+  const c = cat || catalog();
+  return (c.article ? c.article + ' ' : '') + c.name;
+}
 // The long form, for a screen reader and anywhere a row has space for both.
 function courseFull(c)   { return c ? (c.code ? c.code + ', ' + c.title : c.name) : ''; }
 
@@ -7321,7 +7467,7 @@ function termTimelineHTML(live, open) {
         <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${courseFull(c)}</span>
         <span style="display:flex;align-items:baseline;gap:12px;flex-shrink:0;">
           ${when}
-          <span style="font-size: var(--fs-13);color:var(--faint);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;">${w}%</span>
+          <span style="font-size: var(--fs-13);color:var(--faint);${c.nothing ? '' : 'font-variant-numeric:tabular-nums;min-width:32px;'}text-align:right;">${c.nothing ? 'not on the exam' : w + '%'}</span>
         </span>
       </div>${S._whenOpen === c.id ? `<div style="padding:4px 0 10px;">${termPickerHTML(c.id)}</div>` : ''}`;
   }));
@@ -10472,10 +10618,16 @@ function screenYear() {
 // One school for one validation season. Everyone else keeps the generic list
 // unchanged, which is what "Somewhere else" means: not a lesser answer, the
 // same answer Waypoint has always given.
-const SCHOOL_CHOICES = [
-  { val:'byu',     label:'BYU',            hint:'Pick your real classes'   },
-  { val:'generic', label:'Somewhere else', hint:'The standard list'    },
-];
+// Built from CATALOGS, not listed. The second school arrived the day after the
+// first, and a list written by hand is a list that forgets one of them.
+// Schools alphabetically, the standard list last — it is the fallback, not a
+// competitor, and it is where anybody who scrolls past their own school lands.
+const SCHOOL_CHOICES = Object.keys(CATALOGS)
+  .filter(id => id !== 'generic')
+  .map(id => ({ val: id, label: CATALOGS[id].name, article: CATALOGS[id].article || '',
+                hint: 'Pick your real classes' }))
+  .sort((a, b) => a.label.localeCompare(b.label))
+  .concat([{ val: 'generic', label: 'Somewhere else', hint: 'The standard list' }]);
 
 function screenSchool() {
   const picked = schoolId();
@@ -10559,9 +10711,19 @@ function isSkillCourse(courseId) {
 
 // Topic breakdown for one course (used in the expandable course rows).
 function courseTopicsBreakdown(courseId) {
-  const ts = topicsOf(courseById(courseId));
+  const course = courseById(courseId);
+  const ts = topicsOf(course);
   if (!ts.length) {
-    return `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">This course's MCAT content is counted under the intro course in its sequence, so it adds 0% on its own.</p>`;
+    // Two different reasons a course has no topics, and they are not
+    // interchangeable. A school's catalog can answer "this one reaches nothing
+    // on the exam", and when it has, that answer belongs here — it is the most
+    // useful thing the panel can say about a class somebody has just taken.
+    // Saying instead that the content is counted under the intro course would
+    // be inventing a sequence the course is not in.
+    const why = course && course.nothing
+      ? course.nothing
+      : "This course's MCAT content is counted under the intro course in its sequence, so it adds 0% on its own.";
+    return `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">${why}</p>`;
   }
   const total = ts.reduce((s, t) => s + t.w, 0);
   const rows = ts.map(t => `<div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);padding:4px 0;"><span>${t.name}</span><strong style="color:var(--ink-2);font-weight:600;">${wLabel(t)}</strong></div>`).join('');
@@ -11056,43 +11218,62 @@ function paintCourseCount() {
   if (cta) cta.disabled = n === 0;
 }
 
-// TODO(Drew): no destination yet. Waypoint has never had a feedback route, so
-// there is nothing here to link to, and inventing one — a mailto to an address
-// nobody reads, a form that does not exist — would be worse than telling the
-// student what they can actually do right now. Set this to a real URL and the
-// row below becomes a link to it. `npm run check` prints it on every run.
+// TODO(Drew): no destination yet, and this is now the one thing standing
+// between a wrong course list and a corrected one. Waypoint has never had a
+// feedback route; inventing one — a mailto to an address nobody reads, a form
+// that does not exist — would be worse than telling the student what they can
+// do this minute, which is what the row does meanwhile.
+//
+// A form URL, a mailto, anything that reaches a person. Set it and
+// "Something wrong with this list?" grows a way to answer. Printed by
+// `npm run check` on every run until it does.
 const FEEDBACK_URL = null;
 
-// How the table gets corrected during the validation season.
+// One place to say the list is wrong.
 //
-// The count is the signal; the copy is the help. It never says a message was
-// sent, because until FEEDBACK_URL exists no message is — an app that thanks
-// you for a report it did not file has told you something untrue about itself.
-function missingCourseHTML() {
+// This replaces a notice that told Utah students their list had not been
+// checked by anyone there. True, and useless: it put a doubt in front of
+// somebody who had no way to resolve it, on the screen where they were trying
+// to get something done. The useful version of the same honesty is a way in.
+//
+// It takes both complaints, because a student does not sort them before they
+// arrive: a class that is missing, and a class whose coverage is wrong. Those
+// are the two ways a catalog-built list fails, and both are fixed the same
+// way — somebody who sat the class says so.
+//
+// It never says a report was sent, because until FEEDBACK_URL exists none is.
+// An app that thanks you for a message it did not file has told you something
+// untrue about itself.
+function reportProblemHTML() {
   if (schoolId() === 'generic') return '';
-  const open = !!S._missingOpen;
-  const tell = FEEDBACK_URL
-    ? `<a href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="trackMissingCourse()" style="font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;">Tell us which class</a>`
-    : '';
+  const open = !!S._reportOpen;
   const school = catalog().name;
+  const body = FEEDBACK_URL
+    ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 2px 8px;">This list is built from ${schoolInSentence()}'s own catalog. If a class is missing, or one of them covers more or less of the MCAT than we say, tell us — that is how it gets fixed.</p>
+            <a href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="trackListProblem()"
+               style="font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;">Tell us what's wrong</a>`
+    // No destination yet, so no invitation. What is left is the thing the
+    // student can do about it this minute, which is worth more than a link
+    // that goes nowhere.
+    : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 2px 4px;">This list is built from ${schoolInSentence()}'s own catalog, so a class for your major — or one only some medical schools ask for — may not be on it. There is nowhere to send a correction yet. Until there is: switch to the standard list and mark the nearest equivalent, and your ${school} answers are kept.</p>`;
   return `
           <div style="margin-top:16px;">
-            <button type="button" onclick="toggleMissingCourse()" aria-expanded="${open}"
-                    style="width:100%;text-align:left;background:none;border:none;padding:10px 2px;min-height:44px;cursor:pointer;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);-webkit-tap-highlight-color:transparent;">Taking something not on this list?</button>
-            ${open ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 2px 4px;">This is ${school}'s premed coursework. A class for your major, or one only some medical schools ask for, will not be on it. Switch to the standard list in Settings and mark the nearest equivalent — your ${school} answers are kept.</p>${tell}` : ''}
+            <button type="button" onclick="toggleReportProblem()" aria-expanded="${open}"
+                    style="width:100%;text-align:left;background:none;border:none;padding:10px 2px;min-height:44px;cursor:pointer;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);-webkit-tap-highlight-color:transparent;">Something wrong with this list?</button>
+            ${open ? body : ''}
           </div>`;
 }
 
-function toggleMissingCourse() {
-  S._missingOpen = !S._missingOpen;
-  if (S._missingOpen) trackMissingCourse();
+function toggleReportProblem() {
+  S._reportOpen = !S._reportOpen;
+  if (S._reportOpen) trackListProblem();
   render();
 }
 
-// A count, not a message: how often a student finds their school's list short.
+// A count, not a message: how often a student finds their school's list wrong.
 // No course name, because nothing on this screen knows one.
-function trackMissingCourse() {
-  if (window.plausible) plausible('course_missing', { props: { school: schoolId() } });
+function trackListProblem() {
+  if (window.plausible) plausible('list_problem', { props: { school: schoolId() } });
 }
 
 // The school question, offered rather than asked.
@@ -11106,12 +11287,20 @@ function trackMissingCourse() {
 // looking at "Biology II" and you know your schedule says CELL 305.
 //
 // It points both ways, so switching back never needs Settings.
+
 function schoolOfferHTML() {
   const here = schoolId();
   const other = SCHOOL_CHOICES.find(c => c.val !== here);
+  // Named from the catalogs, so adding a school adds it to the offer.
+  const schools = SCHOOL_CHOICES.filter(c => c.val !== 'generic')
+                                .map(c => schoolInSentence({ article: c.article, name: c.label }));
+  const list = schools.length > 1
+    ? schools.slice(0, -1).join(', ') + ' or ' + schools[schools.length - 1]
+    : schools[0];
+  const mine = schoolInSentence();
   const text = here === 'generic'
-    ? 'At BYU? Pick your actual class codes instead'
-    : 'Not at ' + catalog().name + '? Use the standard course list';
+    ? `At ${list}? Pick your real classes`
+    : `Not at ${mine}? Use the standard course list`;
   if (!other) return '';
   return `
       <button onclick="go('school')" class="link-btn quiet" style="margin:-8px 0 16px;">${text}</button>`;
@@ -11134,7 +11323,7 @@ function screenCourses() {
   const switchNote = !S._schoolSwitched ? '' : `
       <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);padding:12px 12px;margin:0 0 20px;">${
         n === 0
-          ? `Pick your ${catalog().name === 'BYU' ? 'BYU' : 'generic'} courses. Your old selections are kept in case you switch back.`
+          ? `Pick your ${schoolId() === 'generic' ? 'generic' : catalog().name} courses. Your old selections are kept in case you switch back.`
           : 'Your courses on this list are as you left them.'}</p>`;
 
   return `
@@ -11189,7 +11378,7 @@ function screenCourses() {
             </div>`;
           }).join('')}
         `;}).join('')}
-        ${missingCourseHTML()}
+        ${reportProblemHTML()}
         <div style="height:12px;"></div>
       </div>
 
