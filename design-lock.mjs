@@ -61,8 +61,14 @@ function uiVoice(src) {
   // Comments are not said out loud — including the ones trailing a line of
   // code, which is where the question picks keep their "ETC toxin · Tay-Sachs"
   // notes. The lookbehind spares "https://".
+  // A block comment opens after whitespace or an opening bracket, never mid-
+  // token. `accept="image/*"` is not a comment, and treating it as one paired
+  // its "/*" with a real "*/" 165,000 characters later — silently deleting the
+  // course picker, the Route, Settings and the share card from everything
+  // below, which is to say from every voice rule. The rules passed because
+  // they were looking at a third less app than they thought.
   v = v.replace(/<!--[\s\S]*?-->/g, '')
-       .replace(/\/\*[\s\S]*?\*\//g, '')
+       .replace(/(^|[\s{;(])\/\*[\s\S]*?\*\//g, '$1')
        .replace(/(?<!:)\/\/.*$/gm, '');
   return v;
 }
@@ -71,6 +77,11 @@ function uiVoice(src) {
 const VOICE_ALLOW = [
   // The AAMC disclaimer is quoted wording and is not ours to restyle.
   'MCAT® is a registered trademark',
+  // A course row carries two facts about one thing: the code printed on the
+  // student's schedule and the title that says which class it is. That is the
+  // case the middle dot is actually for, and it is the only one in the app —
+  // the rule exists to stop two UNRELATED facts being welded together.
+  'ccard-title',
 ];
 
 // Report a finding with the line it is on, counted in the original file.
@@ -235,6 +246,41 @@ function printStudyLinks(source) {
   }
 }
 
+// ── The BYU catalog, printed for review ─────────────────────────────────────
+// Same reason as the study links: a table of somebody else's course codes is
+// only as good as the last time a person read it, and the rows still waiting
+// on an answer have to be impossible to forget.
+function byuRows(source) {
+  const block = /const BYU_COURSES = \[([\s\S]*?)\n\]\.map\(/.exec(source);
+  if (!block) return null;
+  return block[1].split(/\n  \{ /).slice(1).map(chunk => ({
+    id:     (/id:'([^']+)'/.exec(chunk) || [])[1],
+    code:   (/code:'([^']+)'/.exec(chunk) || [])[1],
+    title:  (/title:'([^']+)'/.exec(chunk) || [])[1],
+    covers: ((/covers: \[([^\]]*)\]/.exec(chunk) || [, ''])[1].match(/'([^']+)'/g) || []).map(x => x.slice(1, -1)),
+    // Two kinds of empty: answered with nothing, and not answered at all.
+    nothing:(/(?:^|[\s,{])nothing:'([^']+)'/m.exec(chunk) || [])[1] || null,
+    todo:   (/(?:^|[\s,{])todo:'([^']+)'/m.exec(chunk) || [])[1] || null,
+  }));
+}
+
+function printCatalog(source) {
+  const rows = byuRows(source);
+  if (!rows) return;
+  const when = (/retrieved: '([\d-]+)'/.exec(source) || [])[1];
+  console.log(`\nBYU catalog — ${rows.length} rows, read against catalog.byu.edu${when ? ' on ' + when : ''}:`);
+  for (const r of rows)
+    console.log('  ' + (r.code || '?').padEnd(16) + (r.covers.length ? r.covers.join(' ') : r.nothing ? 'no MCAT content' : 'NOT ANSWERED'));
+  const open = rows.filter(r => !r.covers.length && !r.nothing);
+  if (open.length) {
+    console.log(`\nTODO(Drew) — ${open.length} BYU rows have no topics yet, so they add nothing to a BYU student's coverage:`);
+    for (const r of open) console.log(`  ${(r.code || '?').padEnd(16)} ${r.todo || 'no question recorded'}`);
+  }
+  // Coverage is derived from course descriptions, not from students. Printing
+  // the ceiling is how that stays visible: a BYU route that cannot reach what
+  // a generic route reaches is a mapping problem, not a student's.
+}
+
 let failed = 0;
 const ok = (n, c, x = '') => { console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? '  — ' + x : ''}`); if (!c) failed++; };
 
@@ -276,7 +322,45 @@ console.log('');
   ok('the study links carry the date they were opened', !!checked, checked ? checked[1] : 'KHAN_CHECKED is missing or malformed');
 }
 
+// A `covers` entry that names no real topic is silent: the course simply
+// covers nothing, and a BYU student's map is quietly short by that much.
+console.log('');
+{
+  const rows = byuRows(src) || [];
+  const tblock = /const TOPICS = \[([\s\S]*?)\n\];/.exec(src);
+  const topicIds = new Set(((tblock ? tblock[1] : '').match(/id:'([a-z0-9-]+)'/g) || []).map(x => x.slice(4, -1)));
+  const bad = [];
+  const ids = new Set();
+  const dupes = [];
+  for (const r of rows) {
+    if (ids.has(r.id)) dupes.push(r.id); else ids.add(r.id);
+    for (const c of r.covers) if (!topicIds.has(c)) bad.push(`${r.code} → ${c}`);
+  }
+  ok('every BYU row covers real topics', rows.length > 0 && bad.length === 0,
+     rows.length === 0 ? 'no BYU rows parsed' : bad.length ? bad.join('; ') : `${rows.length} rows`);
+  ok('every BYU course id is its own', dupes.length === 0, dupes.length ? dupes.join(', ') : '');
+  // An empty row has to say WHICH empty it is. "Answered: nothing" and "nobody
+  // has said yet" look identical in the data and mean opposite things, and the
+  // second one is the one that must never go quiet.
+  const silent = rows.filter(r => !r.covers.length && !r.todo && !r.nothing).map(r => r.code);
+  ok('every empty BYU row says which kind of empty', silent.length === 0, silent.join(', '));
+  const both = rows.filter(r => r.todo && r.nothing).map(r => r.code);
+  ok('no BYU row is answered and unanswered at once', both.length === 0, both.join(', '));
+
+  // The reachable ceiling. Every weighted topic the catalog can cover, against
+  // every weighted topic there is — so a row quietly going empty shows up as a
+  // number rather than as a student's map being short for no stated reason.
+  const covered = new Set(rows.flatMap(r => r.covers));
+  const weights = [...(tblock ? tblock[1] : '').matchAll(/id:'([a-z0-9-]+)',\s*name:'[^']*',\s*w:(\d+)/g)]
+    .map(m => ({ id: m[1], w: +m[2] }));
+  const reach = weights.filter(t => covered.has(t.id)).reduce((n, t) => n + t.w, 0);
+  const whole = weights.filter(t => t.id !== 'cars').reduce((n, t) => n + t.w, 0);
+  ok('BYU coursework can reach the whole exam', weights.length > 0 && reach === whole,
+     weights.length === 0 ? 'could not read the weights' : `${reach}% of ${whole}% outside CARS`);
+}
+
 printStudyLinks(src);
+printCatalog(src);
 
 console.log(`\n${failed ? failed + ' FAILED' : 'all clear'} — ${found.length} findings in ${FILE}`);
 process.exit(failed ? 1 : 0);

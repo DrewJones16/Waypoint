@@ -516,6 +516,11 @@
   .ccard.picked { border-color: var(--green-line); background: var(--green-wash); }
   .ccard-head { display: flex; align-items: center; gap: 8px; }
   .ccard-name { flex: 1; min-width: 0; font-size: var(--fs-15); color: var(--ink); line-height: 1.3; }
+  /* The code is what is printed on the student's own schedule, so it leads and
+     keeps the body face. The title is how they know which class that is. */
+  .ccard-title { color: var(--faint); font-size: var(--fs-13); }
+  /* One plain line above a run of courses that answer the same requirement. */
+  .alt-note { font-size: var(--fs-11); color: var(--faint); line-height: 1.5; margin: 10px 2px 2px; }
 
   /* Three states, three buttons, always all three visible. "Not yet" is the
      default and a real answer, so it is a control like the other two rather
@@ -1522,6 +1527,315 @@ const TOPICS = [
   { id:'research', name:'Research methods',  w:0,  course:'stats', disp:'Statistics',  mcat:'ps'   },
   { id:'cars',     name:'CARS',              w:23, course:null,    disp:'Ongoing',     mcat:'cars' },
 ];
+
+// ── CATALOGS: WHICH COURSES COVER WHICH TOPICS ──────────────────────────────
+// A topic used to belong to exactly one course, through TOPICS[].course. That
+// is true of the generic list and of almost nothing else. BYU's biology is not
+// "Biology I and II": it is spread across BIO 130, MMBIO 240, PWS 340 and
+// CELL 305, and no one-to-one mapping survives contact with a real catalog.
+//
+// So the question a student's coverage answers changes shape. Not "is this
+// topic's course selected?" but "does any course they have selected cover this
+// topic?" — and the generic list becomes one catalog among others.
+//
+// Three rules, and they are the same three for every catalog:
+//   - a topic is COVERED if any finished course covers it;
+//   - it counts HALF if it is covered only by courses being taken now, which
+//     is exactly the rule a single course followed before;
+//   - coverage is BINARY per course-topic pair. There is no "BIO 130 covers
+//     60% of genetics". A fraction like that would be invented, and the one
+//     claim this map makes is that every figure on it is checkable. A course
+//     covers a topic or it does not.
+//
+// The generic catalog is DERIVED from COURSES and TOPICS rather than written
+// out a second time, so it cannot drift from the weights it was built on, and
+// a generic student's every figure is arithmetically the same as before.
+const TOPIC_BY_ID = Object.fromEntries(TOPICS.map(t => [t.id, t]));
+
+const GENERIC_COURSES = COURSES.map(c => ({
+  id: c.id,
+  code: '',                    // generic courses have no catalog number
+  title: c.name,
+  name: c.name,
+  section: c.section,
+  covers: TOPICS.filter(t => t.course === c.id).map(t => t.id),
+}));
+
+// ── BYU ─────────────────────────────────────────────────────────────────────
+// One school, for one validation season. A BYU premed does not see "Biology I
+// and II" on their schedule; they see BIO 130, CELL 305, CHEM 351. Making them
+// guess how their classes translate is the guess Waypoint exists to remove.
+//
+// WHICH COURSES, and how they group: BYU Pre-Professional Advisement,
+// "Preparing for Medical School: Coursework" (ppa.byu.edu/premedical-coursework),
+// the edition marked UPDATED JANUARY 2025. Its own headings set the three
+// alternatives groups below, in its own order. An older edition of the same
+// page, written for the 2015 MCAT, still circulates and lists different courses
+// under the retired PDBIO codes; where they disagree the 2025 edition wins.
+//
+// CODES AND TITLES: confirmed one at a time against the current university
+// catalog, catalog.byu.edu. Titles are the catalog's where the two sources
+// differ — the catalog writes "Organic Chemistry 1", the advising page
+// "Organic Chemistry I".
+//
+// WHICH TOPICS each course covers: DERIVED from the catalog's own course
+// descriptions, learning outcomes and published lesson lists, quoted in the
+// note beside each row. Read 2026-10-06 and 2026-10-07.
+//
+// That provenance matters, so it is stated plainly: these are not the
+// confirmations of students who sat the classes. A description can promise
+// ground a section never reaches. Any row here is one word to change, and the
+// first BYU student to say otherwise outranks the catalog.
+//
+// A lecture and its lab are ONE row, the way the advising page lists them:
+// "CHEM 106 & 107". A lab adds no MCAT content of its own, so no row's topics
+// depend on whether its lab is taken.
+//
+// TWO KINDS OF EMPTY, and the lock keeps them apart:
+//   nothing: — answered. The course reaches no AAMC content category. Two of
+//     BYU's accepted Biology II options are like this, and saying so is the
+//     most useful thing this app can tell the student who took one.
+//   todo:    — unanswered. Nobody has said yet, and the map is short by that
+//     much until they do. `npm run check` prints every one.
+const BYU_COURSES = [
+  // ── Biology ──────────────────────────────────────────────────────────────
+  // "General Biology I options", in the advising page's order. Waypoint names
+  // the first of a group in "covered when you take —", so the order is BYU's,
+  // not ours.
+  { id:'cell120',  code:'CELL 120',         title:'Science of Biology',                   section:'Biology',   alt:'intro-bio',
+    // Lessons: central dogma, DNA replication, transcription and translation,
+    // mutation and repair, cell cycle and mitosis, meiosis, Mendelian genetics.
+    covers: ['cell-bio', 'genetics', 'mol-bio'] },
+  { id:'mmbio121', code:'MMBIO 121',        title:'General Biology: Health and Disease',  section:'Biology',   alt:'intro-bio',
+    // The least certain row in the table. BYU accepts it for the same
+    // requirement as CELL 120, but its description is a survey for non-majors
+    // — "the living world and how it functions and adapts in the context of
+    // human health and disease" — and names neither genetics nor the central
+    // dogma, which CELL 120's lesson list does. Cell biology only, until a
+    // student who took it says otherwise.
+    covers: ['cell-bio'] },
+  { id:'bio130',   code:'BIO 130',          title:'Biology',                              section:'Biology',   alt:'intro-bio',
+    // Outcomes name Cell Theory, Mendelian Theories of Inheritance, DNA
+    // Structure and Replication, Protein Synthesis Theory, Cell Division and
+    // Meiotic Theories. The majors' version of the same ground.
+    covers: ['cell-bio', 'genetics', 'mol-bio'] },
+
+  // "General Biology II options", same order. MMBIO 240 is marked preferred.
+  { id:'mmbio240', code:'MMBIO 240 & 241',  title:'Molecular Biology & Lab',              section:'Biology',
+    // "Functions and molecular structures of DNA, RNA and protein, and the
+    // processes and regulatory mechanisms governing the synthesis of each":
+    // replication, transcription, translation, gene regulation, repair. Almost
+    // unit for unit Waypoint's molecular biology. Molecular, not cellular, so
+    // not cell biology.
+    covers: ['mol-bio'] },
+  { id:'mmbio221', code:'MMBIO 221 & 222',  title:'General Microbiology & Lab',           section:'Biology',
+    nothing:'The microbial world and communicable disease. The MCAT outline has no microbiology category; immune defence is one outcome of five here.',
+    covers: [] },
+  { id:'cell220',  code:'CELL 220',         title:'Human Anatomy',                        section:'Biology',
+    nothing:'Gross and microscopic structure. Physiology is only "introduced" in each system, and the MCAT tests almost no anatomy.',
+    covers: [] },
+  { id:'cell305',  code:'CELL 305',         title:'Human Physiology',                     section:'Biology',   alt:'physiology',
+    // Four of its fourteen modules are nervous system: Membrane and Action
+    // Potentials, the CNS, the Peripheral and Autonomic, the Somatic. The rest
+    // are heart, cardiovascular, respiratory, urinary, gastrointestinal,
+    // endocrine, immune, reproduction.
+    covers: ['physio', 'neuro'] },
+  { id:'cell362',  code:'CELL 362 & 363',   title:'Advanced Physiology & Lab',            section:'Biology',   alt:'physiology',
+    // The advising page's alternative to CELL 305, for students who have had
+    // molecular biology and biochemistry: "an integrated approach to organ
+    // system and cellular physiology". Its module list is not published, so
+    // neuroscience here is INFERRED from its being the advanced form of the
+    // same requirement — the one row below not resting on a quotation. Giving
+    // the harder course less credit than CELL 305 would read as a fault.
+    covers: ['physio', 'neuro'] },
+
+  { id:'pws340',   code:'PWS 340',          title:'Genetics',                             section:'Biology',   alt:'genetics',
+    // "Genetic mechanisms, their fundamental nature, interactions, and
+    // applications to human affairs."
+    covers: ['genetics'] },
+  { id:'pws275',   code:'PWS 275',          title:'Genetics and Reproduction',            section:'Biology',   alt:'genetics',
+    // "Principles of inheritance." Listed by the advising page as the
+    // alternative to PWS 340, though its outcomes are written for natural
+    // resource management rather than medicine.
+    covers: ['genetics'] },
+
+  { id:'neuro205', code:'NEURO 205',        title:'Neurobiology',                         section:'Biology',
+    // On neither edition of the advising page, so it is not premed coursework
+    // — but a neuroscience major has taken it, and "structure and function of
+    // the nervous system: cellular communication; sensory, motor, and
+    // autonomic systems" is the MCAT's neuroscience. Offering it costs a
+    // student nothing; leaving it out costs them 4%.
+    covers: ['neuro'] },
+
+  // ── Chemistry ────────────────────────────────────────────────────────────
+  { id:'chem105',  code:'CHEM 105',         title:'General College Chemistry 1 with Lab', section:'Chemistry',
+    // Lessons: Covalent Bonding and Lewis Structures, Working with Moles and
+    // Masses, Chemical Equations and Stoichiometry, Limiting Reactant and
+    // Yield; plus "atomic and molecular structure including bonding and
+    // periodic properties".
+    //
+    // NOT acid-base, and not thermodynamics, though both appear here first.
+    // 105 gives acids and bases two introductory lessons (pH, simple
+    // titrations) and entropy and enthalpy one. 106 gives acid-base a unit of
+    // its own at the quantitative level the exam tests. The only student the
+    // distinction reaches is one part-way through the year, and for them "you
+    // do not have this yet" is the useful claim.
+    covers: ['atomic', 'bonding', 'stoich'] },
+  { id:'chem106',  code:'CHEM 106 & 107',   title:'General College Chemistry 2 & Lab',    section:'Chemistry',
+    // Unit 4 is Equilibrium and Thermodynamics; Unit 5 is Acids, Bases and
+    // Buffers — weak acids, polyprotic acids, salts, buffers, titrations.
+    covers: ['thermo', 'acid-base'] },
+  { id:'chem351',  code:'CHEM 351',         title:'Organic Chemistry 1',                  section:'Chemistry',
+    covers: ['orgo'] },
+  { id:'chem352',  code:'CHEM 352 & 353',   title:'Organic Chemistry 2 & Lab',            section:'Chemistry',
+    covers: ['orgo2'] },
+  { id:'chem481',  code:'CHEM 481',         title:'Biochemistry',                         section:'Chemistry',
+    covers: ['biochem'] },
+
+  // ── Physics ──────────────────────────────────────────────────────────────
+  { id:'phscs105', code:'PHSCS 105 & 107',  title:'General Physics 1 & Lab',              section:'Physics',
+    covers: ['physics'] },
+  { id:'phscs106', code:'PHSCS 106 & 108',  title:'General Physics 2 & Lab',              section:'Physics',
+    covers: ['physics2'] },
+
+  // ── Social sciences ──────────────────────────────────────────────────────
+  { id:'psych111', code:'PSYCH 111',        title:'Introduction to Psychological Science', section:'Social sciences',
+    covers: ['psych'] },
+  { id:'soc111',   code:'SOC 111',          title:'Introductory Sociology',               section:'Social sciences',
+    covers: ['soc'] },
+
+  // ── Statistics ───────────────────────────────────────────────────────────
+  { id:'stat121',  code:'STAT 121',         title:'Principles of Statistics',             section:'Statistics',
+    // Neither edition of the advising page names a statistics course; it says
+    // only that maths requirements vary by school. STAT 121 is BYU's standard
+    // introduction, and its content — data collection, sampling distributions,
+    // confidence intervals, hypothesis testing, regression — is what research
+    // methods is on the exam. Research methods carries no weight of its own,
+    // so this row adds territory to a route and not a percentage.
+    covers: ['research'] },
+].map(c => ({ ...c, name: c.code }));
+
+const CATALOGS = {
+  generic: {
+    id: 'generic',
+    name: 'Somewhere else',
+    // SOURCE: the standard premed prerequisite sequence, as recorded beside
+    // COURSE_REQ above. Derived here, not retrieved, so it carries no date of
+    // its own.
+    source: 'Derived from COURSES and TOPICS.',
+    courses: GENERIC_COURSES,
+  },
+  byu: {
+    id: 'byu',
+    name: 'BYU',
+    source: 'BYU Pre-Professional Advisement premed coursework, January 2025 edition; codes, titles and coverage from catalog.byu.edu.',
+    retrieved: '2026-10-07',
+    courses: BYU_COURSES,
+  },
+};
+
+// No stored school, or one this build does not know, means generic. Every
+// student who has ever used Waypoint is generic until they say otherwise.
+// hasOwnProperty, not a plain lookup: a restored backup supplies this value,
+// and CATALOGS['constructor'] is truthy on any object. That would hand catalog()
+// a function with no courses on it and throw on the first render.
+function schoolId()  { return Object.prototype.hasOwnProperty.call(CATALOGS, S.school) ? S.school : 'generic'; }
+function catalog()   { return CATALOGS[schoolId()]; }
+function allCourses(){ return catalog().courses; }
+function courseById(id) { return allCourses().find(c => c.id === id) || null; }
+
+// Every course in the catalog that covers a topic, selected or not.
+function coursesCovering(tid) { return allCourses().filter(c => c.covers.indexOf(tid) !== -1); }
+// The catalog's own answer to "which course teaches this", ignoring the
+// student: the first course listed that covers it, which is why the table is
+// ordered with the course most premeds take at the top of each group.
+function catalogCourseFor(tid) { return coursesCovering(tid)[0] || null; }
+// True where no course in the catalog covers it at all. CARS everywhere, and
+// at a real school any topic its premed sequence does not reach. That is an
+// honest gap, not an error.
+function noCourse(tid) { return coursesCovering(tid).length === 0; }
+function topicsOf(course) {
+  return course ? course.covers.map(id => TOPIC_BY_ID[id]).filter(Boolean) : [];
+}
+
+// The three rules, in one place. `courses` is a Set of selected course ids, so
+// the example route on the landing page can be measured without standing in a
+// student's shoes for longer than the call.
+function creditIn(tid, courses) {
+  let credit = 0;
+  for (const c of coursesCovering(tid)) {
+    if (!courses.has(c.id)) continue;
+    if (S.courseStatus[c.id] !== 'in-progress') return 1;   // finished wins outright
+    credit = IN_PROGRESS_CREDIT;
+  }
+  return credit;
+}
+function topicCredit(tid)  { return creditIn(tid, S.courses); }
+function topicCovered(tid) { return topicCredit(tid) > 0; }
+// Covered, but only by classes still running. Not "is some course in progress".
+function topicTaking(tid)  { return topicCredit(tid) === IN_PROGRESS_CREDIT; }
+
+// The ONE course a topic is spoken for by, and the only one its weight is
+// counted under. Two BYU courses can cover molecular biology; attributing its
+// 3% to both would make the derivation add up to more than the coverage it
+// explains, which is the one thing that table exists to rule out.
+//
+// A finished course wins, then any selected one, then the catalog's own pick —
+// so an uncovered parcel still has a course to name in "covered when you take".
+function topicCourse(tid) {
+  const covering = coursesCovering(tid);
+  const mine = covering.filter(c => S.courses.has(c.id));
+  return mine.find(c => S.courseStatus[c.id] !== 'in-progress') || mine[0] || covering[0] || null;
+}
+function topicCourseId(tid) { const c = topicCourse(tid); return c ? c.id : null; }
+
+// The student's selected courses IN THEIR CATALOG.
+//
+// S.courses can hold ids from a catalog they are not on. Switching school never
+// deletes the other school's answers — course ids are unique across catalogs,
+// so both sets sit in the same list and the inactive one is simply invisible.
+// That is what lets a student switch to BYU, change their mind, and find their
+// generic route exactly as they left it, without a second storage key and
+// without anything ever being translated between the two.
+//
+// So anything asking "what has this student picked" asks here, never the raw
+// set — otherwise a BYU student with an old generic route reads as having
+// chosen courses they cannot see.
+function pickedCourses() { return allCourses().filter(c => S.courses.has(c.id)); }
+function pickedCount()   { return pickedCourses().length; }
+
+// What a course is worth: the weight of the topics attributed to it, so two
+// courses covering the same ground never bill for it twice.
+function attributedWeight(courseId) {
+  return TOPICS.reduce((n, t) => n + (topicCourseId(t.id) === courseId ? t.w : 0), 0);
+}
+// What a course covers in the catalog, ignoring who else covers it. Used where
+// the question is about the course rather than about this student's total.
+function catalogWeight(courseId) {
+  return topicsOf(courseById(courseId)).reduce((n, t) => n + t.w, 0);
+}
+
+// How to say a course's name. The code where there is one, because that is
+// what is printed on a student's own schedule.
+function courseLabel(c)  { return c ? (c.code || c.name) : ''; }
+// The long form, for a screen reader and anywhere a row has space for both.
+function courseFull(c)   { return c ? (c.code ? c.code + ', ' + c.title : c.name) : ''; }
+
+// Several courses, read as a person would say them: "MMBIO 240 and PWS 340".
+function courseList(cs) {
+  const names = cs.map(courseLabel).filter(Boolean);
+  if (names.length < 2) return names[0] || '';
+  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+}
+
+// The short label for whatever covers a topic, in the student's own catalog.
+// TOPICS[].disp is the GENERIC catalog's short form — "Bio II" — tuned to fit a
+// tile, so it stays the answer there and nowhere else. A course code is shorter
+// than any short form we could invent, so every other catalog uses it.
+function topicCourseLabel(t) {
+  if (schoolId() === 'generic') return t.disp;
+  return courseLabel(topicCourse(t.id)) || t.disp;
+}
 
 const MCAT_SECTIONS = [
   { id:'bb',   short:'Bio & Biochem',   long:'Biological & Biochemical Foundations'      },
@@ -2628,7 +2942,7 @@ const SUBTOPIC_TAGS = {
 // so it's a good guess, never a promise. The UI says "typically" for that reason,
 // and every card offers a way to drill something else instead.
 //
-// Courses map to topics via TOPICS[].course. A course whose topic has few
+// Courses cover topics through the catalog (see CATALOGS). A course whose topic has few
 // subtopics simply revisits them; startQuickLog() already falls back to the full
 // topic when a subtopic has fewer than 3 questions, so a thin week still works.
 const PACING = {
@@ -5329,6 +5643,7 @@ const QUESTIONS = [
 const S = {
   screen:         'landing',
   year:           null,
+  school:         'generic',   // which course catalog this student picks from
   courses:        new Set(),
   courseStatus:   {},          // {courseId: 'in-progress'|'completed'}
   courseWhen:     {},          // {courseId: '2025-fall'} — the term a done course was taken
@@ -5372,7 +5687,7 @@ const S = {
 // Single source of truth for the keys Waypoint owns. Backup, restore and reset
 // all read from here (or from the wp_ prefix scan below), so a key added in a
 // future release is covered everywhere the moment it's listed.
-const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_streak','wp_lastDate','wp_qstats',
+const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_school','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
                  'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
@@ -5408,6 +5723,12 @@ function save() {
   localStorage.setItem('wp_course_when',   JSON.stringify(S.courseWhen));
   localStorage.setItem('wp_syllabus',      JSON.stringify(S.syllabus));
   localStorage.setItem('wp_year',     S.year || '');
+  // Written once the student has ANSWERED, and not a moment before. The key's
+  // absence is the record of never having been asked, which is what makes an
+  // existing student generic without anything being decided for them — and it
+  // is the only way to tell "answered Somewhere else" from "never saw the
+  // question", which the event below depends on.
+  if (S._schoolAsked || schoolAnswered()) localStorage.setItem('wp_school', S.school || 'generic');
   localStorage.setItem('wp_streak',   String(S.streak));
   localStorage.setItem('wp_lastDate', S.lastDate || '');
   localStorage.setItem('wp_qstats',   JSON.stringify(S.qStats));
@@ -5486,6 +5807,9 @@ function load() {
       } catch(e) { console.warn('[Waypoint] wp_syllabus unreadable — ignoring:', e); }
     }
     S.year     = localStorage.getItem('wp_year')     || null;
+    // The one new key this feature adds. Absent means generic, which is every
+    // student who has ever used Waypoint until they say otherwise.
+    S.school   = localStorage.getItem('wp_school')   || 'generic';
     S.streak   = parseInt(localStorage.getItem('wp_streak')   || '0', 10);
     S.lastDate = localStorage.getItem('wp_lastDate') || null;
 
@@ -5904,7 +6228,7 @@ function sectionCoverage(courses) {
   TOPICS.forEach(t => {
     if (tot[t.mcat] === undefined) return;
     tot[t.mcat] += t.w;
-    if (t.course && courses.has(t.course)) cov[t.mcat] += t.w * courseCredit(t.course);
+    cov[t.mcat] += t.w * creditIn(t.id, courses);
   });
   const out = {};
   ['bb', 'cp', 'ps'].forEach(k => out[k] = tot[k] > 0 ? Math.round(cov[k] / tot[k] * 100) : 0);
@@ -5929,22 +6253,27 @@ function exampleRoute() {
   EXAMPLE_ROUTE.taking.forEach(c => status[c] = 'in-progress');
   // Stand S in the example's shoes for the length of the call, the way
   // coverageAfterCourse() does, rather than reimplementing credit handling.
-  const prevStatus = S.courseStatus, prevCourses = S.courses;
+  // The catalog goes into the example's shoes too. Without it a BYU visitor
+  // was shown the marketing card at 0%: the example's course ids are generic,
+  // and nothing in the BYU catalog covers anything they name.
+  const prevStatus = S.courseStatus, prevCourses = S.courses, prevSchool = S.school;
   S.courseStatus = status;
   S.courses = courses;
+  S.school = 'generic';
   try {
     // The map is rendered here, inside the example's shoes, for the same reason
     // the figures are: one renderer, one model, and a marketing card that cannot
     // drift from the app it is advertising.
     return { cov: coverage(courses, true), sections: sectionCoverage(courses),
              map: routeMapHTML({ idPrefix: 'ex', frame: false, names: false, static: true }) };
-  } finally { S.courseStatus = prevStatus; S.courses = prevCourses; }
+  } finally { S.courseStatus = prevStatus; S.courses = prevCourses; S.school = prevSchool; }
 }
 
 function coverage(courses, statusAware = false) {
   return Math.round(TOPICS.reduce((n, t) => {
-    if (!t.course || !courses.has(t.course)) return n;
-    return n + t.w * (statusAware ? courseCredit(t.course) : 1);
+    const credit = creditIn(t.id, courses);
+    if (!credit) return n;
+    return n + t.w * (statusAware ? credit : 1);
   }, 0));
 }
 
@@ -6100,10 +6429,10 @@ const FIRST_SESSION = {
 // so a student taking Bio II and Statistics opens on physiology rather than
 // research methods.
 function firstSessionCourse() {
-  const weightOf = id => TOPICS.reduce((n, t) => n + (t.course === id ? t.w : 0), 0);
+  const weightOf = id => catalogWeight(id);
   const pick = list => list.filter(id => FIRST_SESSION[id])
                            .sort((a, b) => weightOf(b) - weightOf(a))[0] || null;
-  const mine = [...S.courses];
+  const mine = pickedCourses().map(c => c.id);
   return pick(mine.filter(id => S.courseStatus[id] === 'in-progress')) || pick(mine);
 }
 
@@ -6127,7 +6456,7 @@ function buildSession() {
   if (first) return first;
 
   // course === null means "always available" (CARS is ongoing, not tied to a specific course)
-  const covered = new Set(TOPICS.filter(t => t.course === null || (t.course && S.courses.has(t.course))).map(t => t.id));
+  const covered = new Set(TOPICS.filter(t => noCourse(t.id) || topicCovered(t.id)).map(t => t.id));
   const pool    = QUESTIONS.filter(q => covered.has(q.topic));
 
   // Questions the user has gotten wrong more than right — surface these first
@@ -6264,10 +6593,10 @@ function getDirectiveTopic() {
   if (nudge) return { topic: nudge.topic, days: nudge.days, reason: 'retention' };
   // Otherwise prefer a topic from a course you're TAKING right now (learn it at MCAT
   // depth while you're in the class), then fall back to highest-weight covered topic.
-  const inProg = c => S.courseStatus[c] === 'in-progress' ? 1 : 0;
+  const inProg = t => topicTaking(t.id) ? 1 : 0;
   const candidates = TOPICS
-    .filter(t => t.course && S.courses.has(t.course) && daysBetween(S.nudgeDismissed[t.id]) !== 0)
-    .sort((a, b) => (inProg(b.course) - inProg(a.course)) || (b.w - a.w));
+    .filter(t => topicCovered(t.id) && daysBetween(S.nudgeDismissed[t.id]) !== 0)
+    .sort((a, b) => (inProg(b) - inProg(a)) || (b.w - a.w));
   if (candidates.length === 0) return null;
   // Having just practised something is the clearest possible signal not to
   // recommend it again in the same breath. Both the Route's next parcel and
@@ -6277,7 +6606,7 @@ function getDirectiveTopic() {
   const practisedToday = t => daysBetween(S.topicLastSeen[t.id]) === 0;
   const unseen = candidates.filter(t => !practisedToday(t));
   const top = (unseen.length ? unseen : candidates)[0];
-  return { topic: top, days: null, reason: inProg(top.course) ? 'in-progress' : 'drill' };
+  return { topic: top, days: null, reason: inProg(top) ? 'in-progress' : 'drill' };
 }
 
 function weeksAgo(days) {
@@ -6295,7 +6624,7 @@ function weeksAgo(days) {
 // between words.
 function mapHTML(mini, highlightTopics = new Set()) {
   return TOPICS.map(t => {
-    const covered = t.course && S.courses.has(t.course);
+    const covered = topicCovered(t.id);
     const dot = covered && highlightTopics.has(t.id)
       ? `<span style="display:inline-block;width:6px;height:6px;background:var(--green);border-radius: var(--r-pill);vertical-align:middle;margin-left:4px;"></span>` : '';
 
@@ -6305,7 +6634,7 @@ function mapHTML(mini, highlightTopics = new Set()) {
 
     return `<div style="background:${bg};border:1px solid transparent;border-radius: var(--r-ctl);padding:8px 12px;min-width:0;">
       <div style="font-size: var(--fs-13);color:${nc};font-weight:600;line-height:1.3;">${t.name}${dot}</div>
-      <div style="font-size: var(--fs-11);color:${dc};margin-top:4px;line-height:1.3;">${covered ? '✓ ' : ''}${t.disp}</div>
+      <div style="font-size: var(--fs-11);color:${dc};margin-top:4px;line-height:1.3;">${covered ? '✓ ' : ''}${topicCourseLabel(t)}</div>
     </div>`;
   }).join('');
 }
@@ -6474,7 +6803,7 @@ function sheetLayout() {
 // and the number can never tell different stories. CARS has no course and never
 // fills — that is the point of showing it.
 function tileFill(t) {
-  return t.course && S.courses.has(t.course) ? courseCredit(t.course) : 0;
+  return topicCredit(t.id);
 }
 
 // Topics with no share of their own, named under the map rather than drawn on
@@ -6520,28 +6849,28 @@ const HELD_RING = { fresh: 'k3', fading: 'k2', faded: 'k1' };
 // yet, the only honest suggestion there is.
 function nextParcel() {
   const byWeight = (a, b) => b.w - a.w;
-  const weighted = TOPICS.filter(t => t.w > 0 && t.course);
-  const taking = weighted.filter(t => S.courses.has(t.course) && S.courseStatus[t.course] === 'in-progress');
+  const weighted = TOPICS.filter(t => t.w > 0 && !noCourse(t.id));
+  const taking = weighted.filter(t => topicTaking(t.id));
   if (taking.length) return { topic: taking.sort(byWeight)[0], kind: 'taking' };
-  const covered = weighted.filter(t => S.courses.has(t.course));
+  const covered = weighted.filter(t => topicCovered(t.id));
   if (covered.length) return { topic: covered.sort(byWeight)[0], kind: 'covered' };
-  const ahead = weighted.filter(t => !S.courses.has(t.course));
+  const ahead = weighted.filter(t => !topicCovered(t.id));
   if (ahead.length) return { topic: ahead.sort(byWeight)[0], kind: 'ahead' };
   return null;
 }
 
 function routeFocus() {
-  if (!S.courses.size) return null;
+  if (!pickedCount()) return null;
   // With practice on, the recommender that drives it still chooses; with
   // practice off there is no record to recommend from, so weight and state do.
   const pick = PRACTICE ? getDirectiveTopic() : nextParcel();
   const d = pick && (pick.topic ? pick : { topic: pick });
-  if (!d || !d.topic || !d.topic.course) return null;
+  if (!d || !d.topic) return null;
   const t = d.topic;
-  const course = COURSES.find(c => c.id === t.course);
+  const course = topicCourse(t.id);
   if (!course) return null;
 
-  const taking = S.courseStatus[t.course] === 'in-progress';
+  const taking = topicTaking(t.id);
 
   // Ungated, unlike the contour rings above. freshnessActive() asks whether
   // there is enough of a record to draw a *map layer* — two sessions across
@@ -6581,15 +6910,17 @@ function routeFocus() {
             : (unpractised ? "The largest parcel your courses cover and you haven't practised."
                            : 'The largest parcel your courses cover.');
 
-  // The concept's line named a course code — "PSYC 111" — and the app has never
-  // collected one, so this says what it actually knows. Where the course and the
-  // topic share a name, as Psychology does, naming both reads as a stutter.
+  // The concept's line named a course code — "PSYC 111" — which the app had no
+  // way of knowing. Now, at a school, it does: the code is the student's own.
+  // Where the course and the topic share a name, as generic Psychology does,
+  // naming both still reads as a stutter.
   const same = course.name.toLowerCase() === t.name.toLowerCase();
+  const held = coursesCovering(t.id).filter(c => S.courses.has(c.id));
   const counts = `so it counts ${taking ? 'half' : 'whole'}`;
   return { topic: t, course, why,
            detail: same
              ? `<b>${t.name}.</b> ${taking ? 'In progress' : 'Finished'}, ${counts}. ${practice}`
-             : `<b>${t.name}.</b> ${course.name}, ${taking ? 'in progress' : 'finished'}, ${counts}. ${practice}`,
+             : `<b>${t.name}.</b> Covered by ${courseList(held)}, ${taking ? 'in progress' : 'finished'}, ${counts}. ${practice}`,
            n: sessionSize(t.id, null) };
 }
 
@@ -6614,7 +6945,7 @@ function routeMapHTML(opts) {
       const t    = b.topic;
       const fill = tileFill(t);
       const cars = t.mcat === 'cars';
-      const f    = live && t.course && S.courses.has(t.course) ? topicFreshness(t.id) : null;
+      const f    = live && topicCovered(t.id) ? topicFreshness(t.id) : null;
       const st   = f ? heldDisplayState(f) : null;
 
       // The full name goes in, and fitSheetLabels() decides after layout what
@@ -6642,9 +6973,9 @@ function routeMapHTML(opts) {
       // the map could not be interrogated at all. And an empty parcel used to
       // jump straight to the course picker, which answered a question the
       // student had not asked; now it explains itself and offers the link.
-      const course = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
+      const course = topicCourse(t.id);
       const tag    = flat ? 'div' : 'button';
-      const tip    = fill === 0 && course && !cars ? `Covered when you take ${course.name}` : t.name;
+      const tip    = fill === 0 && course && !cars ? `Covered when you take ${courseLabel(course)}` : t.name;
       const click  = flat ? '' : ` onclick="toggleMapTile('${t.id}')"`;
       const expand = flat ? '' : ` aria-expanded="${S._mapOpen === t.id}"`;
 
@@ -6701,10 +7032,13 @@ function routeMapHTML(opts) {
 // the screen they clicked.
 function trackStudyLink(source, topicId) {
   const t = TOPICS.find(x => x.id === topicId);
-  const covered = !!(t && t.course && S.courses.has(t.course));
-  const state = !covered ? 'ahead'
-    : S.courseStatus[t.course] === 'in-progress' ? 'taking' : 'finished';
-  if (window.plausible) plausible('study_link', { props: { source, parcel: topicId, state } });
+  const covered = !!t && topicCovered(t.id);
+  const state = !covered ? 'ahead' : topicTaking(t.id) ? 'taking' : 'finished';
+  // The school rides along because the question school_chosen opens is only
+  // half answered by it: whether BYU students pick BYU, and then whether the
+  // BYU path changes what they do next. Without this prop the second half
+  // cannot be segmented at all.
+  if (window.plausible) plausible('study_link', { props: { source, parcel: topicId, state, school: schoolId() } });
 }
 
 // A twist belonging to this parcel: the first question on the topic that has
@@ -6737,9 +7071,9 @@ function parcelDetailHTML(tid) {
   const t = TOPICS.find(x => x.id === tid);
   if (!t) return '';
   const cars    = t.mcat === 'cars';
-  const course  = t.course ? (COURSES.find(c => c.id === t.course) || null) : null;
-  const covered = !!(t.course && S.courses.has(t.course));
-  const taking  = covered && S.courseStatus[t.course] === 'in-progress';
+  const course  = topicCourse(t.id);
+  const covered = topicCovered(t.id);
+  const taking  = topicTaking(t.id);
   const cname   = course ? course.name : 'the course';
 
   // One sentence of standing, and one that says what to do about it.
@@ -6750,10 +7084,20 @@ function parcelDetailHTML(tid) {
   // "Not covered by any class. No class covers this." was the same sentence
   // twice with the words in a different order.
   const same = !!course && course.name.toLowerCase() === t.name.toLowerCase();
+  // Every course the student has that covers this, not just the one its weight
+  // is counted under. At a real school two classes can reach the same ground,
+  // and naming one of them would read as a mistake to the student who sat both.
+  const held = coursesCovering(tid).filter(c => S.courses.has(c.id));
+  // A topic no course in this catalog reaches. CARS everywhere; at a school,
+  // anything its premed sequence does not cover. An honest gap, not an error —
+  // and the study links below are exactly what it needs.
+  const gap  = !cars && noCourse(tid);
   const standing = cars ? 'Not covered by any class.'
-    : covered ? (same ? `${taking ? 'In progress' : 'Finished'}.` : `${cname}, ${taking ? 'in progress' : 'finished'}.`)
+    : gap     ? `Not covered by a ${catalog().name} premed course.`
+    : covered ? (same ? `${taking ? 'In progress' : 'Finished'}.` : `Covered by ${courseList(held)}, ${taking ? 'in progress' : 'finished'}.`)
     : `Not on your route yet.`;
   const framing = cars    ? 'Practise reading here.'
+    : gap     ? 'Study it directly.'
     : taking  ? 'Study it alongside the class.'
     : covered ? 'Covered in class. Review it here when you start MCAT prep.'
     :           `Covered when you take ${cname}. Preview it here if you like.`;
@@ -6917,7 +7261,7 @@ const TILE_NAMES = {
 // sits under its course or section, so "Chem II" says the same thing and fits
 // with room for narrower phones. Every other course short-name fits as it is.
 const TILE_COURSE = { gc1: 'Chem I', gc2: 'Chem II' };
-const tileCourse = t => TILE_COURSE[t.course] || t.disp;
+const tileCourse = t => TILE_COURSE[topicCourseId(t.id)] || topicCourseLabel(t);
 
 // 92px floor, not 72: the state word has to fit beside the weight at 375px.
 // Six and nine topics wrap to the same number of rows three-across as they did
@@ -6932,7 +7276,7 @@ const EVEN_SPREAD = 10;
 
 function termGroups() {
   const byTerm = new Map();
-  COURSES.forEach(c => {
+  allCourses().forEach(c => {
     if (!S.courses.has(c.id)) return;
     const key = courseTerm(c.id) || 'unset';
     if (!byTerm.has(key)) byTerm.set(key, []);
@@ -6940,7 +7284,7 @@ function termGroups() {
   });
   return [...byTerm.entries()].map(([term, courses]) => {
     const ids    = courses.map(c => c.id);
-    const topics = TOPICS.filter(t => t.course && ids.indexOf(t.course) !== -1);
+    const topics = TOPICS.filter(t => ids.indexOf(topicCourseId(t.id)) !== -1);
     return { term, courses, topics,
              weight: topics.reduce((s, t) => s + t.w, 0),
              now:    courses.some(c => S.courseStatus[c.id] === 'in-progress') };
@@ -6967,7 +7311,7 @@ function termTimelineHTML(live, open) {
   if (!groups.length) return '';
 
   const rows = groups.flatMap(g => g.courses.map(c => {
-    const w = TOPICS.filter(t => t.course === c.id).reduce((n, t) => n + t.w, 0);
+    const w = attributedWeight(c.id);
     const undated = g.term === 'unset';
     // The term slot carries the term, or the one control that supplies it.
     const when = undated
@@ -6975,7 +7319,7 @@ function termTimelineHTML(live, open) {
       : `<span style="font-size: var(--fs-13);color:var(--muted);">${termLabel(g.term)}${g.now ? ', now' : ''}</span>`;
     return `
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);">
-        <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${c.name}</span>
+        <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${courseFull(c)}</span>
         <span style="display:flex;align-items:baseline;gap:12px;flex-shrink:0;">
           ${when}
           <span style="font-size: var(--fs-13);color:var(--faint);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;">${w}%</span>
@@ -7333,9 +7677,9 @@ function lastPracticedPhrase(days, iso) {
 
 function topicFreshness(tid) {
   const topic = TOPICS.find(t => t.id === tid);
-  if (!topic || !topic.course || !S.courses.has(topic.course)) return null;
-  const inClass    = S.courseStatus[topic.course] === 'in-progress';
-  const courseName = (COURSES.find(c => c.id === topic.course) || {}).name || 'the course';
+  if (!topic || !topicCovered(tid)) return null;
+  const inClass    = topicTaking(tid);
+  const courseName = courseLabel(topicCourse(tid)) || 'the course';
   const iso  = S.topicLastSeen[tid];
   // Calendar days, so the answer is the same at 9am and 9pm. (Elapsed time from a
   // UTC-midnight parse added a day every evening.)
@@ -7349,7 +7693,7 @@ function topicFreshness(tid) {
   // Semester data sharpens the "why", never the arithmetic. A term the student
   // never tagged simply drops out of the sentence, and the line still explains
   // itself from the practice record alone.
-  const when   = termLabel(courseTerm(topic.course));
+  const when   = termLabel(courseTerm(topicCourseId(tid)));
 
   let state, why;
   if (days === null) {
@@ -7374,7 +7718,7 @@ function topicFreshness(tid) {
 }
 
 function freshnessSummary() {
-  const states = TOPICS.filter(t => t.course && S.courses.has(t.course))
+  const states = TOPICS.filter(t => topicCovered(t.id))
                        .map(t => topicFreshness(t.id))
                        .filter(Boolean);
   const of = st => states.filter(s => s.state === st);
@@ -7494,7 +7838,7 @@ function freshnessLineHTML() {
 // estimate and not a predicted score; the model has no basis for either.
 function standingSummary() {
   const f = freshnessSummary();
-  const wOf = list => list.reduce((n, st) => n + st.topic.w * courseCredit(st.topic.course), 0);
+  const wOf = list => list.reduce((n, st) => n + st.topic.w * topicCredit(st.topic.id), 0);
   const totalW = wOf(f.states);
   return {
     cov: coverage(S.courses, true),
@@ -7690,7 +8034,7 @@ function weekUnit(courseId, ew, topicId, subId, syllabusLabel) {
   if (!QUESTIONS.some(q => q.topic === topicId &&
                            (q.subtopic || SUBTOPIC_TAGS[q.id]) === subId)) return null;
   const sub = (SUBTOPICS[topicId] || []).find(s => s.id === subId);
-  const course = COURSES.find(c => c.id === courseId);
+  const course = allCourses().find(c => c.id === courseId);
   return { courseId, courseName: course ? course.name : courseId, week: ew,
            topic, subId, subLabel: sub ? sub.label : topic.name,
            syllabusLabel: syllabusLabel || null };
@@ -7719,7 +8063,7 @@ function courseWeekUnits(courseId, ew) {
 function thisWeekUnits(week = semesterWeek()) {
   if (!week) return [];
   const out = [];
-  for (const courseId of S.courses) {
+  for (const { id: courseId } of pickedCourses()) {
     if (S.courseStatus[courseId] !== 'in-progress') continue;
     // A course with a syllabus needs no pacing table; one without needs both.
     if (!S.syllabus[courseId] && !PACING[courseId]) continue;
@@ -7801,7 +8145,7 @@ function clearPaceOffset(courseId) {
 
 function screenPace() {
   const courseId = S.paceCourse;
-  const course   = COURSES.find(c => c.id === courseId);
+  const course   = allCourses().find(c => c.id === courseId);
   const units    = courseId ? courseTimeline(courseId) : [];
   // No course to re-anchor — a stale tab, or a course dropped from the picker
   // since. Home's markup, not go(): see screenTerms().
@@ -7913,7 +8257,7 @@ const ACCURACY_MIN_QUESTIONS = 5;
 // Weakest topic the student has actually attempted, among courses on their route.
 // Needs a handful of attempts before calling anything weak — three misses isn't a verdict.
 function weakestTopic(minAttempts = ACCURACY_MIN_QUESTIONS) {
-  const onRoute = new Set(TOPICS.filter(t => !t.course || S.courses.has(t.course)).map(t => t.id));
+  const onRoute = new Set(TOPICS.filter(t => noCourse(t.id) || topicCovered(t.id)).map(t => t.id));
   const byTopic = {};
   QUESTIONS.forEach(q => {
     const st = S.qStats[q.id];
@@ -7951,7 +8295,7 @@ function briefAction(skip = null) {
     return { topic: wk.topic, subId: wk.subId,
              text: `${sessionSize(wk.topic.id, wk.subId)} questions on ${wk.subLabel}. It's what ${wk.courseName} is covering now, so it's the cheapest it will ever be to learn.` };
   }
-  const onRoute = TOPICS.filter(t => t.course && S.courses.has(t.course) && !skipped(t.id))
+  const onRoute = TOPICS.filter(t => topicCovered(t.id) && !skipped(t.id))
                         .sort((a, b) => b.w - a.w);
   if (onRoute.length) {
     const t = onRoute[0];
@@ -8034,7 +8378,7 @@ function hasAWeek(now = new Date()) {
 function shouldShowBrief(now = new Date()) {
   const day = now.getDay();
   if (day !== 0 && day !== 1) return false;
-  if (S.courses.size === 0) return false;
+  if (pickedCount() === 0) return false;
   if (!hasAWeek(now)) return false;
   return S.briefSeen !== weekStartISO(now);
 }
@@ -8144,7 +8488,7 @@ function briefCardHTML() {
   const cta = b.action
     ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;"
                onclick="briefActionStart('${b.action.topic.id}', ${b.action.subId ? `'${b.action.subId}'` : 'null'})">Start</button>`
-    : S.courses.size === 0
+    : pickedCount() === 0
       ? `<button class="btn btn-primary" style="margin:0;padding:12px 20px;font-size: var(--fs-15);min-height:44px;" onclick="go('courses')">Add a course to your route</button>`
       : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">That's today's ground covered. Come back tomorrow and the week keeps building.</p>`;
 
@@ -8196,11 +8540,10 @@ function termSnapshot(now = new Date()) {
   // Tagged to this term AND finished. An in-progress class hasn't banked its
   // weight yet, and a finished class with no term on it belongs to a term
   // nobody has named — counting it here would be inventing the date.
-  const finished = COURSES.filter(c => S.courses.has(c.id)
+  const finished = allCourses().filter(c => S.courses.has(c.id)
                                     && S.courseStatus[c.id] === 'completed'
                                     && S.courseWhen[c.id] === term);
-  const gained = finished.reduce((n, c) =>
-    n + TOPICS.filter(t => t.course === c.id).reduce((m, t) => m + t.w, 0), 0);
+  const gained = finished.reduce((n, c) => n + attributedWeight(c.id), 0);
   const topics = topicsPracticedSince(S.semStart);
 
   // A term with nothing in it gets no card. Nothing here is a demand, and an
@@ -8314,7 +8657,7 @@ function courseUnits(courseId) {
   // not AAMC names it. Statistics arrives here too, by having no discipline at
   // all. Deduplicated: the 41 ids shared with an AAMC topic were added above.
   const have = new Set(out.map(u => u.topicId + ':' + u.subId));
-  TOPICS.filter(t => t.course === courseId).forEach(topic => {
+  topicsOf(courseById(courseId)).forEach(topic => {
     (SUBTOPICS[topic.id] || []).forEach(sub => {
       if (have.has(topic.id + ':' + sub.id)) return;
       if (!disc || QUESTIONS.some(q => q.topic === topic.id &&
@@ -8340,7 +8683,7 @@ function midtermPlan(mt = S.midterm, now = new Date()) {
   if (!units.length) units = all;               // selection no longer resolves — cover the course
   if (!units.length) return null;               // course has no drillable questions at all
 
-  const course = COURSES.find(c => c.id === mt.courseId);
+  const course = allCourses().find(c => c.id === mt.courseId);
   const base = { days, course, courseName: course ? course.name : mt.courseId, units, date: mt.date };
   if (days < 0) return { ...base, past: true, schedule: [] };
 
@@ -8385,8 +8728,9 @@ function mtSetSemester(v) {
 }
 
 function startMidtermSetup() {
-  const inProg = [...S.courses].filter(c => S.courseStatus[c] === 'in-progress');
-  const pick = S.midterm ? S.midterm.courseId : (inProg[0] || [...S.courses][0] || null);
+  const mine   = pickedCourses().map(c => c.id);
+  const inProg = mine.filter(c => S.courseStatus[c] === 'in-progress');
+  const pick = S.midterm ? S.midterm.courseId : (inProg[0] || mine[0] || null);
   S.mtDraft = S.midterm
     ? { courseId: S.midterm.courseId, subIds: S.midterm.subIds.slice(), date: S.midterm.date }
     : { courseId: pick, subIds: [], date: '' };
@@ -8513,13 +8857,13 @@ function startMidtermDrill(topicId, subId) {
 
 function screenMidterm() {
   const d = S.mtDraft || { courseId: null, subIds: [], date: '' };
-  const picks = [...S.courses];
+  const picks = pickedCourses().map(c => c.id);
   const units = d.courseId ? courseUnits(d.courseId) : [];
   const days  = d.date ? daysUntil(d.date) : null;
   const ready = !!(d.courseId && d.date && days !== null && days >= 0);
 
   const courseBtns = picks.length ? picks.map(cid => {
-    const c = COURSES.find(x => x.id === cid);
+    const c = allCourses().find(x => x.id === cid);
     if (!c) return '';
     const on = d.courseId === cid;
     return `<button class="topic-pick-btn" style="${on ? 'border-color:var(--amber-line);background:var(--amber-wash);' : ''}" onclick="mtPickCourse('${cid}')">
@@ -8591,7 +8935,7 @@ function screenMidterm() {
         // The classes that have a live weekly schedule to hand over. A student
         // with none in progress isn't shown this at all — there'd be nothing to
         // offer it for.
-        const live = COURSES.filter(c => S.courseStatus[c.id] === 'in-progress');
+        const live = allCourses().filter(c => S.courseStatus[c.id] === 'in-progress');
         if (!live.length) return '';
         return `
       <div class="section-divider"></div>
@@ -8696,7 +9040,7 @@ async function parseSyllabus(courseId, payload) {
   const token = await freshToken();
   if (!token) return { ok: false, message: 'Sign in first — your syllabus syncs with your account.' };
 
-  const course = COURSES.find(c => c.id === courseId);
+  const course = allCourses().find(c => c.id === courseId);
   const body = {
     courseId,
     courseName: course ? course.name : courseId,
@@ -9127,7 +9471,7 @@ function sylLooksPartial(weeks) {
 // In-progress classes still waiting for a syllabus.
 // Every class the student is in right now — the set a syllabus can describe.
 function liveCourses() {
-  return COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
+  return allCourses().filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
 }
 
 // Replacing a schedule a professor changed is not the same job as mapping a new
@@ -9141,7 +9485,7 @@ function openSyllabusManage() {
 }
 
 function unmappedCourses() {
-  return COURSES.filter(c => S.courses.has(c.id)
+  return allCourses().filter(c => S.courses.has(c.id)
                           && S.courseStatus[c.id] === 'in-progress'
                           && !S.syllabus[c.id]);
 }
@@ -9170,7 +9514,7 @@ function syllabusEntryHTML(courseId) {
 // Hands the course back to the typical pacing table, which is exactly where it
 // was before — nothing else in the app remembers a syllabus was ever here.
 function removeSyllabus(courseId) {
-  const course = COURSES.find(c => c.id === courseId);
+  const course = allCourses().find(c => c.id === courseId);
   if (!confirm(`Remove your ${course ? course.name : ''} syllabus? Waypoint goes back to pacing that class from a typical schedule.`)) return;
   delete S.syllabus[courseId];
   save();
@@ -9282,7 +9626,7 @@ function sylWeekRowHTML(w, i, units, reason) {
 function screenSyllabus() {
   const d = S.syl;
   if (!d) { S.screen = 'brief'; return screenBrief(); }
-  const course = COURSES.find(c => c.id === d.courseId);
+  const course = allCourses().find(c => c.id === d.courseId);
   const name = course ? course.name : 'this course';
 
   const back = `
@@ -9322,7 +9666,7 @@ function screenSyllabus() {
   }
 
   if (d.phase === 'choose') {
-    const live = COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
+    const live = allCourses().filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress');
     const left = live.filter(c => !S.syllabus[c.id]);
     if (!left.length) { finishSyllabus(); return ''; }
 
@@ -9541,7 +9885,7 @@ function screenSyllabus() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1E4A2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span style="min-width:0;">
               <span style="display:block;font-size: var(--fs-13);color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.file.name)}</span>
-              <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${(d.file.size / 1048576).toFixed(1)}MB · ready to read</span>
+              <span style="display:block;font-size: var(--fs-11);color:var(--faint);margin-top:4px;">${(d.file.size / 1048576).toFixed(1)}MB, ready to read</span>
             </span>
           </span>
           <button onclick="sylClearFile()" style="background:none;border:none;padding:0;min-height:44px;font-family:inherit;font-size: var(--fs-11);font-weight:600;color:var(--faint);cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;">Remove</button>
@@ -9594,10 +9938,10 @@ function splitTwist(text) {
 // Deterministic pick: stable within a calendar day, rotates day to day. Prefers
 // topics the student has already covered; falls back to a teaser if none yet.
 function getDailyTwist() {
-  const covered = new Set(TOPICS.filter(t => t.course === null || (t.course && S.courses.has(t.course))).map(t => t.id));
+  const covered = new Set(TOPICS.filter(t => noCourse(t.id) || topicCovered(t.id)).map(t => t.id));
   // Prefer twists from a class you're TAKING now — but only if there's enough variety
   // there to avoid daily repeats; otherwise draw from everything you've covered.
-  const inProg = new Set(TOPICS.filter(t => t.course && S.courses.has(t.course) && S.courseStatus[t.course] === 'in-progress').map(t => t.id));
+  const inProg = new Set(TOPICS.filter(t => topicTaking(t.id)).map(t => t.id));
   let pool = QUESTIONS.filter(q => inProg.has(q.topic) && twistTextFor(q));
   if (pool.length < 5) pool = QUESTIONS.filter(q => covered.has(q.topic) && twistTextFor(q));
   const teaser = pool.length === 0;
@@ -9615,10 +9959,12 @@ function getDailyTwist() {
 // A course you're taking counts partial credit; this surfaces the unclaimed rest as
 // a forward hook — marking the course done makes the coverage % jump.
 function inProgressClaim() {
-  return COURSES
+  return allCourses()
     .filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'in-progress')
     .map(c => {
-      const full = TOPICS.filter(t => t.course === c.id).reduce((s, t) => s + t.w, 0);
+      // Only ground this class is the reason for. Where a finished class
+      // already covers a topic, marking this one done claims nothing new.
+      const full = topicsOf(c).reduce((s, t) => s + (topicCredit(t.id) < 1 ? t.w : 0), 0);
       return { course: c, delta: Math.round(full * (1 - IN_PROGRESS_CREDIT)) };
     })
     .filter(x => x.delta > 0)
@@ -9696,8 +10042,7 @@ function dayOfYear(now = new Date()) {
 // 0 when they never have, which is exactly the rank a neglected class deserves.
 function courseLastSeen(courseId) {
   let latest = 0;
-  TOPICS.forEach(t => {
-    if (t.course !== courseId) return;
+  topicsOf(courseById(courseId)).forEach(t => {
     const k = dayIndex(S.topicLastSeen[t.id]);
     if (!isNaN(k) && k > latest) latest = k;
   });
@@ -9768,7 +10113,7 @@ function todayPick(skip = null) {
       // The term is the better fact when it's known: "you finished this in Spring
       // 2025" is the student's own calendar, where "you last practiced in the
       // spring" is only ours. Untagged courses fall back to the practice date.
-      const term = termLabel(courseTerm(r.topic.course));
+      const term = termLabel(courseTerm(topicCourseId(r.tid)));
       const when = seasonPhrase(S.topicLastSeen[r.tid]);
       const n = repinCount(r.tid);
       return { label: 'Still yours', accent: 'var(--amber)',
@@ -9816,8 +10161,8 @@ function practicedToday() {
 // bank has nothing for this route, the acknowledgement still stands on its own —
 // an empty card, or the card they just finished, is the worse answer.
 function doneForTodayHTML() {
-  if (!practicedToday() || S.courses.size === 0) return '';
-  const kicker = `Done for today${S.streak > 1 ? ` · ${S.streak} days` : ''}`;
+  if (!practicedToday() || pickedCount() === 0) return '';
+  const kicker = `Done for today${S.streak > 1 ? `, ${S.streak} days running` : ''}`;
   // The link sits outside the card: the reward is the card, this is the aside.
   const keepGoingLink = `<button style="background:none;border:none;font-size: var(--fs-13);color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;width:100%;text-align:left;min-height:44px;padding:0;margin-top:-16px;-webkit-tap-highlight-color:transparent;" onclick="keepGoing()">Keep going with another 5</button>`;
 
@@ -9844,7 +10189,7 @@ function routeFootHTML() {
     ? (unmappedCourses().length
       ? `<button class="link-btn full quiet" onclick="syllabusAddAnother()">Turn a syllabus into an MCAT plan</button>`
       : `<button class="link-btn full quiet" onclick="openSyllabusManage()">Replace a class syllabus</button>`)
-    : (S.courses.size
+    : (pickedCount()
       ? `<button class="link-btn full quiet" onclick="go('courses')">Starting a new term? Mark what you're taking</button>`
       : '');
   const sem = S.semStart ? '' : `<button class="link-btn full quiet" onclick="go('pace')">Set your semester start</button>`;
@@ -9979,6 +10324,16 @@ function screenSettings() {
 
       <div class="section-divider"></div>
 
+      <p class="label" style="margin-bottom:8px;">School</p>
+      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Which course list you pick from. Switching keeps the other list's answers, so you can switch back and find your route as you left it.</p>
+      ${SCHOOL_CHOICES.map(c => `
+        <button class="year-btn${schoolId() === c.val ? ' selected' : ''}" onclick="setSchoolFromSettings('${c.val}')">
+          <span>${c.label}</span>
+          <span class="year-hint">${schoolId() === c.val ? 'current' : c.hint}</span>
+        </button>`).join('')}
+
+      <div class="section-divider"></div>
+
       <p class="label" style="margin-bottom:8px;">Daily reminder</p>
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Add a recurring calendar event so a quick session becomes a habit.</p>
       <button class="btn btn-primary" id="reminder-btn" onclick="setReminder(this)">Set a daily reminder</button>
@@ -10107,6 +10462,88 @@ function screenYear() {
     </div>`;
 }
 
+// ── WHERE DO YOU GO TO SCHOOL? ───────────────────────────────────────────────
+// One question, two answers, between the year and the course picker.
+//
+// A BYU premed's schedule says CELL 305, not "Biology II". Asking them to work
+// out which generic label their class corresponds to is asking them to do the
+// translating this app exists to do for them — and to guess, which is worse,
+// because a wrong guess puts a wrong claim on their own map.
+//
+// One school for one validation season. Everyone else keeps the generic list
+// unchanged, which is what "Somewhere else" means: not a lesser answer, the
+// same answer Waypoint has always given.
+const SCHOOL_CHOICES = [
+  { val:'byu',     label:'BYU',            hint:'Pick your real classes'   },
+  { val:'generic', label:'Somewhere else', hint:'The standard list'    },
+];
+
+function screenSchool() {
+  const picked = schoolId();
+  const CHOICES = SCHOOL_CHOICES;
+  return `
+    <div class="screen">
+      <button onclick="go('year')" class="back-btn quiet">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+      <p class="label">About you</p>
+      <h2>Where do you go to school?</h2>
+      <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 24px;line-height:1.5;">If we know your school, you can pick the classes on your own schedule instead of translating them.</p>
+      ${CHOICES.map(c => `
+        <button class="year-btn${picked === c.val && S._schoolAsked ? ' selected' : ''}" onclick="selectSchool('${c.val}')">
+          <span>${c.label}</span>
+          <span class="year-hint">${c.hint}</span>
+        </button>`).join('')}
+      <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin-top:16px;">More schools as students ask for them. You can change this in Settings.</p>
+    </div>`;
+}
+
+// The validation question in one event: do BYU students pick BYU?
+//
+// Fired on a choice, never on a render, and never on a re-tap of the answer
+// already given — otherwise the rate it measures is a rate of taps. Answering
+// for the first time counts even when the answer is "Somewhere else", because
+// choosing the default is still choosing.
+// Has the student ever answered the school question? The stored key, not the
+// value: "generic" is an answer, and its absence is not.
+function schoolAnswered() {
+  try { return !!localStorage.getItem('wp_school'); } catch (e) { return false; }
+}
+
+function trackSchool(school) {
+  if (window.plausible) plausible('school_chosen', { props: { school } });
+}
+
+function selectSchool(id) {
+  const next   = Object.prototype.hasOwnProperty.call(CATALOGS, id) ? id : 'generic';
+  const answered = schoolAnswered();
+  const change = next !== schoolId();
+  S.school = next;
+  S._schoolAsked = true;
+  save();
+  if (!answered || change) trackSchool(next);
+  go('courses');
+}
+
+// Changing school from Settings. The two course lists live side by side in
+// S.courses and NOTHING is translated between them: "Biology II" does not say
+// which BYU classes someone sat, and a guessed translation would be a wrong
+// claim on their map wearing the authority of their own answer.
+//
+// So the old selections are left exactly where they are, invisible until the
+// student switches back, and the picker opens on the new list.
+function setSchoolFromSettings(id) {
+  const next = Object.prototype.hasOwnProperty.call(CATALOGS, id) ? id : 'generic';
+  if (next === schoolId()) return;
+  S.school = next;
+  S._schoolAsked = true;
+  S._schoolSwitched = true;
+  save();
+  trackSchool(next);
+  go('courses');
+}
+
 // Statistics in one sentence. AAMC lists a discipline percentage for every
 // subject the MCAT tests as a body of content; research methods isn't one,
 // because it's tested as reasoning woven through all three science sections.
@@ -10117,13 +10554,13 @@ const STATS_NOTE = 'Research methods is tested as reasoning across all three sci
 // Derived from the weights rather than a hardcoded course id, so a second
 // skill course would be handled without anyone remembering to add it here.
 function isSkillCourse(courseId) {
-  const ts = TOPICS.filter(t => t.course === courseId);
+  const ts = topicsOf(courseById(courseId));
   return ts.length > 0 && ts.every(t => t.w === 0);
 }
 
 // Topic breakdown for one course (used in the expandable course rows).
 function courseTopicsBreakdown(courseId) {
-  const ts = TOPICS.filter(t => t.course === courseId);
+  const ts = topicsOf(courseById(courseId));
   if (!ts.length) {
     return `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">This course's MCAT content is counted under the intro course in its sequence, so it adds 0% on its own.</p>`;
   }
@@ -10168,7 +10605,7 @@ function breakdownHTML() {
     const items = ts.map(t => {
       let state = 'none';
       if (t.id === 'cars') state = 'ongoing';
-      else if (t.course && S.courses.has(t.course)) state = S.courseStatus[t.course] === 'in-progress' ? 'partial' : 'done';
+      else if (topicCovered(t.id)) state = topicTaking(t.id) ? 'partial' : 'done';
       return { t, state };
     });
     const secCredited = items.reduce((s, i) => s + (i.state === 'done' ? i.t.w : i.state === 'partial' ? i.t.w * IN_PROGRESS_CREDIT : 0), 0);
@@ -10287,13 +10724,15 @@ function coverageContributions() {
   const byId = {};
   groups.forEach(g => byId[g.sec.id] = g);
 
-  COURSES.forEach(c => {
+  allCourses().forEach(c => {
     if (!S.courses.has(c.id)) return;
     const credit = courseCredit(c.id);
     const per = {};
+    // Attributed, so two courses over the same ground cannot bill for it twice
+    // and leave the derivation adding up to more than the total it explains.
     TOPICS.forEach(t => {
-      if (t.course !== c.id) return;
-      per[t.mcat] = (per[t.mcat] || 0) + t.w * credit;
+      if (topicCourseId(t.id) !== c.id) return;
+      per[t.mcat] = (per[t.mcat] || 0) + t.w * topicCredit(t.id);
     });
     Object.keys(per).forEach(k => {
       const g = byId[k];
@@ -10301,7 +10740,7 @@ function coverageContributions() {
       // A course whose topics all carry weight 0 (Statistics) still earns its
       // row: it is on the route and it is tested, just not as its own share of
       // questions. The row says "skill" where the others say a number.
-      g.rows.push({ course: c, points: per[k], credit, full: TOPICS.filter(t => t.course === c.id).reduce((n, t) => n + t.w, 0) });
+      g.rows.push({ course: c, points: per[k], credit, full: attributedWeight(c.id) });
       g.points += per[k];
     });
   });
@@ -10316,7 +10755,7 @@ function screenExplain() {
   // the courses were cleared. Hand back the Route's own markup rather than
   // calling go(): go() re-renders, and then this render finishes and paints its
   // own empty string over the top, which is a blank screen.
-  if (S.courses.size === 0) { S.screen = 'reveal'; return screenReveal(); }
+  if (pickedCount() === 0) { S.screen = 'reveal'; return screenReveal(); }
 
   const cov = coverage(S.courses, true);
   const { groups, raw } = coverageContributions();
@@ -10428,13 +10867,13 @@ const AAMC_MSAR    = 'https://students-residents.aamc.org/applying-medical-schoo
 function sourceWeightRows() {
   const byCourse = {};
   TOPICS.forEach(t => {
-    const key = t.course || 'cars';
+    const key = topicCourseId(t.id) || (catalogCourseFor(t.id) || {}).id || 'cars';
     (byCourse[key] = byCourse[key] || { w: 0, names: [] });
     byCourse[key].w += t.w;
     byCourse[key].names.push(t.name);
   });
   const label = id => id === 'cars' ? 'CARS (no course)'
-                    : (COURSES.find(c => c.id === id) || {}).name || id;
+                    : (courseById(id) || {}).name || id;
   return Object.entries(byCourse)
     .sort((a, b) => b[1].w - a[1].w)
     .map(([id, v]) => `
@@ -10485,6 +10924,7 @@ function screenSources() {
       </div>
       ${p(`Rounded by largest remainder so the integers still sum to ${total}.`)}
       ${p(`<strong style="color:var(--ink-2);">Still Waypoint's judgment:</strong> the split of a discipline across courses and topics. AAMC publishes no course-level breakdown, so intro biology's 19 becoming Bio I 9 and Bio II 10, or general chemistry's 9 becoming Gen Chem I 7 and Gen Chem II 2, is ours — and the part to argue with.`)}
+      ${schoolId() === 'generic' ? '' : p(`Those splits are written for a standard two-semester sequence, which is why this page names courses you may never have taken. Your school's own courses are <strong style="color:var(--ink-2);">mapped onto</strong> that model rather than replacing it: ${catalog().name}'s list says which of these topics each of its classes covers, and the weights underneath are the same ones above. That mapping was read from ${catalog().name}'s course catalog on ${catalog().retrieved}, and it is the newest and least settled thing on this page.`)}
       ${p(`<strong style="color:var(--ink-2);">Statistics.</strong> ${STATS_NOTE}`)}
       ${p(`Your percentage is the share of this content your coursework covers — not the share of questions you would answer correctly, and never a predicted score. The table below groups these weights by class; it is not the exam's four equal quarters, because several disciplines span more than one section.`)}
       <div style="background:var(--wash);border:1px solid var(--line);border-radius: var(--r-card);padding:12px 16px;margin:12px 0 12px;">
@@ -10607,7 +11047,7 @@ function setCourseState(id, state) {
 // Hidden rather than removed: a counter that appears on the first tap moves the
 // button under the finger reaching for it.
 function paintCourseCount() {
-  const n = S.courses.size;
+  const n = pickedCount();
   const counter = document.getElementById('course-counter');
   if (counter) {
     counter.textContent = n + ' course' + (n !== 1 ? 's' : '') + ' selected';
@@ -10617,9 +11057,48 @@ function paintCourseCount() {
   if (cta) cta.disabled = n === 0;
 }
 
+// TODO(Drew): no destination yet. Waypoint has never had a feedback route, so
+// there is nothing here to link to, and inventing one — a mailto to an address
+// nobody reads, a form that does not exist — would be worse than telling the
+// student what they can actually do right now. Set this to a real URL and the
+// row below becomes a link to it. `npm run check` prints it on every run.
+const FEEDBACK_URL = null;
+
+// How the table gets corrected during the validation season.
+//
+// The count is the signal; the copy is the help. It never says a message was
+// sent, because until FEEDBACK_URL exists no message is — an app that thanks
+// you for a report it did not file has told you something untrue about itself.
+function missingCourseHTML() {
+  if (schoolId() === 'generic') return '';
+  const open = !!S._missingOpen;
+  const tell = FEEDBACK_URL
+    ? `<a href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="trackMissingCourse()" style="font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;">Tell us which class</a>`
+    : '';
+  const school = catalog().name;
+  return `
+          <div style="margin-top:16px;">
+            <button type="button" onclick="toggleMissingCourse()" aria-expanded="${open}"
+                    style="width:100%;text-align:left;background:none;border:none;padding:10px 2px;min-height:44px;cursor:pointer;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);-webkit-tap-highlight-color:transparent;">Taking something not on this list?</button>
+            ${open ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 2px 4px;">This is ${school}'s premed coursework. A class for your major, or one only some medical schools ask for, will not be on it. Switch to the standard list in Settings and mark the nearest equivalent — your ${school} answers are kept.</p>${tell}` : ''}
+          </div>`;
+}
+
+function toggleMissingCourse() {
+  S._missingOpen = !S._missingOpen;
+  if (S._missingOpen) trackMissingCourse();
+  render();
+}
+
+// A count, not a message: how often a student finds their school's list short.
+// No course name, because nothing on this screen knows one.
+function trackMissingCourse() {
+  if (window.plausible) plausible('course_missing', { props: { school: schoolId() } });
+}
+
 function screenCourses() {
-  const sections = [...new Set(COURSES.map(c => c.section))];
-  const n = S.courses.size;
+  const sections = [...new Set(allCourses().map(c => c.section))];
+  const n = pickedCount();
 
   // Framing only. A junior's route is mostly behind them, so leading with "what
   // have you taken?" is the honest opening question for them and "what are you
@@ -10627,6 +11106,15 @@ function screenCourses() {
   // the same three states, all starting at Not yet.
   const doneLead = DONE_FIRST_YEARS.includes(S.year);
   const back = S._coursesFrom || 'brief';
+
+  // Arriving here from a school change. The other list is still underneath,
+  // untouched, and saying so is the difference between "your route was wiped"
+  // and "you are looking at a different list".
+  const switchNote = !S._schoolSwitched ? '' : `
+      <p style="font-size: var(--fs-13);color:var(--ink-2);line-height:1.55;background:var(--green-wash);border:1px solid var(--green-line);border-radius: var(--r-ctl);padding:12px 12px;margin:0 0 20px;">${
+        n === 0
+          ? `Pick your ${catalog().name === 'BYU' ? 'BYU' : 'generic'} courses. Your old selections are kept in case you switch back.`
+          : 'Your courses on this list are as you left them.'}</p>`;
 
   return `
     <div class="screen">
@@ -10639,34 +11127,47 @@ function screenCourses() {
       <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 20px;line-height:1.5;">${doneLead
         ? 'Mark what you’ve finished <strong style="color:var(--ink-2);">Done</strong> and this term’s classes <strong style="color:var(--ink-2);">Taking</strong>. Everything starts at Not yet — nothing is assumed.'
         : 'Mark this term’s classes <strong style="color:var(--ink-2);">Taking</strong> and anything you’ve finished <strong style="color:var(--ink-2);">Done</strong>. Everything starts at Not yet — nothing is assumed.'}</p>
+      ${switchNote}
 
       <div class="courses-scroll">
         ${sections.map(sec => {
-          const secCourses = COURSES.filter(c => c.section === sec);
+          const secCourses = allCourses().filter(c => c.section === sec);
           return `
           <div class="section-head"><p class="section-label">${sec}</p></div>
-          ${secCourses.map(c => {
+          ${secCourses.map((c, i) => {
             const st   = courseState(c.id);
             const open = !!(S._expandedCourses && S._expandedCourses.has(c.id));
             const m    = REQ_META[COURSE_REQ[c.id]];
-            return `
+            // Courses answering the same requirement sit together under one
+            // line, said once at the head of the run. Without it the list
+            // reads as six biology courses a premed is expected to take,
+            // which is both wrong and daunting. The grouping is the catalog's.
+            const alt  = c.alt && (i === 0 || secCourses[i - 1].alt !== c.alt)
+              ? `<p class="alt-note">Most premeds take one of these</p>` : '';
+            // Code first, in the body face, because that is what is printed on
+            // the student's own schedule; the title, muted, is how they know
+            // which class it is. The generic list has no codes and so reads
+            // exactly as it always has.
+            const nameHTML = c.code ? `${c.code}<span class="ccard-title"> · ${c.title}</span>` : c.name;
+            return `${alt}
             <div class="ccard${st !== 'none' ? ' picked' : ''}" id="ccard-${c.id}">
               <div class="ccard-head">
                 <!-- Wraps rather than truncating: "General Chemistr…" is the same
                      string for two different classes, and this row is the only
                      place the difference gets decided. -->
-                <span class="ccard-name">${c.name}</span>
+                <span class="ccard-name">${nameHTML}</span>
                 ${m ? `<span class="cpick-badge" style="color:${m.color};background:${m.bg};">${m.short}</span>` : ''}
                 <button type="button" class="cpick-info${open ? ' open' : ''}" onclick="toggleCourseExpand('${c.id}')"
-                        aria-expanded="${open}" aria-label="What ${c.name} covers on the MCAT">
+                        aria-expanded="${open}" aria-label="What ${courseFull(c)} covers on the MCAT">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                 </button>
               </div>
-              <div class="cst-group" id="cst-${c.id}" role="group" aria-label="${c.name}">${courseStateHTML(c.id)}</div>
+              <div class="cst-group" id="cst-${c.id}" role="group" aria-label="${courseFull(c)}">${courseStateHTML(c.id)}</div>
               ${open ? `<div class="course-topics-panel" style="margin:12px 8px 0 0;">${courseTopicsBreakdown(c.id)}</div>` : ''}
             </div>`;
           }).join('')}
         `;}).join('')}
+        ${missingCourseHTML()}
         <div style="height:12px;"></div>
       </div>
 
@@ -10749,7 +11250,7 @@ function termsPaint() {
 // Every finished course, in catalog order. A class in progress is this term by
 // definition, so it is never asked about and never listed here.
 function finishedCourses() {
-  return COURSES.filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'completed');
+  return allCourses().filter(c => S.courses.has(c.id) && S.courseStatus[c.id] === 'completed');
 }
 
 // The Route's offer. Absent when there is nothing to date, and worded by whether
@@ -10896,7 +11397,7 @@ function screenReveal() {
     // skill rather than as its own share of questions, so it carries no weight.
     // Telling that student to "add your courses" would be telling them their
     // class didn't count.
-    subhead  = S.courses.size
+    subhead  = pickedCount()
       ? 'Those are tested as skills rather than as their own share of questions. Coverage counts the science courses you\'ve taken or are taking.'
       : 'Add your courses to see your coverage.';
   } else {
@@ -11028,7 +11529,7 @@ function screenReveal() {
   // first session on that course. It used to say "Verify it", which four
   // questions cannot do; the results screen stopped claiming it, so does this.
   const curated = first ? firstSessionQuestions() : null;
-  const curatedCourse = curated ? COURSES.find(c => c.id === firstSessionCourse()) : null;
+  const curatedCourse = curated ? allCourses().find(c => c.id === firstSessionCourse()) : null;
   const ctaLabel = curated && curatedCourse
     // The course name and arrow travel as one unit, so a wrap at 375px never
     // leaves "I →" alone on the second line.
@@ -11090,7 +11591,7 @@ function screenQuestion() {
       <div class="q-meta">
         <span class="q-count">${S.quickLog ? (S.quickLog.repin ? (S.quickLog.repin === 'unpinned' ? 'Check' : 'Re-pin') : 'Quick check') : 'Question'} ${S.idx + 1} of ${S.session.length}</span>
         <div style="display:flex;gap:8px;align-items:center;">
-          <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicObj.disp : ''}</span>
+          <span class="q-tag ${topicObj ? sectionTag(topicObj.mcat) : ''}">${topicObj ? sectionIcon(topicObj.mcat) : ''}${topicObj ? topicCourseLabel(topicObj) : ''}</span>
         </div>
       </div>
 
@@ -11479,7 +11980,7 @@ function screenComplete() {
 }
 
 function screenQuickLog() {
-  const myTopics = TOPICS.filter(t => t.course && S.courses.has(t.course));
+  const myTopics = TOPICS.filter(t => topicCovered(t.id));
 
   if (!myTopics.length) {
     return `
@@ -11523,7 +12024,7 @@ function screenQuickLog() {
 
     return `
       <div style="display:flex;align-items:center;gap:8px;margin:24px 0 8px;">
-        <span class="q-tag ${sectionTag(t.mcat)}">${sectionIcon(t.mcat)}${t.disp}</span>
+        <span class="q-tag ${sectionTag(t.mcat)}">${sectionIcon(t.mcat)}${topicCourseLabel(t)}</span>
         <span style="font-size: var(--fs-13);font-weight:700;color:var(--ink);letter-spacing:-0.01em;">${t.name}</span>
       </div>
       ${rows}${all}`;
@@ -11625,14 +12126,19 @@ function screenError() {
 // The logo is a way home, not a way out. Only someone with no route yet has any
 // business landing back on the marketing page.
 function logoTap() {
-  go(S.courses.size > 0 ? 'brief' : 'landing');
+  go(pickedCount() > 0 ? 'brief' : 'landing');
 }
 
 // One event per onboarding screen, fired on arrival rather than on render — a
 // re-render (tapping a course, opening a term picker) is not a new visit. Names
 // only: no course selections, no coverage numbers, nothing about the person.
 // Enough to see where the first two minutes leak, and nothing more.
+// A step was added between the year and the picker, so the funnel needs a rung
+// for it. Without one, everybody who leaves at the school question disappears
+// into the gap between onboard_year and onboard_courses, and that gap is the
+// first thing this season is meant to measure.
 const ONBOARD_EVENTS = { landing: 'onboard_landing', year: 'onboard_year',
+                         school: 'onboard_school',
                          courses: 'onboard_courses', reveal: 'onboard_reveal' };
 
 function trackScreen(screen) {
@@ -11661,7 +12167,9 @@ function go(screen) {
   // The picker is reachable from onboarding, from Home and from the Route, and
   // each of those is a different "back". Recorded on the way in, while S.screen
   // is still the screen being left.
-  if (screen === 'courses') S._coursesFrom = ['year', 'brief', 'reveal'].includes(S.screen) ? S.screen : 'brief';
+  if (screen === 'courses') S._coursesFrom = ['year', 'school', 'brief', 'reveal'].includes(S.screen) ? S.screen : 'brief';
+  // The switch note belongs to the one visit the switch opened.
+  if (screen !== 'courses') S._schoolSwitched = false;
   // The first reveal keeps its own order for as long as the student is on it —
   // through the account ask, through a re-render — and ends when they leave.
   if (screen !== 'reveal') { S._firstReveal = false; S._revealAnimated = false; S._covMilestone = undefined; }
@@ -11680,7 +12188,7 @@ function go(screen) {
 function selectYear(year) {
   S.year = year;
   save();
-  go('courses');
+  go('school');
 }
 
 // There is nothing left to confirm. Every course carries its own answer now, so
@@ -11691,7 +12199,7 @@ function finishCourses() {
 
 // The end of both paths: whatever the statuses now are, this is the reveal.
 function revealCourses() {
-  if (S.year && S.courses.size > 0) {
+  if (S.year && pickedCount() > 0) {
     if (window.plausible) plausible('onboarding_complete');
   }
   // Transient, like _coursesFrom — never persisted, so it cannot survive into a
@@ -12174,8 +12682,8 @@ async function deliverShare({ canvas, filename, title, text }) {
 async function shareCoverageCard(variant = 'coverage', btn) {
   if (window.plausible) plausible('share_card', { props: { variant } });
   const cov   = coverage(S.courses, true);
-  const myTopics    = TOPICS.filter(t => t.course && S.courses.has(t.course));
-  const totalTopics = TOPICS.filter(t => t.course).length;
+  const myTopics    = TOPICS.filter(t => topicCovered(t.id));
+  const totalTopics = TOPICS.filter(t => !noCourse(t.id)).length;
   const streak = S.streak;
   const isStreak = PRACTICE && variant === 'streak' && streak >= 7;
   // The term card is offered only inside its window, and the window can close
@@ -12568,10 +13076,10 @@ function syncDesktopShell() {
   // A visitor is pre-launch until they have a route. The landing, year picker
   // and course picker are the whole product at that point, and app chrome
   // around them is furniture for an app they have not started.
-  const preLaunch = !S.courses.size && ['landing', 'year', 'courses'].includes(S.screen);
+  const preLaunch = !pickedCount() && ['landing', 'year', 'school', 'courses'].includes(S.screen);
   shell.classList.toggle('dt-prelaunch', preLaunch);
   document.body.classList.toggle('pre-launch', preLaunch);
-  shell.classList.toggle('dt-empty', S.courses.size === 0);
+  shell.classList.toggle('dt-empty', pickedCount() === 0);
   shell.classList.toggle('dt-on-route', S.screen === 'reveal');
 
   const cov = coverage(S.courses, true);
@@ -12728,6 +13236,7 @@ function render() {
     case 'landing':  html += screenLanding();  break;
     case 'brief':    html += screenBrief();    break;
     case 'year':     html += screenYear();     break;
+    case 'school':   html += screenSchool();   break;
     case 'courses':  html += screenCourses();  break;
     case 'terms':    html += screenTerms();    break;
     // Retired: one course screen carries all three states now, so there is
@@ -12829,7 +13338,7 @@ try { captureAuthRedirect(); } catch(e) { console.warn('[Waypoint] auth redirect
 
 load();
 // Route: anyone with courses lands on the map; a new visitor gets the landing.
-if (S.courses.size > 0) {
+if (pickedCount() > 0) {
   S.screen = 'reveal';
   if (window.plausible) plausible('app_open');
 }

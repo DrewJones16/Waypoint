@@ -16,6 +16,19 @@
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
+// ── What a generic student is promised ──────────────────────────────────────
+// Courses cover topics through a catalog now, so that a school's real course
+// list can say what it covers. Every student not at that school stays on the
+// generic catalog, and the generic catalog is derived from the same TOPICS the
+// weights were always read from — so their screens must be character for
+// character what they were.
+//
+// "Must be" is worth nothing unless something checks it, and a refactor that
+// touches fifty call sites is exactly where a quiet half-percent goes
+// unnoticed. This is the text, captured from main before the first line of it
+// was written.
+const SNAPSHOT = JSON.parse(readFileSync(new URL('./generic-snapshot.json', import.meta.url), 'utf8'));
+
 const FILE = new URL('./index.html', import.meta.url).pathname;
 const SRC  = readFileSync(FILE, 'utf8');
 
@@ -53,11 +66,38 @@ const JUNIOR = {
   wp_course_status: RETURNING.wp_course_status,
 };
 
+// The same student at BYU: the equivalent courses, in the codes on their own
+// schedule. Their coverage is the same 38% the generic junior reads, which is
+// the arithmetic half of "the map speaks BYU". The other half is below.
+const BYU = {
+  wp_school: 'byu',
+  wp_year: 'junior',
+  wp_courses: '["bio130","cell305","chem105","chem106","chem351","psych111"]',
+  wp_course_status: '{"bio130":"completed","cell305":"completed","chem105":"completed","chem106":"completed","chem351":"in-progress","psych111":"in-progress"}',
+  wp_course_when: '{"bio130":"2025-fall","cell305":"2026-spring","chem105":"2025-fall","chem106":"2026-spring"}',
+};
+
 const STATES = [
   { name: 'cleared',   store: {} },
   { name: 'junior',    store: JUNIOR },
   { name: 'returning', store: RETURNING },
+  { name: 'byu',       store: BYU },
 ];
+
+// ── No generic course name reaches a BYU student ───────────────────────────
+// Two screens may, and only these two, each for a reason that is about someone
+// other than the student reading it:
+//
+//   landing — the example route on the marketing card is a DIFFERENT, made-up
+//     student, described in the generic terms their route is built from. (It
+//     is computed in the generic catalog too; without that a BYU visitor was
+//     shown the card at 0%.)
+//   sources — the weight model itself. Its splits are written for a standard
+//     two-semester sequence, because that is what they were derived from, and
+//     a school's courses are mapped ONTO that model rather than replacing it.
+//     Renaming them in BYU's terms would claim a derivation that does not
+//     exist. The screen says so, in a paragraph only non-generic students see.
+const LEAK_OK = ['landing', 'sources'];
 
 // Every screen the router knows about, read from the router rather than listed
 // here — a screen added without a line in this file would otherwise go unwalked.
@@ -111,6 +151,19 @@ function allowedLine(line) {
   //    line saying we are not affiliated with them.
   if (/Practise reading here|CARS practice|not affiliated with Khan Academy/i.test(line)) return true;
   return false;
+}
+
+// The figures line is machine-readable on purpose: a prose diff tells you a
+// screen changed, this tells you whether a number did.
+function snapshotDiff(key, got) {
+  const want = SNAPSHOT.screens[key];
+  if (want === undefined) return `no snapshot for ${key}`;
+  if (want === got) return null;
+  const a = want.split('\n'), b = got.split('\n');
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (a[i] !== b[i]) return `line ${i + 1}: expected "${(a[i] || '').slice(0, 60)}" but read "${(b[i] || '').slice(0, 60)}"`;
+  }
+  return 'differs in trailing whitespace';
 }
 
 const failures = [];
@@ -182,6 +235,91 @@ for (const variant of VARIANTS) {
       if (pressed) failures.push(`${where}  focus button: ${pressed}`);
       else if (landed !== 'question' || !asked)
         failures.push(`${where}  focus button: landed on "${landed}"${asked ? '' : ' with no answer options'}, expected a question`);
+    }
+
+    // ── No generic course name reaches a BYU student ────────────────────────
+    if (state.name === 'byu') {
+      // Derived in the page from the real tables rather than listed here, so a
+      // course renamed in either catalog cannot slip past a stale constant.
+      // Anything that is also a topic name, a tile name or a section heading is
+      // not a generic course name leaking; it is the map's own vocabulary.
+      const words = await page.evaluate(() => {
+        const ok = new Set([...TOPICS.map(t => t.name), ...Object.values(TILE_NAMES), ...Object.values(MAP_NAMES),
+                            ...allCourses().map(c => c.section), ...MCAT_SECTIONS.map(s => s.short), ...MCAT_SECTIONS.map(s => s.long)]);
+        const out = new Set();
+        CATALOGS.generic.courses.forEach(c => { if (!ok.has(c.name)) out.add(c.name); });
+        // Only a topic that HAS a generic course has a generic course name to
+        // leak. CARS has none, and its "Ongoing" is a state word.
+        TOPICS.forEach(t => { if (t.disp && t.course && !ok.has(t.disp)) out.add(t.disp); });
+        return [...out];
+      }).catch(() => []);
+      if (!words.length) failures.push(`${where}  could not work out which names would be a leak`);
+
+      for (const screen of SCREENS) {
+        if (LEAK_OK.includes(screen)) continue;
+        await page.evaluate(s => window.go(s), screen).catch(() => {});
+        await page.waitForTimeout(130);
+        const text = await page.evaluate(() => document.getElementById('app').innerText || '').catch(() => '');
+        for (const w of words) if (text.includes(w)) failures.push(`${where}  ${screen}: shows the generic course "${w}"`);
+      }
+      // And every parcel's study panel, which is where a course is named most.
+      const topics = await page.evaluate(() => TOPICS.map(t => t.id)).catch(() => []);
+      for (const tid of topics) {
+        const text = await page.evaluate(x => {
+          S.screen = 'reveal'; S._mapOpen = x; render();
+          return (document.getElementById('parcel-detail') || {}).innerText || '';
+        }, tid).catch(() => '');
+        for (const w of words) if (text.includes(w)) failures.push(`${where}  panel ${tid}: shows the generic course "${w}"`);
+      }
+      await page.evaluate(() => { S._mapOpen = null; }).catch(() => {});
+    }
+
+    // ── The generic promise, checked ────────────────────────────────────────
+    // Only with practice off, which is what ships, and only for the two states
+    // the snapshot was taken in.
+    if (variant.label !== 'PRACTICE=true' && SNAPSHOT.screens[`${state.name}/reveal`]) {
+      for (const scr of ['reveal', 'explain', 'coverage']) {
+        await page.evaluate(x => window.go(x), scr).catch(() => {});
+        await page.waitForTimeout(160);
+        // The sheet's parcel labels are hidden for the reading, not compared.
+        // fitSheetLabels() chooses between the full name, the short name, a
+        // rotated name and nothing by MEASURING the rendered width, and this
+        // test blocks Google Fonts on purpose — so which label a parcel ends
+        // up with depends on the fallback face of whatever machine is running
+        // the check. On this one the browser default draws "Biochemistry";
+        // under a monospace fallback the same parcel draws "Biochem", under a
+        // serif it draws "Physiology" where the default draws "Physio". That
+        // is a property of the font, and a snapshot that fails on somebody
+        // else's laptop because of it is worse than no snapshot.
+        //
+        // Nothing is lost by dropping them: the figures line below carries the
+        // coverage figure and all nineteen topic states, which is what the
+        // labels were standing in for, and it cannot drift with a typeface.
+        const got = await page.evaluate(() => {
+          const app = document.getElementById('app');
+          const labels = [...app.querySelectorAll('.pl-name, .pl-sub')];
+          const was = labels.map(e => e.style.display);
+          labels.forEach(e => { e.style.display = 'none'; });
+          const text = app.innerText.trim();
+          labels.forEach((e, i) => { e.style.display = was[i]; });   // the fitter's own choices, put back
+          return text;
+        }).catch(() => '(threw)');
+        const d = snapshotDiff(`${state.name}/${scr}`, got);
+        if (d) failures.push(`${where}  ${scr}: generic text moved — ${d}`);
+      }
+      const figures = await page.evaluate(() => {
+        const cov = coverage(S.courses, true);
+        const states = TOPICS.map(t => {
+          const c = topicCourse(t.id);
+          const st = !coursesCovering(t.id).length ? 'nocourse'
+                   : !topicCovered(t.id) ? 'ahead'
+                   : topicTaking(t.id) ? 'taking' : 'done';
+          return `${t.id}:${st}`;
+        }).join(' ');
+        return `coverage=${cov.toFixed(6)} ${states}`;
+      }).catch(e => '(threw) ' + e.message);
+      const d = snapshotDiff(`${state.name}/figures`, figures);
+      if (d) failures.push(`${where}  figures: generic coverage moved — ${d}`);
     }
 
     await ctx.close();
