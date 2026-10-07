@@ -354,6 +354,12 @@ console.log('');
   const whole = weights.filter(t => t.id !== 'cars').reduce((n, t) => n + t.w, 0);
 
   ok('every school catalog is readable', cats.length > 0, `${cats.length} found`);
+  // A school's list is either one a student there has read or one nobody has,
+  // and the picker tells them which. A catalog that declares neither would
+  // silently claim the first, which is the claim that matters.
+  const undeclared = cats.filter(c =>
+    !new RegExp("\\n  " + c.key.toLowerCase() + ": \\{[\\s\\S]*?checked: (true|false)").test(src)).map(c => c.name);
+  ok('every school catalog says whether a student has checked it', undeclared.length === 0, undeclared.join(', '));
   // Ids are unique ACROSS catalogs, not just within one. Both lists live in the
   // same wp_courses array so a student can switch school and find their old
   // answers intact, and a collision would silently select a course at a school

@@ -1842,6 +1842,12 @@ const CATALOGS = {
     name: 'BYU',
     source: 'BYU Pre-Professional Advisement premed coursework, January 2025 edition; codes, titles and coverage from catalog.byu.edu.',
     retrieved: '2026-10-07',
+    // Read by a BYU student on 2026-10-07, who corrected four rows: MMBIO 121,
+    // MMBIO 221 & 222, STAT 121's title, and NEURO 205, which they removed as
+    // a neuroscience major's course. That is what checked means here — not
+    // "carefully derived", which the Utah table also is, but "somebody who
+    // sat these classes read the list and changed it".
+    checked: true,
     courses: BYU_COURSES,
   },
   utah: {
@@ -1854,6 +1860,12 @@ const CATALOGS = {
     article: 'the',
     source: 'University of Utah Preprofessional Advising premed page and Premed Information Summary; codes, titles and coverage from catalog.utah.edu and class-schedule.app.utah.edu.',
     retrieved: '2026-10-07',
+    // Nobody who has taken these classes has read this list. Every row is
+    // quoted from the catalog, which is the best anyone can do from outside,
+    // and it is still not the same thing — a description is written to fit a
+    // paragraph, and the four BYU rows a student corrected were all quoted
+    // from one too. The picker says so, in as many words, until this is true.
+    checked: false,
     courses: UTAH_COURSES,
   },
 };
@@ -11247,6 +11259,24 @@ function trackMissingCourse() {
 // looking at "Biology II" and you know your schedule says CELL 305.
 //
 // It points both ways, so switching back never needs Settings.
+// A list nobody at that school has read says so, on the screen where it is
+// being used to make a claim about somebody's education.
+//
+// Not a warning badge and not an apology: the list is the best that can be
+// made from a catalog, and the BYU table was no different until a student
+// read it and changed four rows. What the student is owed is the fact.
+function unreviewedNoteHTML() {
+  if (catalog().checked !== false) return '';
+  const school = (catalog().article ? catalog().article + ' ' : '') + catalog().name;
+  // The third sentence is an invitation, and an invitation with nowhere to go
+  // is worse than none. Without a destination the note stops after the fact.
+  const tell = FEEDBACK_URL
+    ? ` <a href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="trackMissingCourse()" style="color:var(--green-bright);font-weight:600;text-decoration:underline;text-underline-offset:3px;">Tell us what's wrong.</a>`
+    : '';
+  return `
+      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px 12px;margin:0 0 16px;">Built from ${school}'s catalog. No student there has checked it yet.${tell}</p>`;
+}
+
 function schoolOfferHTML() {
   const here = schoolId();
   const other = SCHOOL_CHOICES.find(c => c.val !== here);
@@ -11256,9 +11286,10 @@ function schoolOfferHTML() {
   const list = schools.length > 1
     ? schools.slice(0, -1).join(', ') + ' or ' + schools[schools.length - 1]
     : schools[0];
+  const mine = (catalog().article ? catalog().article + ' ' : '') + catalog().name;
   const text = here === 'generic'
     ? `At ${list}? Pick your real classes`
-    : 'Not at ' + catalog().name + '? Use the standard course list';
+    : `Not at ${mine}? Use the standard course list`;
   if (!other) return '';
   return `
       <button onclick="go('school')" class="link-btn quiet" style="margin:-8px 0 16px;">${text}</button>`;
@@ -11295,6 +11326,7 @@ function screenCourses() {
       <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 20px;line-height:1.5;">${doneLead
         ? 'Mark what you’ve finished <strong style="color:var(--ink-2);">Done</strong> and this term’s classes <strong style="color:var(--ink-2);">Taking</strong>. Everything starts at Not yet — nothing is assumed.'
         : 'Mark this term’s classes <strong style="color:var(--ink-2);">Taking</strong> and anything you’ve finished <strong style="color:var(--ink-2);">Done</strong>. Everything starts at Not yet — nothing is assumed.'}</p>
+      ${unreviewedNoteHTML()}
       ${schoolOfferHTML()}
       ${switchNote}
 
