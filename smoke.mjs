@@ -77,11 +77,30 @@ const BYU = {
   wp_course_when: '{"bio130":"2025-fall","cell305":"2026-spring","chem105":"2025-fall","chem106":"2026-spring"}',
 };
 
+// And at the University of Utah. Same student again, third set of codes.
+const UTAH = {
+  wp_school: 'utah',
+  wp_year: 'junior',
+  wp_courses: '["ubiol1610","ubiol2420","uchem1210","uchem1220","uchem2310","upsy1010"]',
+  wp_course_status: '{"ubiol1610":"completed","ubiol2420":"completed","uchem1210":"completed","uchem1220":"completed","uchem2310":"in-progress","upsy1010":"in-progress"}',
+  wp_course_when: '{"ubiol1610":"2025-fall","ubiol2420":"2026-spring","uchem1210":"2025-fall","uchem1220":"2026-spring"}',
+};
+
+// `peer` marks the states that are THE SAME STUDENT in different course lists:
+// four classes finished and two in progress, covering the same MCAT ground
+// whichever catalog names them. Their coverage has to agree topic by topic,
+// and when it does not the check says which topic and in whose list.
+//
+// It is the only check here that can catch a mapping error with no symptom.
+// Every other one asks whether a screen renders or a word is wrong; this one
+// asks whether the three tables mean the same thing, which is the whole claim
+// a second school makes.
 const STATES = [
   { name: 'cleared',   store: {} },
-  { name: 'junior',    store: JUNIOR },
+  { name: 'junior',    store: JUNIOR, peer: true },
   { name: 'returning', store: RETURNING },
-  { name: 'byu',       store: BYU },
+  { name: 'byu',       store: BYU,    peer: true },
+  { name: 'utah',      store: UTAH,   peer: true },
 ];
 
 // ── No other catalog's course name reaches a student ───────────────────────
@@ -170,6 +189,7 @@ function snapshotDiff(key, got) {
 }
 
 const failures = [];
+const peers = {};          // state name → what that student's coverage is made of
 const browser = await chromium.launch();
 
 for (const variant of VARIANTS) {
@@ -240,6 +260,17 @@ for (const variant of VARIANTS) {
         failures.push(`${where}  focus button: landed on "${landed}"${asked ? '' : ' with no answer options'}, expected a question`);
     }
 
+    // ── The same student, whichever list names their classes ────────────────
+    if (variant.label !== 'PRACTICE=true' && state.peer) {
+      peers[state.name] = await page.evaluate(() => ({
+        cov: coverage(S.courses, true),
+        // The credit each topic carries: 1 finished, 0.5 taking, 0 neither.
+        // Comparing these rather than the total is what lets a failure name a
+        // topic — and it catches two errors that cancel out in the sum.
+        topics: Object.fromEntries(TOPICS.map(t => [t.id, topicCredit(t.id)])),
+      })).catch(e => ({ cov: null, topics: {}, threw: e.message }));
+    }
+
     // ── No other catalog's course name reaches this student ─────────────────
     if (state.store.wp_school) {
       // Derived in the page from the real tables rather than listed here, so a
@@ -248,29 +279,44 @@ for (const variant of VARIANTS) {
       // one of THIS student's own course names is not a leak; it is the map's
       // own vocabulary.
       const words = await page.evaluate(() => {
+        const esc = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const bound = w => new RegExp('(?<![A-Za-z0-9])' + esc(w) + '(?![A-Za-z0-9])');
         const ok = new Set([...TOPICS.map(t => t.name), ...Object.values(TILE_NAMES), ...Object.values(MAP_NAMES),
                             ...allCourses().map(c => c.section), ...MCAT_SECTIONS.map(s => s.short), ...MCAT_SECTIONS.map(s => s.long),
                             ...allCourses().map(c => c.name)]);
+        // A name this student's own catalog SPELLS OUT is not a leak. Utah's
+        // "General Chemistry I & Lab" contains the generic course called
+        // "General Chemistry I", because both are English for the same class,
+        // and its "Fundamental Principles of Biology I & Lab" contains
+        // "Biology I" the same way. Six screens reported as leaking on that
+        // alone. If a generic row really did render, every other generic name
+        // on it is still watched.
+        const mine = allCourses().map(c => c.name + ' ' + (c.title || '')).join(' \n ');
         const out = new Set();
         // Every catalog the student is NOT on — the generic list their codes
         // replaced, and every other school's codes.
         for (const cat of Object.values(CATALOGS)) {
           if (cat.id === schoolId()) continue;
-          cat.courses.forEach(c => { if (!ok.has(c.name)) out.add(c.name); });
+          cat.courses.forEach(c => { if (!ok.has(c.name) && !bound(c.name).test(mine)) out.add(c.name); });
         }
         // Only a topic that HAS a generic course has a generic course name to
         // leak. CARS has none, and its "Ongoing" is a state word.
-        TOPICS.forEach(t => { if (t.disp && t.course && !ok.has(t.disp)) out.add(t.disp); });
+        TOPICS.forEach(t => { if (t.disp && t.course && !ok.has(t.disp) && !bound(t.disp).test(mine)) out.add(t.disp); });
         return [...out];
       }).catch(() => []);
       if (!words.length) failures.push(`${where}  could not work out which names would be a leak`);
+      // Whole tokens. "CHEM 351" is not on a Utah student's screen because
+      // "CHEM 3510" is: that is one code being a prefix of another, not BYU's
+      // list reaching them.
+      const leaks = text => words.filter(w =>
+        new RegExp('(?<![A-Za-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z0-9])').test(text));
 
       for (const screen of SCREENS) {
         if (LEAK_OK.includes(screen)) continue;
         await page.evaluate(s => window.go(s), screen).catch(() => {});
         await page.waitForTimeout(130);
         const text = await page.evaluate(() => document.getElementById('app').innerText || '').catch(() => '');
-        for (const w of words) if (text.includes(w)) failures.push(`${where}  ${screen}: shows another catalog's course "${w}"`);
+        for (const w of leaks(text)) failures.push(`${where}  ${screen}: shows another catalog's course "${w}"`);
       }
       // And every parcel's study panel, which is where a course is named most.
       const topics = await page.evaluate(() => TOPICS.map(t => t.id)).catch(() => []);
@@ -279,7 +325,7 @@ for (const variant of VARIANTS) {
           S.screen = 'reveal'; S._mapOpen = x; render();
           return (document.getElementById('parcel-detail') || {}).innerText || '';
         }, tid).catch(() => '');
-        for (const w of words) if (text.includes(w)) failures.push(`${where}  panel ${tid}: shows another catalog's course "${w}"`);
+        for (const w of leaks(text)) failures.push(`${where}  panel ${tid}: shows another catalog's course "${w}"`);
       }
       await page.evaluate(() => { S._mapOpen = null; }).catch(() => {});
     }
@@ -338,6 +384,27 @@ for (const variant of VARIANTS) {
 
 await browser.close();
 server.close();
+
+// ── Do the three students agree? ───────────────────────────────────────────
+// The same four finished classes and two in progress, in three course lists.
+// If the tables mean the same thing, the credit on every topic matches; if
+// they do not, the topic that differs is named, which is the difference
+// between "Utah reads 35%" and "Utah's genetics is not covered".
+{
+  const names = Object.keys(peers);
+  if (names.length < 2) failures.push(`parity: only ${names.length} peer state${names.length === 1 ? '' : 's'} measured`);
+  const [first, ...rest] = names;
+  for (const other of rest) {
+    const a = peers[first], b = peers[other];
+    const off = Object.keys(a.topics).filter(id => a.topics[id] !== b.topics[id]);
+    for (const id of off)
+      failures.push(`parity  ${id}: ${first} counts ${a.topics[id]}, ${other} counts ${b.topics[id]} — same student, two course lists`);
+    if (!off.length && a.cov !== b.cov)
+      failures.push(`parity: ${first} reads ${a.cov}% and ${other} reads ${b.cov}% with every topic matching`);
+  }
+  if (names.length && !failures.some(f => f.startsWith('parity')))
+    console.log(`      the same student reads ${peers[first].cov}% as ${names.join(', ')}`);
+}
 
 const states = VARIANTS.length * STATES.length;
 if (failures.length) {
