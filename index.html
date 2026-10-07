@@ -1659,13 +1659,12 @@ const BYU_COURSES = [
     // resource management rather than medicine.
     covers: ['genetics'] },
 
-  { id:'neuro205', code:'NEURO 205',        title:'Neurobiology',                         section:'Biology',
-    // On neither edition of the advising page, so it is not premed coursework
-    // — but a neuroscience major has taken it, and "structure and function of
-    // the nervous system: cellular communication; sensory, motor, and
-    // autonomic systems" is the MCAT's neuroscience. Offering it costs a
-    // student nothing; leaving it out costs them 4%.
-    covers: ['neuro'] },
+  // NEURO 205 is not here. It is a neuroscience major's course — the core of
+  // that degree, on neither edition of the advising page — and a premed list
+  // that offers it is a list that has stopped being a premed list. Nobody
+  // loses the 4% by its absence: the neuroscience majors who take it are the
+  // same students CELL 305's catalog entry turns away, so they sit CELL 362,
+  // which covers neuroscience anyway.
 
   // ── Chemistry ────────────────────────────────────────────────────────────
   { id:'chem105',  code:'CHEM 105',         title:'General College Chemistry 1 with Lab', section:'Chemistry',
@@ -10483,19 +10482,19 @@ function screenSchool() {
   const CHOICES = SCHOOL_CHOICES;
   return `
     <div class="screen">
-      <button onclick="go('year')" class="back-btn quiet">
+      <button onclick="go('courses')" class="back-btn quiet">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Back
       </button>
-      <p class="label">About you</p>
-      <h2>Where do you go to school?</h2>
-      <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 24px;line-height:1.5;">If we know your school, you can pick the classes on your own schedule instead of translating them.</p>
+      <p class="label">Your courses</p>
+      <h2>Which list should we show?</h2>
+      <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 24px;line-height:1.5;">The standard list works at any school. If yours is here, you can pick the classes exactly as they appear on your schedule instead.</p>
       ${CHOICES.map(c => `
-        <button class="year-btn${picked === c.val && S._schoolAsked ? ' selected' : ''}" onclick="selectSchool('${c.val}')">
+        <button class="year-btn${picked === c.val && schoolAnswered() ? ' selected' : ''}" onclick="selectSchool('${c.val}')">
           <span>${c.label}</span>
           <span class="year-hint">${c.hint}</span>
         </button>`).join('')}
-      <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin-top:16px;">More schools as students ask for them. You can change this in Settings.</p>
+      <p style="font-size: var(--fs-13);color:var(--faint);line-height:1.55;margin-top:16px;">More schools as students ask for them. You can change this any time, here or in Settings, and each list keeps its own answers.</p>
     </div>`;
 }
 
@@ -11096,6 +11095,28 @@ function trackMissingCourse() {
   if (window.plausible) plausible('course_missing', { props: { school: schoolId() } });
 }
 
+// The school question, offered rather than asked.
+//
+// It used to be a step: year, then "where do you go to school?", then the
+// picker. That made every student answer a question almost none of them had
+// an interesting answer to, in order to reach the screen they came for — and
+// it put one school's course list in the path of everyone who does not go
+// there. The standard list has always worked at any school, so the specific
+// one is an offer, from the screen where it would actually help: you are
+// looking at "Biology II" and you know your schedule says CELL 305.
+//
+// It points both ways, so switching back never needs Settings.
+function schoolOfferHTML() {
+  const here = schoolId();
+  const other = SCHOOL_CHOICES.find(c => c.val !== here);
+  const text = here === 'generic'
+    ? 'At BYU? Pick your actual class codes instead'
+    : 'Not at ' + catalog().name + '? Use the standard course list';
+  if (!other) return '';
+  return `
+      <button onclick="go('school')" class="link-btn quiet" style="margin:-8px 0 16px;">${text}</button>`;
+}
+
 function screenCourses() {
   const sections = [...new Set(allCourses().map(c => c.section))];
   const n = pickedCount();
@@ -11127,6 +11148,7 @@ function screenCourses() {
       <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 20px;line-height:1.5;">${doneLead
         ? 'Mark what you’ve finished <strong style="color:var(--ink-2);">Done</strong> and this term’s classes <strong style="color:var(--ink-2);">Taking</strong>. Everything starts at Not yet — nothing is assumed.'
         : 'Mark this term’s classes <strong style="color:var(--ink-2);">Taking</strong> and anything you’ve finished <strong style="color:var(--ink-2);">Done</strong>. Everything starts at Not yet — nothing is assumed.'}</p>
+      ${schoolOfferHTML()}
       ${switchNote}
 
       <div class="courses-scroll">
@@ -12137,8 +12159,10 @@ function logoTap() {
 // for it. Without one, everybody who leaves at the school question disappears
 // into the gap between onboard_year and onboard_courses, and that gap is the
 // first thing this season is meant to measure.
+// No rung for the school question: it is a detour off the picker that most
+// students never take, and a funnel step nobody is required to pass through
+// measures nothing. school_chosen counts the ones who do.
 const ONBOARD_EVENTS = { landing: 'onboard_landing', year: 'onboard_year',
-                         school: 'onboard_school',
                          courses: 'onboard_courses', reveal: 'onboard_reveal' };
 
 function trackScreen(screen) {
@@ -12167,7 +12191,10 @@ function go(screen) {
   // The picker is reachable from onboarding, from Home and from the Route, and
   // each of those is a different "back". Recorded on the way in, while S.screen
   // is still the screen being left.
-  if (screen === 'courses') S._coursesFrom = ['year', 'school', 'brief', 'reveal'].includes(S.screen) ? S.screen : 'brief';
+  // The school question is a detour off the picker, not a step before it, so
+  // coming back from it must not become the picker's new "back".
+  if (screen === 'courses' && S.screen !== 'school')
+    S._coursesFrom = ['year', 'brief', 'reveal'].includes(S.screen) ? S.screen : 'brief';
   // The switch note belongs to the one visit the switch opened.
   if (screen !== 'courses') S._schoolSwitched = false;
   // The first reveal keeps its own order for as long as the student is on it —
@@ -12188,7 +12215,7 @@ function go(screen) {
 function selectYear(year) {
   S.year = year;
   save();
-  go('school');
+  go('courses');
 }
 
 // There is nothing left to confirm. Every course carries its own answer now, so
