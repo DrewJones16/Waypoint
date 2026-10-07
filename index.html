@@ -1643,6 +1643,7 @@ const BYU_COURSES = [
     // endocrine, immune, reproduction.
     covers: ['physio', 'neuro'] },
   { id:'cell362',  code:'CELL 362 & 363',   title:'Advanced Physiology & Lab',            section:'Biology',   alt:'physiology',
+    inferred: true,
     // The advising page's alternative to CELL 305, for students who have had
     // molecular biology and biochemistry: "an integrated approach to organ
     // system and cellular physiology". Its module list is not published, so
@@ -1716,6 +1717,116 @@ const BYU_COURSES = [
     covers: ['research'] },
 ].map(c => ({ ...c, name: c.code }));
 
+// ── UNIVERSITY OF UTAH ──────────────────────────────────────────────────────
+// The second school, and the first one nobody on this project has sat a class
+// at. Everything below is read, not remembered.
+//
+// WHICH COURSES: the U's Preprofessional Advising premed page,
+// explore.utah.edu/preprofessional/premed/general-preparation.php (the page
+// is marked updated 5/20/26), and its Premed Information Summary (April 2025).
+// PSY 1010 and SOC 1010 are not on either, and are here because a quarter of
+// the exam is psychology and sociology and a map without them is wrong.
+//
+// CODES, TITLES AND COVERAGE: Fall 2026 course descriptions on
+// class-schedule.app.utah.edu and catalog.utah.edu, read 2026-10-07. Every
+// covers below quotes the catalog's own words in the note beside it, except
+// where the note says otherwise.
+//
+// A lecture and its lab are one row, as at BYU. At the U the lab is a separate
+// enrolment, and it still adds no MCAT topic of its own.
+//
+// Honors equivalents ride on the row rather than doubling it: a student who
+// took CHEM 1211 is looking for 1210 and should find it.
+const UTAH_COURSES = [
+  // ── Biology ──────────────────────────────────────────────────────────────
+  { id:'ubiol1610', code:'BIOL 1610 & 1615',      title:'Fundamental Principles of Biology I & Lab', section:'Biology',
+    // "mitosis, meiosis, DNA replication, transcription, translation,
+    // regulation of gene expression, and laws of inheritance" — all three, by
+    // name, in one sentence.
+    covers: ['cell-bio', 'genetics', 'mol-bio'] },
+  { id:'ubiol2020', code:'BIOL 2020 (or 2021)',   title:'Principles of Cell Biology',   section:'Biology',
+    // "Structure of cells and organelles in prokaryotes and eukaryotes,
+    // function of cellular components." 2021 is the honors number.
+    covers: ['cell-bio'] },
+
+  { id:'ubiol2030', code:'BIOL 2030',             title:'Genetics',                     section:'Biology',   alt:'u-genetics',
+    // "rules of inheritance, transmission genetics, and genes in populations".
+    // It also names "molecular analysis of gene structure, function,
+    // expression", which is close to molecular biology — but close is not
+    // covered, and the student who has taken BIOL 1610 already has it.
+    covers: ['genetics'] },
+  { id:'ubiol2210', code:'BIOL 2210',             title:'Human Genetics',               section:'Biology',   alt:'u-genetics',
+    // The advising page's alternative to BIOL 2030. Code and title confirmed
+    // against the catalog; still offered.
+    covers: ['genetics'] },
+
+  { id:'ubiol2420', code:'BIOL 2420 & 2425',      title:'Human Physiology & Lab',       section:'Biology',
+    // The catalog description is five words — "Principles of human function" —
+    // so neuroscience here rests on the published section syllabus instead,
+    // which schedules "Nervous System (Part 1)", "Synapses (Nervous System
+    // Part 2)" and "Central Nervous System" as consecutive lectures, and
+    // covers action potentials, sensory transduction and the CNS, PNS and ANS.
+    // Quoted, not inferred.
+    covers: ['physio', 'neuro'] },
+  { id:'ubiol2325', code:'BIOL 2325',             title:'Human Anatomy',                section:'Biology',
+    nothing:'Structure of the human body. The MCAT tests function, which BIOL 2420 teaches.',
+    covers: [] },
+
+  { id:'ubiol3510', code:'BIOL 3510 or CHEM 3510', title:'Biological Chemistry I',      section:'Biology',
+    // "Structure and function of biomolecules, metabolism, and regulation."
+    // Cross-listed with the same description under both codes, so one row.
+    covers: ['biochem'] },
+
+  // ── Chemistry ────────────────────────────────────────────────────────────
+  { id:'uchem1210', code:'CHEM 1210 (or 1211) & 1215', title:'General Chemistry I & Lab',  section:'Chemistry',
+    // "atomic theory, bonding, nomenclature, periodicity, stoichiometry"
+    covers: ['atomic', 'bonding', 'stoich'] },
+  { id:'uchem1220', code:'CHEM 1220 & 1225',      title:'General Chemistry II & Lab',   section:'Chemistry',
+    // "general equilibrium, acid-base equilibrium, thermodynamics and
+    // electrochemistry" — the same split BYU's two semesters make.
+    covers: ['acid-base', 'thermo'] },
+  { id:'uchem2310', code:'CHEM 2310 (or 2311) & 2315', title:'Organic Chemistry I & Lab', section:'Chemistry',
+    // "reactions of organic molecules, shapes of molecules, and spectroscopic
+    // methods of identifying organic molecules"
+    covers: ['orgo'] },
+  { id:'uchem2320', code:'CHEM 2320 & 2325',      title:'Organic Chemistry II & Lab',   section:'Chemistry',
+    // "A continuation of Organic Chemistry I emphasizing reaction chemistry
+    // and mechanisms of reactions."
+    covers: ['orgo2'] },
+
+  // ── Physics ──────────────────────────────────────────────────────────────
+  // Two sequences, algebra-based and calculus-based, each a whole alternative
+  // to the other. The advising page lists both.
+  { id:'uphys2010', code:'PHYS 2010 & 2015',      title:'General Physics I & Lab',      section:'Physics',   alt:'u-physics-1',
+    // "kinematics, Newton's three laws of motion, circular motion, work and
+    // energy, momentum"
+    covers: ['physics'] },
+  { id:'uphys2210', code:'PHYS 2210 & 2215',      title:'Physics for Scientists and Engineers I & Lab', section:'Physics', alt:'u-physics-1',
+    // "a thorough understanding of mechanics" — the calculus-based sequence.
+    covers: ['physics'] },
+  { id:'uphys2020', code:'PHYS 2020 & 2025',      title:'General Physics II & Lab',     section:'Physics',   alt:'u-physics-2',
+    // "electricity, magnetism and light"
+    covers: ['physics2'] },
+  { id:'uphys2220', code:'PHYS 2220 & 2225',      title:'Physics for Scientists and Engineers II & Lab', section:'Physics', alt:'u-physics-2',
+    // "electricity and magnetism… geometric and physical optics"
+    covers: ['physics2'] },
+
+  // ── Social sciences ──────────────────────────────────────────────────────
+  { id:'upsy1010',  code:'PSY 1010',              title:'General Psychology',           section:'Social sciences',
+    // "The scientific study of human and animal behavior."
+    covers: ['psych'] },
+  { id:'usoc1010',  code:'SOC 1010',              title:'Introduction to Sociology',    section:'Social sciences',
+    // "how society functions and is organized"
+    covers: ['soc'] },
+
+  // ── Statistics ───────────────────────────────────────────────────────────
+  { id:'umath1070', code:'MATH 1070',             title:'Introduction to Statistical Inference', section:'Statistics',
+    // "descriptive statistics, estimation of the mean, or of the proportion,
+    // in one or two populations, simple linear regression, and one-way
+    // analysis of variance" — research methods as the exam reasons about it.
+    covers: ['research'] },
+].map(c => ({ ...c, name: c.code }));
+
 const CATALOGS = {
   generic: {
     id: 'generic',
@@ -1732,6 +1843,13 @@ const CATALOGS = {
     source: 'BYU Pre-Professional Advisement premed coursework, January 2025 edition; codes, titles and coverage from catalog.byu.edu.',
     retrieved: '2026-10-07',
     courses: BYU_COURSES,
+  },
+  utah: {
+    id: 'utah',
+    name: 'University of Utah',
+    source: 'University of Utah Preprofessional Advising premed page and Premed Information Summary; codes, titles and coverage from catalog.utah.edu and class-schedule.app.utah.edu.',
+    retrieved: '2026-10-07',
+    courses: UTAH_COURSES,
   },
 };
 
