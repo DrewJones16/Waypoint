@@ -1954,6 +1954,15 @@ function catalogWeight(courseId) {
 // How to say a course's name. The code where there is one, because that is
 // what is printed on a student's own schedule.
 function courseLabel(c)  { return c ? (c.code || c.name) : ''; }
+
+// The school's name mid-sentence, with its article where it takes one: "at the
+// University of Utah", "at BYU". A list row wants the bare name instead, so
+// this is only for prose — and it is a function because three sentences have
+// now needed it and two of them were written without it first.
+function schoolInSentence(cat) {
+  const c = cat || catalog();
+  return (c.article ? c.article + ' ' : '') + c.name;
+}
 // The long form, for a screen reader and anywhere a row has space for both.
 function courseFull(c)   { return c ? (c.code ? c.code + ', ' + c.title : c.name) : ''; }
 
@@ -11209,43 +11218,62 @@ function paintCourseCount() {
   if (cta) cta.disabled = n === 0;
 }
 
-// TODO(Drew): no destination yet. Waypoint has never had a feedback route, so
-// there is nothing here to link to, and inventing one — a mailto to an address
-// nobody reads, a form that does not exist — would be worse than telling the
-// student what they can actually do right now. Set this to a real URL and the
-// row below becomes a link to it. `npm run check` prints it on every run.
+// TODO(Drew): no destination yet, and this is now the one thing standing
+// between a wrong course list and a corrected one. Waypoint has never had a
+// feedback route; inventing one — a mailto to an address nobody reads, a form
+// that does not exist — would be worse than telling the student what they can
+// do this minute, which is what the row does meanwhile.
+//
+// A form URL, a mailto, anything that reaches a person. Set it and
+// "Something wrong with this list?" grows a way to answer. Printed by
+// `npm run check` on every run until it does.
 const FEEDBACK_URL = null;
 
-// How the table gets corrected during the validation season.
+// One place to say the list is wrong.
 //
-// The count is the signal; the copy is the help. It never says a message was
-// sent, because until FEEDBACK_URL exists no message is — an app that thanks
-// you for a report it did not file has told you something untrue about itself.
-function missingCourseHTML() {
+// This replaces a notice that told Utah students their list had not been
+// checked by anyone there. True, and useless: it put a doubt in front of
+// somebody who had no way to resolve it, on the screen where they were trying
+// to get something done. The useful version of the same honesty is a way in.
+//
+// It takes both complaints, because a student does not sort them before they
+// arrive: a class that is missing, and a class whose coverage is wrong. Those
+// are the two ways a catalog-built list fails, and both are fixed the same
+// way — somebody who sat the class says so.
+//
+// It never says a report was sent, because until FEEDBACK_URL exists none is.
+// An app that thanks you for a message it did not file has told you something
+// untrue about itself.
+function reportProblemHTML() {
   if (schoolId() === 'generic') return '';
-  const open = !!S._missingOpen;
-  const tell = FEEDBACK_URL
-    ? `<a href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="trackMissingCourse()" style="font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;">Tell us which class</a>`
-    : '';
+  const open = !!S._reportOpen;
   const school = catalog().name;
+  const body = FEEDBACK_URL
+    ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 2px 8px;">This list is built from ${schoolInSentence()}'s own catalog. If a class is missing, or one of them covers more or less of the MCAT than we say, tell us — that is how it gets fixed.</p>
+            <a href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="trackListProblem()"
+               style="font-size: var(--fs-13);font-weight:600;color:var(--green-bright);text-decoration:underline;text-underline-offset:3px;">Tell us what's wrong</a>`
+    // No destination yet, so no invitation. What is left is the thing the
+    // student can do about it this minute, which is worth more than a link
+    // that goes nowhere.
+    : `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 2px 4px;">This list is built from ${schoolInSentence()}'s own catalog, so a class for your major — or one only some medical schools ask for — may not be on it. There is nowhere to send a correction yet. Until there is: switch to the standard list and mark the nearest equivalent, and your ${school} answers are kept.</p>`;
   return `
           <div style="margin-top:16px;">
-            <button type="button" onclick="toggleMissingCourse()" aria-expanded="${open}"
-                    style="width:100%;text-align:left;background:none;border:none;padding:10px 2px;min-height:44px;cursor:pointer;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);-webkit-tap-highlight-color:transparent;">Taking something not on this list?</button>
-            ${open ? `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;margin:0 2px 4px;">This is ${school}'s premed coursework. A class for your major, or one only some medical schools ask for, will not be on it. Switch to the standard list in Settings and mark the nearest equivalent — your ${school} answers are kept.</p>${tell}` : ''}
+            <button type="button" onclick="toggleReportProblem()" aria-expanded="${open}"
+                    style="width:100%;text-align:left;background:none;border:none;padding:10px 2px;min-height:44px;cursor:pointer;font-family:inherit;font-size: var(--fs-13);font-weight:600;color:var(--muted);-webkit-tap-highlight-color:transparent;">Something wrong with this list?</button>
+            ${open ? body : ''}
           </div>`;
 }
 
-function toggleMissingCourse() {
-  S._missingOpen = !S._missingOpen;
-  if (S._missingOpen) trackMissingCourse();
+function toggleReportProblem() {
+  S._reportOpen = !S._reportOpen;
+  if (S._reportOpen) trackListProblem();
   render();
 }
 
-// A count, not a message: how often a student finds their school's list short.
+// A count, not a message: how often a student finds their school's list wrong.
 // No course name, because nothing on this screen knows one.
-function trackMissingCourse() {
-  if (window.plausible) plausible('course_missing', { props: { school: schoolId() } });
+function trackListProblem() {
+  if (window.plausible) plausible('list_problem', { props: { school: schoolId() } });
 }
 
 // The school question, offered rather than asked.
@@ -11259,34 +11287,17 @@ function trackMissingCourse() {
 // looking at "Biology II" and you know your schedule says CELL 305.
 //
 // It points both ways, so switching back never needs Settings.
-// A list nobody at that school has read says so, on the screen where it is
-// being used to make a claim about somebody's education.
-//
-// Not a warning badge and not an apology: the list is the best that can be
-// made from a catalog, and the BYU table was no different until a student
-// read it and changed four rows. What the student is owed is the fact.
-function unreviewedNoteHTML() {
-  if (catalog().checked !== false) return '';
-  const school = (catalog().article ? catalog().article + ' ' : '') + catalog().name;
-  // The third sentence is an invitation, and an invitation with nowhere to go
-  // is worse than none. Without a destination the note stops after the fact.
-  const tell = FEEDBACK_URL
-    ? ` <a href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="trackMissingCourse()" style="color:var(--green-bright);font-weight:600;text-decoration:underline;text-underline-offset:3px;">Tell us what's wrong.</a>`
-    : '';
-  return `
-      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.6;background:var(--wash);border:1px solid var(--line-2);border-radius: var(--r-ctl);padding:12px 12px;margin:0 0 16px;">Built from ${school}'s catalog. No student there has checked it yet.${tell}</p>`;
-}
 
 function schoolOfferHTML() {
   const here = schoolId();
   const other = SCHOOL_CHOICES.find(c => c.val !== here);
   // Named from the catalogs, so adding a school adds it to the offer.
   const schools = SCHOOL_CHOICES.filter(c => c.val !== 'generic')
-                                .map(c => (c.article ? c.article + ' ' : '') + c.label);
+                                .map(c => schoolInSentence({ article: c.article, name: c.label }));
   const list = schools.length > 1
     ? schools.slice(0, -1).join(', ') + ' or ' + schools[schools.length - 1]
     : schools[0];
-  const mine = (catalog().article ? catalog().article + ' ' : '') + catalog().name;
+  const mine = schoolInSentence();
   const text = here === 'generic'
     ? `At ${list}? Pick your real classes`
     : `Not at ${mine}? Use the standard course list`;
@@ -11326,7 +11337,6 @@ function screenCourses() {
       <p style="font-size: var(--fs-15);color:var(--muted);margin:8px 0 20px;line-height:1.5;">${doneLead
         ? 'Mark what you’ve finished <strong style="color:var(--ink-2);">Done</strong> and this term’s classes <strong style="color:var(--ink-2);">Taking</strong>. Everything starts at Not yet — nothing is assumed.'
         : 'Mark this term’s classes <strong style="color:var(--ink-2);">Taking</strong> and anything you’ve finished <strong style="color:var(--ink-2);">Done</strong>. Everything starts at Not yet — nothing is assumed.'}</p>
-      ${unreviewedNoteHTML()}
       ${schoolOfferHTML()}
       ${switchNote}
 
@@ -11368,7 +11378,7 @@ function screenCourses() {
             </div>`;
           }).join('')}
         `;}).join('')}
-        ${missingCourseHTML()}
+        ${reportProblemHTML()}
         <div style="height:12px;"></div>
       </div>
 

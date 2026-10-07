@@ -288,7 +288,13 @@ function schoolCatalogs(source) {
 
 function printCatalog(source) {
   for (const cat of schoolCatalogs(source)) {
-    console.log(`\n${cat.name} — ${cat.rows.length} rows, read${cat.checked ? ' on ' + cat.checked : ''}:`);
+    // Who has read it, not just when. A list built from a catalog and a list a
+    // student has corrected are different things, and the difference does not
+    // show on screen any more — so it shows here, every run.
+    const seen = new RegExp("\\n  " + cat.key.toLowerCase() + ": \\{[\\s\\S]*?checked: true").test(source)
+      ? 'checked by a student there'
+      : 'NOT yet checked by a student there';
+    console.log(`\n${cat.name} — ${cat.rows.length} rows, read${cat.checked ? ' on ' + cat.checked : ''}, ${seen}:`);
     for (const r of cat.rows)
       console.log('  ' + (r.code || '?').padEnd(28)
         + (r.covers.length ? r.covers.join(' ') : r.nothing ? 'no MCAT content' : 'NOT ANSWERED')
