@@ -1847,6 +1847,11 @@ const CATALOGS = {
   utah: {
     id: 'utah',
     name: 'University of Utah',
+    // Some school names take an article in a sentence and none take one in a
+    // list. "At BYU or the University of Utah?" reads; "At BYU or University
+    // of Utah?" does not, and nor does a menu row reading "the University of
+    // Utah". So the article is data, used only where a sentence needs it.
+    article: 'the',
     source: 'University of Utah Preprofessional Advising premed page and Premed Information Summary; codes, titles and coverage from catalog.utah.edu and class-schedule.app.utah.edu.',
     retrieved: '2026-10-07',
     courses: UTAH_COURSES,
@@ -10598,7 +10603,8 @@ function screenYear() {
 // competitor, and it is where anybody who scrolls past their own school lands.
 const SCHOOL_CHOICES = Object.keys(CATALOGS)
   .filter(id => id !== 'generic')
-  .map(id => ({ val: id, label: CATALOGS[id].name, hint: 'Pick your real classes' }))
+  .map(id => ({ val: id, label: CATALOGS[id].name, article: CATALOGS[id].article || '',
+                hint: 'Pick your real classes' }))
   .sort((a, b) => a.label.localeCompare(b.label))
   .concat([{ val: 'generic', label: 'Somewhere else', hint: 'The standard list' }]);
 
@@ -11245,7 +11251,8 @@ function schoolOfferHTML() {
   const here = schoolId();
   const other = SCHOOL_CHOICES.find(c => c.val !== here);
   // Named from the catalogs, so adding a school adds it to the offer.
-  const schools = SCHOOL_CHOICES.filter(c => c.val !== 'generic').map(c => c.label);
+  const schools = SCHOOL_CHOICES.filter(c => c.val !== 'generic')
+                                .map(c => (c.article ? c.article + ' ' : '') + c.label);
   const list = schools.length > 1
     ? schools.slice(0, -1).join(', ') + ' or ' + schools[schools.length - 1]
     : schools[0];
