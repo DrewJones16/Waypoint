@@ -281,7 +281,29 @@ for (const variant of VARIANTS) {
       for (const scr of ['reveal', 'explain', 'coverage']) {
         await page.evaluate(x => window.go(x), scr).catch(() => {});
         await page.waitForTimeout(160);
-        const got = await page.evaluate(() => document.getElementById('app').innerText.trim()).catch(() => '(threw)');
+        // The sheet's parcel labels are hidden for the reading, not compared.
+        // fitSheetLabels() chooses between the full name, the short name, a
+        // rotated name and nothing by MEASURING the rendered width, and this
+        // test blocks Google Fonts on purpose — so which label a parcel ends
+        // up with depends on the fallback face of whatever machine is running
+        // the check. On this one the browser default draws "Biochemistry";
+        // under a monospace fallback the same parcel draws "Biochem", under a
+        // serif it draws "Physiology" where the default draws "Physio". That
+        // is a property of the font, and a snapshot that fails on somebody
+        // else's laptop because of it is worse than no snapshot.
+        //
+        // Nothing is lost by dropping them: the figures line below carries the
+        // coverage figure and all nineteen topic states, which is what the
+        // labels were standing in for, and it cannot drift with a typeface.
+        const got = await page.evaluate(() => {
+          const app = document.getElementById('app');
+          const labels = [...app.querySelectorAll('.pl-name, .pl-sub')];
+          const was = labels.map(e => e.style.display);
+          labels.forEach(e => { e.style.display = 'none'; });
+          const text = app.innerText.trim();
+          labels.forEach((e, i) => { e.style.display = was[i]; });   // the fitter's own choices, put back
+          return text;
+        }).catch(() => '(threw)');
         const d = snapshotDiff(`${state.name}/${scr}`, got);
         if (d) failures.push(`${where}  ${scr}: generic text moved — ${d}`);
       }
