@@ -1607,13 +1607,12 @@ const BYU_COURSES = [
     // mutation and repair, cell cycle and mitosis, meiosis, Mendelian genetics.
     covers: ['cell-bio', 'genetics', 'mol-bio'] },
   { id:'mmbio121', code:'MMBIO 121',        title:'General Biology: Health and Disease',  section:'Biology',   alt:'intro-bio',
-    // The least certain row in the table. BYU accepts it for the same
-    // requirement as CELL 120, but its description is a survey for non-majors
-    // — "the living world and how it functions and adapts in the context of
-    // human health and disease" — and names neither genetics nor the central
-    // dogma, which CELL 120's lesson list does. Cell biology only, until a
-    // student who took it says otherwise.
-    covers: ['cell-bio'] },
+    // Was cell biology only, from reading the catalog description — a survey
+    // for non-majors that names neither genetics nor the central dogma. A
+    // student who has taken it says it reaches all three, and a student who
+    // sat the class outranks a description written to fit one paragraph. This
+    // is the row that comment said to come back to.
+    covers: ['cell-bio', 'genetics', 'mol-bio'] },
   { id:'bio130',   code:'BIO 130',          title:'Biology',                              section:'Biology',   alt:'intro-bio',
     // Outcomes name Cell Theory, Mendelian Theories of Inheritance, DNA
     // Structure and Replication, Protein Synthesis Theory, Cell Division and
@@ -1629,8 +1628,11 @@ const BYU_COURSES = [
     // not cell biology.
     covers: ['mol-bio'] },
   { id:'mmbio221', code:'MMBIO 221 & 222',  title:'General Microbiology & Lab',           section:'Biology',
-    nothing:'The microbial world and communicable disease. The MCAT outline has no microbiology category; immune defence is one outcome of five here.',
-    covers: [] },
+    // The MCAT outline has no microbiology category, which is why this read as
+    // covering nothing. But the ground it teaches to get there — cell
+    // structure, membranes, metabolism — is the outline's cell biology,
+    // and a student who took it says so.
+    covers: ['cell-bio'] },
   { id:'cell220',  code:'CELL 220',         title:'Human Anatomy',                        section:'Biology',
     nothing:'Gross and microscopic structure. Physiology is only "introduced" in each system, and the MCAT tests almost no anatomy.',
     covers: [] },
@@ -1704,7 +1706,7 @@ const BYU_COURSES = [
     covers: ['soc'] },
 
   // ── Statistics ───────────────────────────────────────────────────────────
-  { id:'stat121',  code:'STAT 121',         title:'Principles of Statistics',             section:'Statistics',
+  { id:'stat121',  code:'STAT 121',         title:'Introduction to Statistical Data Analysis', section:'Statistics',
     // Neither edition of the advising page names a statistics course; it says
     // only that maths requirements vary by school. STAT 121 is BYU's standard
     // introduction, and its content — data collection, sampling distributions,
@@ -7321,7 +7323,7 @@ function termTimelineHTML(live, open) {
         <span style="font-size: var(--fs-13);color:var(--ink-2);min-width:0;">${courseFull(c)}</span>
         <span style="display:flex;align-items:baseline;gap:12px;flex-shrink:0;">
           ${when}
-          <span style="font-size: var(--fs-13);color:var(--faint);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;">${w}%</span>
+          <span style="font-size: var(--fs-13);color:var(--faint);${c.nothing ? '' : 'font-variant-numeric:tabular-nums;min-width:32px;'}text-align:right;">${c.nothing ? 'not on the exam' : w + '%'}</span>
         </span>
       </div>${S._whenOpen === c.id ? `<div style="padding:4px 0 10px;">${termPickerHTML(c.id)}</div>` : ''}`;
   }));
@@ -10559,9 +10561,19 @@ function isSkillCourse(courseId) {
 
 // Topic breakdown for one course (used in the expandable course rows).
 function courseTopicsBreakdown(courseId) {
-  const ts = topicsOf(courseById(courseId));
+  const course = courseById(courseId);
+  const ts = topicsOf(course);
   if (!ts.length) {
-    return `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">This course's MCAT content is counted under the intro course in its sequence, so it adds 0% on its own.</p>`;
+    // Two different reasons a course has no topics, and they are not
+    // interchangeable. A school's catalog can answer "this one reaches nothing
+    // on the exam", and when it has, that answer belongs here — it is the most
+    // useful thing the panel can say about a class somebody has just taken.
+    // Saying instead that the content is counted under the intro course would
+    // be inventing a sequence the course is not in.
+    const why = course && course.nothing
+      ? course.nothing
+      : "This course's MCAT content is counted under the intro course in its sequence, so it adds 0% on its own.";
+    return `<p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0;">${why}</p>`;
   }
   const total = ts.reduce((s, t) => s + t.w, 0);
   const rows = ts.map(t => `<div style="display:flex;justify-content:space-between;font-size: var(--fs-13);color:var(--muted);padding:4px 0;"><span>${t.name}</span><strong style="color:var(--ink-2);font-weight:600;">${wLabel(t)}</strong></div>`).join('');
