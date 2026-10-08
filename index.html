@@ -766,6 +766,9 @@
   .cmp-ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--fs-11); color: var(--faint); }
   .cmp-key { font-size: var(--fs-11); line-height: 1.45; color: var(--faint); margin: 6px 0 0; }
   .cmp-next { font-size: var(--fs-13); line-height: 1.5; color: var(--ink-2); margin: 10px 0 0; }
+  /* Two answers of equal standing, so neither is the one the app wants. */
+  .cmp-pair { display: flex; gap: 8px; margin-top: 10px; }
+  .cmp-pair .btn { margin: 0; flex: 1; }
 
   .sheet-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 10px; font-size: var(--fs-11); line-height: 1.3; color: var(--ink-2); }
   .sheet-legend > span { display: flex; gap: 7px; align-items: flex-start; }
@@ -5807,6 +5810,11 @@ const QUESTIONS = [
 const S = {
   screen:         'landing',
   year:           null,
+  // The academic year in which wp_year was last chosen or confirmed, as the
+  // year 1 August fell in: "2026" means the 2026/27 year. Absent for every
+  // student who answered before this question existed, which is what the last
+  // save stamp stands in for.
+  yearChecked:    null,
   school:         'generic',   // which course catalog this student picks from
   mcatTerm:       null,        // '2027-summer' once asked; declared here so the
                                // snapshot has something defined to read
@@ -5859,7 +5867,7 @@ const S = {
 const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_school','wp_compare_id','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
-                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
+                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked','wp_year_checked',
                  'wp_upcoming','wp_pace_offset','wp_acct_prompt','wp_term_card'];
 
 // The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
@@ -5898,6 +5906,7 @@ function save() {
   // is the only way to tell "answered Somewhere else" from "never saw the
   // question", which the event below depends on.
   if (S._schoolAsked || schoolAnswered()) localStorage.setItem('wp_school', S.school || 'generic');
+  if (S.yearChecked) localStorage.setItem('wp_year_checked', S.yearChecked);
   localStorage.setItem('wp_streak',   String(S.streak));
   localStorage.setItem('wp_lastDate', S.lastDate || '');
   localStorage.setItem('wp_qstats',   JSON.stringify(S.qStats));
@@ -5979,6 +5988,21 @@ function load() {
       } catch(e) { console.warn('[Waypoint] wp_syllabus unreadable — ignoring:', e); }
     }
     S.year     = localStorage.getItem('wp_year')     || null;
+    S.yearChecked = localStorage.getItem('wp_year_checked') || null;
+    if (!S.yearChecked) {
+      // No stamp, so this is a student who answered before the question
+      // existed. The last time they saved anything says which school year
+      // their answer belongs to, and it is read HERE, once, because save()
+      // restamps wp_updated_at on every call — one tap anywhere and the
+      // evidence that they were last here in May is gone.
+      //
+      // Turning it into a year on the spot is what makes the question
+      // survivable: a student who ignores it and carries on using the app is
+      // asked again next time, instead of quietly ageing into the wrong group
+      // because their last save is now today.
+      const ms = Date.parse(localStorage.getItem('wp_updated_at') || '') || 0;
+      S.yearChecked = ms ? String(academicYear(ms)) : null;
+    }
     // The one new key this feature adds. Absent means generic, which is every
     // student who has ever used Waypoint until they say otherwise.
     S.school   = localStorage.getItem('wp_school')   || 'generic';
@@ -9255,6 +9279,12 @@ function scheduleSnapshot() {
 async function optInToCompare() {
   if (!makeCompareId()) return;             // storage blocked: nothing to own the row
   render();                                 // the offer goes at once, not after the call
+  // A year we already doubt is not written. The student who opts in after a
+  // summer away is exactly the student whose year is stale, and the question
+  // that corrects it is now where the offer was — so the first snapshot waits
+  // for the answer rather than going out wrong and being corrected a tap
+  // later, which the server's thirty-second write floor would drop anyway.
+  if (yearIsStale()) return;
   await saveSnapshot();
   lastSnapshot = JSON.stringify(snapshotBody());
   await loadCompare();
@@ -9302,6 +9332,64 @@ function compareGroupWords(one) {
 function compareAnyWords(one) {
   const years = one ? (S.year || 'student') : (YEAR_PLURAL[S.year] || 'students');
   return 'Waypoint ' + years + ' at any school';
+}
+
+// ── THE YEAR GOES STALE ────────────────────────────────────────────────────
+// wp_year is answered once, at onboarding, and then believed forever. A
+// sophomore who signed up last spring is a junior by October, and comparing
+// them with this year's sophomores puts them in a group they left.
+//
+// So an opted-in student whose route has not been touched since before the
+// school year started is asked, once, before any comparison is drawn. Not a
+// guess, and not a silent increment: a student who took a year out is still a
+// sophomore, and the app has no way of knowing which happened.
+const YEAR_NEXT = { freshman: 'sophomore', sophomore: 'junior', junior: 'senior' };
+
+// The academic year we are in, named by the August it started in. The same cut
+// the server makes in 0002_route_compare.sql, and it has to stay the same cut:
+// a question asked on one boundary against a group counted on another would
+// move a student into a group the server has already aged out.
+function academicYear(now) {
+  const d = now ? new Date(now) : new Date();
+  return d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1;
+}
+
+// One comparison, against one stamp. Null means there is nothing to go on —
+// a student with no save history at all — and a student the app knows nothing
+// about is not asked anything.
+function yearIsStale() {
+  if (!compareId()) return false;                   // nobody else is in a group
+  if (!S.year || !YEAR_NEXT[S.year]) return false;  // "Senior / Post-bacc" is 4th+ year: it has no next
+  return S.yearChecked !== null && Number(S.yearChecked) < academicYear();
+}
+
+function yearCheckHTML() {
+  const now = S.year, next = YEAR_NEXT[now];
+  return `<div class="cmp">
+        <p class="cmp-line">You were last here before this school year started. Still a ${now}, or a ${next} now?</p>
+        <div class="cmp-pair">
+          <button class="btn btn-ghost" onclick="confirmYear('${now}')">Still a ${now}</button>
+          <button class="btn btn-ghost" onclick="confirmYear('${next}')">A ${next} now</button>
+        </div>
+      </div>`;
+}
+
+// Either answer is an answer: "still a sophomore" is as much a correction as
+// "a junior now", and both stamp the year so the question is asked once.
+async function confirmYear(year) {
+  const moved = year !== S.year;
+  S.year = year;
+  S.yearChecked = String(academicYear());
+  save();                       // writes wp_year, stamps the key
+  // The group itself changed, so whatever was on screen is about other people.
+  if (moved) S._compare = undefined;
+  render();
+  // Sent now rather than on save()'s two-second debounce. For the student who
+  // has just opted in this is the first write there has ever been, and for
+  // everyone else it is the one write the thirty-second floor must not eat.
+  await saveSnapshot();
+  lastSnapshot = JSON.stringify(snapshotBody());
+  await loadCompare();
 }
 
 async function fetchCompare() {
@@ -12051,8 +12139,8 @@ function screenReveal() {
   // in supabase/migrations/0002 has been run there is nothing to appear — the
   // server returns nothing and so does this, which is the same thing a student
   // in a group of three sees.
-  const compareBlock = pickedCount() === 0 ? '' : compareId() ? compareShownHTML() : `
-      <div style="margin-top:14px;">
+  const compareBlock = pickedCount() === 0 ? '' : yearIsStale() ? yearCheckHTML() : compareId() ? compareShownHTML() : `
+      <div class="cmp">
         <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 8px;">See how your route compares with other ${compareGroupWords()}.</p>
         <button class="btn btn-ghost" style="margin:0;" onclick="optInToCompare()">Compare my route</button>
         <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:8px 0 0;">Adds your school, year and courses to the comparison, anonymously. You can remove it any time in Settings.</p>
@@ -12764,6 +12852,9 @@ function go(screen) {
 
 function selectYear(year) {
   S.year = year;
+  // Chosen now, so it is current now: a student who answers today is not asked
+  // again until next August.
+  S.yearChecked = String(academicYear());
   save();
   go('courses');
 }

@@ -557,6 +557,147 @@ for (const c of COMPARE_CASES) {
   }
 }
 
+// ── A YEAR ANSWERED LAST SPRING ────────────────────────────────────────────
+// wp_year is answered once and then believed forever, so a student who was a
+// sophomore in May is still a sophomore to this file in October. They are
+// asked before any comparison is drawn, once, and the answer has to stick
+// across a reload — otherwise the question is a nag rather than a correction.
+//
+// The May stamp is fixed rather than computed, and stays stale whenever this
+// is run: the cut is 1 August of the academic year in progress, and no later
+// year's cut falls before May 2026.
+{
+  const STALE = { ...BYU, wp_year: 'sophomore', wp_compare_id: COMPARE_ID,
+                  wp_updated_at: '2026-05-14T18:02:00.000Z' };
+  const reply = { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: [] },
+                  all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 };
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    if (/\/rpc\/route_compare$/.test(u))
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply) });
+    if (/\/rpc\//.test(u)) return route.fulfill({ status: 200, body: '' });
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`stale year: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, STALE);
+
+  const route = async (pg) => {
+    await pg.evaluate(() => window.go('reveal'));
+    await pg.waitForTimeout(220);
+    return pg.evaluate(() => (document.querySelector('.cmp') || {}).innerText || '');
+  };
+
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  const asked = await route(page);
+  if (!/Still a sophomore, or a junior now\?/.test(asked))
+    failures.push(`stale year: the Route reads "${asked.replace(/\n/g, ' / ').slice(0, 120)}" instead of asking`);
+  // And it is asked BEFORE any comparison: a figure drawn against the wrong
+  // group is worse than no figure.
+  if (/middle BYU/.test(asked)) failures.push('stale year: compared against last year\'s group before asking');
+
+  const moved = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('#app button')].find(x => /^A junior now$/.test(x.innerText));
+    if (!b) return 'no "A junior now" button';
+    b.click();
+    return null;
+  });
+  if (moved) failures.push(`stale year: ${moved}`);
+  await page.waitForTimeout(400);
+
+  const after = await page.evaluate(() => ({
+    year: localStorage.getItem('wp_year'),
+    stamped: localStorage.getItem('wp_year_checked'),
+    cmp: (document.querySelector('.cmp') || {}).innerText || '',
+  }));
+  if (after.year !== 'junior') failures.push(`stale year: wp_year is "${after.year}" after answering`);
+  if (!/^\d{4}$/.test(after.stamped || '')) failures.push(`stale year: wp_year_checked is "${after.stamped}"`);
+  if (/Still a sophomore/.test(after.cmp)) failures.push('stale year: still asking after it was answered');
+
+  // Once, and never again this year — on the next VISIT, which is the only
+  // version of "never again" that means anything. A reload would not do: this
+  // page carries an init script that re-seeds localStorage on every
+  // navigation, so reloading would hand the answer back to May. A second page
+  // in the same context is the real thing — same origin, same storage, no
+  // fixture.
+  const next = await ctx.newPage();
+  next.on('pageerror', e => failures.push(`stale year, next visit: threw ${String(e).split('\n')[0]}`));
+  await next.goto(`${ORIGIN}/index.html`);
+  await next.waitForTimeout(450);
+  const again = await route(next);
+  if (/Still a /.test(again)) failures.push(`stale year: asked again after a reload — "${again.slice(0, 80)}"`);
+  if (!/middle BYU junior/.test(again))
+    failures.push(`stale year: no comparison after answering — "${again.replace(/\n/g, ' / ').slice(0, 120)}"`);
+  await ctx.close();
+}
+
+// ── OPTING IN WITH A YEAR FROM LAST SPRING ─────────────────────────────────
+// The student most likely to have a stale year is the one coming back after a
+// summer away, which is also the one most likely to meet the offer for the
+// first time. So the order matters: nothing may be written under a year the
+// app already doubts, because the server drops a second write to the same row
+// inside thirty seconds and the correction would be the write it drops.
+{
+  const STALE = { ...BYU, wp_year: 'sophomore', wp_updated_at: '2026-05-14T18:02:00.000Z' };
+  const reply = { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: [] },
+                  all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 };
+  const sent = [];
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    const fn = (/\/rpc\/([a-z_]+)$/.exec(u) || [])[1];
+    if (fn) {
+      sent.push({ fn, body: JSON.parse(route.request().postData() || '{}') });
+      if (fn === 'route_compare')
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply) });
+      return route.fulfill({ status: 200, body: '' });
+    }
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`opt in stale: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, STALE);
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  await page.evaluate(() => window.go('reveal'));
+  await page.waitForTimeout(200);
+
+  // Not opted in, so the offer — not the question. Nobody is asked to confirm
+  // a year for a comparison they have not joined.
+  const first = await page.evaluate(() => (document.querySelector('.cmp') || {}).innerText || '');
+  if (!/Compare my route/.test(first)) failures.push(`opt in stale: no offer, read "${first.slice(0, 90)}"`);
+  if (/Still a sophomore/.test(first)) failures.push('opt in stale: asked about the year before being offered the comparison');
+  if (sent.length) failures.push(`opt in stale: ${sent[0].fn} was called before anyone opted in`);
+
+  await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /Compare my route/.test(x.innerText)).click(); });
+  await page.waitForTimeout(500);
+  const asked = await page.evaluate(() => (document.querySelector('.cmp') || {}).innerText || '');
+  if (!/Still a sophomore, or a junior now\?/.test(asked))
+    failures.push(`opt in stale: after opting in it reads "${asked.replace(/\n/g, ' / ').slice(0, 110)}"`);
+  const early = sent.find(x => x.fn === 'save_route_snapshot');
+  if (early) failures.push(`opt in stale: a snapshot went out saying year "${early.body.p_year}" before the question was answered`);
+
+  await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /^A junior now$/.test(x.innerText)).click(); });
+  await page.waitForTimeout(600);
+  const wrote = sent.filter(x => x.fn === 'save_route_snapshot');
+  if (wrote.length !== 1) failures.push(`opt in stale: ${wrote.length} snapshots written after answering, expected 1`);
+  else if (wrote[0].body.p_year !== 'junior') failures.push(`opt in stale: the snapshot says year "${wrote[0].body.p_year}"`);
+  const shown = await page.evaluate(() => (document.querySelector('.cmp') || {}).innerText || '');
+  if (!/middle BYU junior/.test(shown))
+    failures.push(`opt in stale: no comparison after answering — "${shown.replace(/\n/g, ' / ').slice(0, 110)}"`);
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 
