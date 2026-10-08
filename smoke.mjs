@@ -353,7 +353,13 @@ for (const variant of VARIANTS) {
         // labels were standing in for, and it cannot drift with a typeface.
         const got = await page.evaluate(() => {
           const app = document.getElementById('app');
-          const labels = [...app.querySelectorAll('.pl-name, .pl-sub')];
+          // .cmp-term is hidden for the same reason, one step removed: the
+          // test-term question lists the next seven seatings, so its chips
+          // read "Spring 2027" today and something else next January. A
+          // snapshot of them would fail on a calendar page turn rather than on
+          // a change anybody made. The question has its own test below, where
+          // the date it is run on is the thing being checked.
+          const labels = [...app.querySelectorAll('.pl-name, .pl-sub, .cmp-term')];
           const was = labels.map(e => e.style.display);
           labels.forEach(e => { e.style.display = 'none'; });
           const text = app.innerText.trim();
@@ -503,7 +509,10 @@ for (const c of COMPARE_CASES) {
 
     const got = await page.evaluate(() => {
       const app = document.getElementById('app');
-      const cmp = document.querySelector('.cmp');
+      // Not .cmp-term: the test-term question sits UNDER the comparison and is
+      // a block of its own, so reading the first .cmp would read the question
+      // whenever the comparison itself has nothing to say.
+      const cmp = document.querySelector('.cmp:not(.cmp-term)');
       const bar = document.querySelector('.cmp-scale');
       // Each mark as a percentage of the scale's own width, which is the only
       // way to ask "is 45% drawn at 45 of 77" without trusting the stylesheet.
@@ -590,7 +599,7 @@ for (const c of COMPARE_CASES) {
   const route = async (pg) => {
     await pg.evaluate(() => window.go('reveal'));
     await pg.waitForTimeout(220);
-    return pg.evaluate(() => (document.querySelector('.cmp') || {}).innerText || '');
+    return pg.evaluate(() => (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '');
   };
 
   await page.goto(`${ORIGIN}/index.html`);
@@ -614,7 +623,7 @@ for (const c of COMPARE_CASES) {
   const after = await page.evaluate(() => ({
     year: localStorage.getItem('wp_year'),
     stamped: localStorage.getItem('wp_year_checked'),
-    cmp: (document.querySelector('.cmp') || {}).innerText || '',
+    cmp: (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '',
   }));
   if (after.year !== 'junior') failures.push(`stale year: wp_year is "${after.year}" after answering`);
   if (!/^\d{4}$/.test(after.stamped || '')) failures.push(`stale year: wp_year_checked is "${after.stamped}"`);
@@ -674,14 +683,14 @@ for (const c of COMPARE_CASES) {
 
   // Not opted in, so the offer — not the question. Nobody is asked to confirm
   // a year for a comparison they have not joined.
-  const first = await page.evaluate(() => (document.querySelector('.cmp') || {}).innerText || '');
+  const first = await page.evaluate(() => (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '');
   if (!/Compare my route/.test(first)) failures.push(`opt in stale: no offer, read "${first.slice(0, 90)}"`);
   if (/Still a sophomore/.test(first)) failures.push('opt in stale: asked about the year before being offered the comparison');
   if (sent.length) failures.push(`opt in stale: ${sent[0].fn} was called before anyone opted in`);
 
   await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /Compare my route/.test(x.innerText)).click(); });
   await page.waitForTimeout(500);
-  const asked = await page.evaluate(() => (document.querySelector('.cmp') || {}).innerText || '');
+  const asked = await page.evaluate(() => (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '');
   if (!/Still a sophomore, or a junior now\?/.test(asked))
     failures.push(`opt in stale: after opting in it reads "${asked.replace(/\n/g, ' / ').slice(0, 110)}"`);
   const early = sent.find(x => x.fn === 'save_route_snapshot');
@@ -692,9 +701,150 @@ for (const c of COMPARE_CASES) {
   const wrote = sent.filter(x => x.fn === 'save_route_snapshot');
   if (wrote.length !== 1) failures.push(`opt in stale: ${wrote.length} snapshots written after answering, expected 1`);
   else if (wrote[0].body.p_year !== 'junior') failures.push(`opt in stale: the snapshot says year "${wrote[0].body.p_year}"`);
-  const shown = await page.evaluate(() => (document.querySelector('.cmp') || {}).innerText || '');
+  const shown = await page.evaluate(() => (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '');
   if (!/middle BYU junior/.test(shown))
     failures.push(`opt in stale: no comparison after answering — "${shown.replace(/\n/g, ' / ').slice(0, 110)}"`);
+  await ctx.close();
+}
+
+// ── WHEN YOU PLAN TO TEST ──────────────────────────────────────────────────
+// Asked once, on the Route, whether or not the student has opted in — the
+// answer is theirs either way. Three things have to hold, and only one of them
+// is about what is on screen:
+//   every term offered is still to come, measured against the machine's own
+//     clock, because a list of seatings is only right on the day it is read;
+//   "Not sure yet" counts as an answer here and as nothing at all to the
+//     server, whose column takes a term or null and drops the entire write
+//     for anything else;
+//   once answered it never comes back.
+{
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  const sent = [];
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    const fn = (/\/rpc\/([a-z_]+)$/.exec(u) || [])[1];
+    if (fn) {
+      sent.push({ fn, body: JSON.parse(route.request().postData() || '{}') });
+      if (fn === 'route_compare')
+        return route.fulfill({ status: 200, contentType: 'application/json',
+                               body: JSON.stringify({ school: { n: 3 }, all: { n: 3 }, min_n: 20 }) });
+      return route.fulfill({ status: 200, body: '' });
+    }
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`test term: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, { ...BYU, wp_compare_id: COMPARE_ID });
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  await page.evaluate(() => window.go('reveal'));
+  await page.waitForTimeout(220);
+
+  const asked = await page.evaluate(() => {
+    const el = document.querySelector('.cmp-term');
+    return { text: el ? el.innerText : '',
+             chips: el ? [...el.querySelectorAll('.term-chip')].map(b => b.innerText.trim()) : [] };
+  });
+  if (!/When do you plan to take the MCAT\?/.test(asked.text))
+    failures.push(`test term: not asked — "${asked.text.slice(0, 90)}"`);
+  if (asked.chips.length !== 8)
+    failures.push(`test term: ${asked.chips.length} choices, expected seven terms and "Not sure yet"`);
+  if (asked.chips[asked.chips.length - 1] !== 'Not sure yet')
+    failures.push(`test term: the last choice is "${asked.chips[asked.chips.length - 1]}"`);
+
+  // Every seating offered is still ahead. Read off the rendered labels and
+  // checked against the clock, so the day this starts being wrong is the day
+  // it fails, wherever it is run.
+  const SEASON_END = { Spring: 4, Summer: 6, Fall: 8 };      // May, July, September
+  const now = new Date();
+  for (const label of asked.chips.slice(0, -1)) {
+    const [season, year] = label.split(' ');
+    if (!(season in SEASON_END)) { failures.push(`test term: "${label}" is not a season`); continue; }
+    const last = new Date(Number(year), SEASON_END[season] + 1, 0);   // the end of its last month
+    if (last < now) failures.push(`test term: "${label}" has already been sat`);
+  }
+  const terms = new Set(asked.chips.slice(0, -1));
+  if (terms.size !== asked.chips.length - 1) failures.push('test term: the same seating is offered twice');
+
+  // Answering with a real term: stored, and sent as itself.
+  sent.length = 0;
+  await page.evaluate(() => { [...document.querySelectorAll('.cmp-term .term-chip')][1].click(); });
+  await page.waitForTimeout(600);
+  const second = asked.chips[1].split(' ');
+  const want = `${second[1]}-${second[0].toLowerCase()}`;
+  const stored = await page.evaluate(() => localStorage.getItem('wp_mcat_term'));
+  if (stored !== want) failures.push(`test term: stored "${stored}" after tapping "${asked.chips[1]}", expected "${want}"`);
+  const q = sent.find(x => x.fn === 'route_compare');
+  if (!q) failures.push('test term: the comparison was not asked again for the narrower group');
+  else if (q.body.p_mcat_term !== want) failures.push(`test term: the comparison asked for "${q.body.p_mcat_term}"`);
+  const w = sent.find(x => x.fn === 'save_route_snapshot');
+  if (w && w.body.p_mcat_term !== want) failures.push(`test term: the snapshot says "${w.body.p_mcat_term}"`);
+  const gone = await page.evaluate(() => !document.querySelector('.cmp-term'));
+  if (!gone) failures.push('test term: still asking after it was answered');
+
+  // And on the next visit — a second page in the same storage, not a reload,
+  // which would re-seed the fixture.
+  const next = await ctx.newPage();
+  next.on('pageerror', e => failures.push(`test term, next visit: threw ${String(e).split('\n')[0]}`));
+  await next.goto(`${ORIGIN}/index.html`);
+  await next.waitForTimeout(450);
+  await next.evaluate(() => window.go('reveal'));
+  await next.waitForTimeout(220);
+  if (await next.evaluate(() => !!document.querySelector('.cmp-term')))
+    failures.push('test term: asked again on the next visit');
+  await ctx.close();
+}
+
+// ── "NOT SURE YET" IS AN ANSWER HERE AND NOTHING THERE ─────────────────────
+// The one value that must never reach the server: save_route_snapshot drops
+// the whole write for a term it does not recognise, so a student who said
+// "not sure" would silently stop updating their row.
+{
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  const sent = [];
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    const fn = (/\/rpc\/([a-z_]+)$/.exec(u) || [])[1];
+    if (fn) {
+      sent.push({ fn, body: JSON.parse(route.request().postData() || '{}') });
+      if (fn === 'route_compare')
+        return route.fulfill({ status: 200, contentType: 'application/json',
+                               body: JSON.stringify({ school: { n: 3 }, all: { n: 3 }, min_n: 20 }) });
+      return route.fulfill({ status: 200, body: '' });
+    }
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`not sure: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, { ...BYU, wp_compare_id: COMPARE_ID });
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  await page.evaluate(() => window.go('reveal'));
+  await page.waitForTimeout(220);
+  sent.length = 0;
+  await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('.cmp-term .term-chip')];
+    chips[chips.length - 1].click();
+  });
+  await page.waitForTimeout(600);
+  const stored = await page.evaluate(() => localStorage.getItem('wp_mcat_term'));
+  if (stored !== 'unsure') failures.push(`not sure: stored "${stored}" on the device`);
+  for (const x of sent) {
+    if (!('p_mcat_term' in x.body)) continue;
+    if (x.body.p_mcat_term !== null)
+      failures.push(`not sure: ${x.fn} was sent "${x.body.p_mcat_term}", which the column rejects`);
+  }
+  if (!sent.length) failures.push('not sure: nothing was sent at all');
+  if (await page.evaluate(() => !!document.querySelector('.cmp-term')))
+    failures.push('not sure: still asking after "Not sure yet"');
   await ctx.close();
 }
 

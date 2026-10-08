@@ -5867,7 +5867,7 @@ const S = {
 const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_school','wp_compare_id','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
-                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked','wp_year_checked',
+                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked','wp_year_checked','wp_mcat_term',
                  'wp_upcoming','wp_pace_offset','wp_acct_prompt','wp_term_card'];
 
 // The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
@@ -5907,6 +5907,10 @@ function save() {
   // question", which the event below depends on.
   if (S._schoolAsked || schoolAnswered()) localStorage.setItem('wp_school', S.school || 'generic');
   if (S.yearChecked) localStorage.setItem('wp_year_checked', S.yearChecked);
+  // Written only once answered, the same way wp_school is: the key's absence
+  // is the record of never having been asked, and "not sure yet" is an answer
+  // that has to be tellable from silence or the question comes back forever.
+  if (S.mcatTerm) localStorage.setItem('wp_mcat_term', S.mcatTerm);
   localStorage.setItem('wp_streak',   String(S.streak));
   localStorage.setItem('wp_lastDate', S.lastDate || '');
   localStorage.setItem('wp_qstats',   JSON.stringify(S.qStats));
@@ -5989,6 +5993,7 @@ function load() {
     }
     S.year     = localStorage.getItem('wp_year')     || null;
     S.yearChecked = localStorage.getItem('wp_year_checked') || null;
+    S.mcatTerm    = localStorage.getItem('wp_mcat_term')    || null;
     if (!S.yearChecked) {
       // No stamp, so this is a student who answered before the question
       // existed. The last time they saved anything says which school year
@@ -7743,6 +7748,28 @@ function recentTerms(n, now = new Date()) {
   return out;
 }
 
+// ── TERMS AHEAD ─────────────────────────────────────────────────────────────
+// recentTerms() counts backwards for "when did you take it". This counts
+// forwards for "when will you sit it", off the same three seasons and the same
+// id shape, because a second term vocabulary is a second thing to keep right.
+//
+// The one thing it has to know that the course picker does not: the MCAT runs
+// January to September, so the app's "fall" — August through December as an
+// academic calendar reads it — is two months of seatings and four of nothing.
+// A term is dropped the month after its last seating rather than at the end of
+// its season, so nobody is offered a date that has already happened.
+const TERM_LAST_SEATING = { spring: 4, summer: 6, fall: 8 };   // May, July, September
+
+function futureTerms(n, now = new Date()) {
+  let y  = now.getFullYear();
+  let si = TERM_SEASONS.indexOf(seasonOfMonth(now.getMonth()));
+  const step = () => { if (++si >= TERM_SEASONS.length) { si = 0; y++; } };
+  if (now.getMonth() > TERM_LAST_SEATING[TERM_SEASONS[si]]) step();
+  const out = [];
+  for (let i = 0; i < n; i++) { out.push(termId(y, TERM_SEASONS[si])); step(); }
+  return out;
+}
+
 // A course you're taking right now needs no asking: it's this term by definition.
 // Only a finished course carries a date Waypoint can't derive, so only a finished
 // course is ever asked about. Returns null when the term is genuinely unknown —
@@ -9247,7 +9274,7 @@ function snapshotBody() {
     p_coverage:  coverage(S.courses, true),
     p_done:      pickedCourses().filter(c => S.courseStatus[c.id] !== 'in-progress').map(c => c.id),
     p_taking:    pickedCourses().filter(c => S.courseStatus[c.id] === 'in-progress').map(c => c.id),
-    p_mcat_term: S.mcatTerm || null,
+    p_mcat_term: plannedTerm(),
   };
 }
 
@@ -9392,10 +9419,54 @@ async function confirmYear(year) {
   await loadCompare();
 }
 
+// ── WHEN YOU PLAN TO TEST ──────────────────────────────────────────────────
+// Two students in the same year can be eighteen months apart on the thing that
+// decides what their pace means: one sits the exam this summer, the other the
+// summer after. Asking turns "other BYU juniors" into "other BYU juniors
+// sitting it when I am", which is the only group whose middle says anything
+// about mine.
+const TERM_AHEAD = 7;        // a shade over two years: a freshman can answer it
+
+// "Not sure yet" is stored as a word, because the app has to tell it from
+// never having been asked. The server is told null instead: its column takes a
+// term or nothing, and a value it rejects makes save_route_snapshot drop the
+// WHOLE write — which would quietly stop this student's route updating at all
+// for as long as the answer sat on the device.
+function plannedTerm()  { return TERM_RE.test(S.mcatTerm || '') ? S.mcatTerm : null; }
+function termAnswered() { return !!S.mcatTerm; }
+
+function setMcatTerm(id) {
+  const moved = id !== S.mcatTerm;
+  S.mcatTerm = id;
+  save();                       // stores it, and queues the snapshot that carries it
+  // The group narrows to the students sitting it when this one does, so what
+  // is on screen is about other people now.
+  if (moved) S._compare = undefined;
+  render();
+  if (moved) loadCompare();
+}
+
+// The same chip row the course picker uses, counting the other way. One tap,
+// no form, and "Not sure yet" is a real answer that costs nothing — which is
+// the point: a student who does not know is not the same as one who was never
+// asked, and only one of them should see this again.
+function termAskHTML() {
+  const chip = (id, label) => `<button class="term-chip${S.mcatTerm === id ? ' on' : ''}" onclick="setMcatTerm('${id}')">${label}</button>`;
+  // Its own modifier: this question sits under the comparison rather than in
+  // its place, and the two have to be tellable apart from outside.
+  return `<div class="cmp cmp-term">
+        <p class="cmp-line">When do you plan to take the MCAT?</p>
+        <div class="term-row" style="margin-top:10px;">
+          ${futureTerms(TERM_AHEAD).map(t => chip(t, termLabel(t))).join('')}
+          <button class="term-chip quiet${S.mcatTerm === 'unsure' ? ' on' : ''}" onclick="setMcatTerm('unsure')">Not sure yet</button>
+        </div>
+      </div>`;
+}
+
 async function fetchCompare() {
   if (!S.year) return null;
   return compareRpc('route_compare',
-    { p_school: schoolId(), p_year: S.year, p_mcat_term: S.mcatTerm || null });
+    { p_school: schoolId(), p_year: S.year, p_mcat_term: plannedTerm() });
 }
 
 // Fetched once per app open and held in transient state. null means "nothing
@@ -10898,6 +10969,15 @@ function screenSettings() {
 
       <div class="section-divider"></div>
 
+      <p class="label" style="margin-bottom:8px;">When you'll test</p>
+      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Used to compare your pace with students sitting the exam when you are. Change it whenever the plan changes.</p>
+      <div class="term-row">
+        ${futureTerms(TERM_AHEAD).map(t => `<button class="term-chip${S.mcatTerm === t ? ' on' : ''}" onclick="setMcatTerm('${t}')">${termLabel(t)}</button>`).join('')}
+        <button class="term-chip quiet${S.mcatTerm === 'unsure' ? ' on' : ''}" onclick="setMcatTerm('unsure')">Not sure yet</button>
+      </div>
+
+      <div class="section-divider"></div>
+
       <p class="label" style="margin-bottom:8px;">School</p>
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Which course list you pick from. Switching keeps the other list's answers, so you can switch back and find your route as you left it.</p>
       ${SCHOOL_CHOICES.map(c => `
@@ -12146,7 +12226,11 @@ function screenReveal() {
         <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:8px 0 0;">Adds your school, year and courses to the comparison, anonymously. You can remove it any time in Settings.</p>
       </div>`;
 
-  const focusBlock = focus && !S._mapOpen ? `      <p class="focus">${focus.detail}</p>${compareBlock}
+  // Under the comparison, and never beside another question: the year is
+  // asked first, because it decides which group this one narrows.
+  const termBlock = pickedCount() === 0 || termAnswered() || yearIsStale() ? '' : termAskHTML();
+
+  const focusBlock = focus && !S._mapOpen ? `      <p class="focus">${focus.detail}</p>${compareBlock}${termBlock}
       <div style="margin-top:18px;margin-bottom:8px;">
         ${PRACTICE
           ? `<button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>`
