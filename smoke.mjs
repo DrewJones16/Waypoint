@@ -382,6 +382,181 @@ for (const variant of VARIANTS) {
   }
 }
 
+// ── WHERE YOU STAND, AGAINST A SERVER THAT IS ONLY EVER A FIXTURE ───────────
+// The comparison is the one part of the app whose content comes from outside
+// this repo, so it is checked against mocked replies: every shape
+// route_compare() can return, read back off the rendered page at both widths.
+//
+// The geometry is checked too, not just the words. Each figure in the reply
+// has one place on a scale that runs to 77, and a band drawn anywhere else is
+// a comparison that lies quietly — the sort of bug no sentence catches.
+const COMPARE_ID = '11111111-2222-4333-8444-555555555555';
+
+// What the students further along have finished. Four of these seven must
+// never reach the screen, each for its own reason, which is why they are here.
+const AHEAD = [
+  { course: 'chem481',   share: 0.82 },   // 13% to this student: the first move
+  { course: 'phscs105',  share: 0.71 },   // 3%
+  { course: 'phscs106',  share: 0.64 },   // 3%
+  { course: 'cell305',   share: 0.93 },   // already finished — never offered back
+  { course: 'mmbio240',  share: 0.70 },   // worth nothing on top of what they hold
+  { course: 'ubiol1610', share: 0.58 },   // another catalog's id
+  { course: 'chem999',   share: 0.55 },   // an id this file has never heard of
+];
+
+// p25 / p50 / p75, and what the student reads: 38%.
+const COMPARE_CASES = [
+  { name: 'both groups small',
+    reply: { school: { n: 7 }, all: { n: 7 }, min_n: 20 },
+    want:  [/13 more BYU juniors and you'll see where you stand\./],
+    not:   [/middle BYU junior/, /covered/] },
+
+  { name: 'one short of twenty',
+    reply: { school: { n: 19 }, all: { n: 19 }, min_n: 20 },
+    want:  [/1 more BYU junior and/],
+    not:   [/1 more BYU juniors/] },
+
+  { name: 'school small, every school large',
+    // The `ahead` list here is one route_compare() will not send: course ids
+    // mean different things in different catalogs, so the all-schools group
+    // has no course list to give. It is in the fixture anyway, because "the
+    // client would ignore it if it arrived" is the property worth holding —
+    // the alternative is a Utah course code on a BYU student's Route the day
+    // somebody adds one server-side.
+    reply: { school: { n: 12 }, all: { n: 40, p25: 30, p50: 41, p75: 55, ahead: AHEAD }, min_n: 20 },
+    want:  [/The middle Waypoint junior at any school has covered 41%\. You've covered 38%\./],
+    // No course list: an id from another school's catalog is not a class this
+    // student can register for, and the server does not send one.
+    not:   [/CHEM/, /ahead of you/],
+    scale: { p25: 30, p50: 41, p75: 55 } },
+
+  { name: 'their own school, large',
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: [] },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    want:  [/The middle BYU junior has covered 45%\. You've covered 38%\./,
+            /Most BYU juniors ahead of you have finished CHEM 481 \(13% of the exam\), PHSCS 105 & 107 \(3%\) and PHSCS 106 & 108 \(3%\)\./],
+    not:   [/CELL 305/, /MMBIO 240/, /chem999/, /Biology I/],
+    scale: { p25: 31, p50: 45, p75: 58 } },
+
+  { name: 'further along than the middle',
+    reply: { school: { n: 34, p25: 18, p50: 29, p75: 44, ahead: AHEAD, terms: [] },
+             all: { n: 61, p25: 20, p50: 31, p75: 48 }, min_n: 20 },
+    want:  [/You've covered more than most BYU juniors\./],
+    not:   [/ahead of you/, /CHEM 481/],
+    scale: { p25: 18, p50: 29, p75: 44 } },
+
+  { name: 'level with the middle',
+    reply: { school: { n: 22, p25: 30, p50: 38, p75: 52, ahead: AHEAD, terms: [] },
+             all: { n: 40, p25: 30, p50: 38, p75: 52 }, min_n: 20 },
+    // One sentence, not the same figure twice.
+    want:  [/The middle BYU junior has covered 38%, and so have you\./],
+    not:   [/You've covered 38%/],
+    scale: { p25: 30, p50: 38, p75: 52 } },
+
+  { name: 'the server down',
+    reply: null,
+    want:  [],
+    // Not even the offer: this student opted in, so the only honest thing to
+    // show while the server is unreachable is nothing.
+    not:   [/Compare my route/, /where you stand/, /middle BYU junior/] },
+];
+
+// Never these four, on any screen of a comparison. Coverage is which classes
+// somebody has taken; a word that turns it into a placing or a contest is a
+// different product.
+const BANNED = /\brank(?:ed|ing|s)?\b|\bpercentiles?\b|\bbehind\b|\bbeats?\b/i;
+
+served = VARIANTS[0].src;        // the shipped flag state
+for (const c of COMPARE_CASES) {
+  {
+    const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+    await ctx.route('**', route => {
+      const u = route.request().url();
+      if (u.startsWith(ORIGIN)) return route.continue();
+      if (/\/rpc\/route_compare$/.test(u)) {
+        return c.reply ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(c.reply) })
+                       : route.fulfill({ status: 404, body: '' });
+      }
+      if (/\/rpc\//.test(u)) return route.fulfill({ status: 200, body: '' });   // the writers
+      route.abort();
+    });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => failures.push(`compare / ${c.name}: threw ${String(e).split('\n')[0]}`));
+
+    await page.addInitScript(store => {
+      try { localStorage.clear(); } catch (e) { /* private mode */ }
+      for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+    }, { ...BYU, wp_compare_id: COMPARE_ID });
+
+    await page.goto(`${ORIGIN}/index.html`);
+    await page.waitForTimeout(450);          // the fetch is fired after boot
+    await page.evaluate(() => window.go('reveal'));
+    await page.waitForTimeout(220);
+
+    // Both widths off one load. Nothing about the comparison depends on how
+    // the page was fetched, so resizing is the same test for a fifth of the
+    // wall clock — and this file is run on every push.
+    for (const width of [375, 1280]) {
+    const where = `compare / ${c.name} @ ${width}px`;
+    await page.setViewportSize({ width, height: 1100 });
+    await page.waitForTimeout(120);
+
+    const got = await page.evaluate(() => {
+      const app = document.getElementById('app');
+      const cmp = document.querySelector('.cmp');
+      const bar = document.querySelector('.cmp-scale');
+      // Each mark as a percentage of the scale's own width, which is the only
+      // way to ask "is 45% drawn at 45 of 77" without trusting the stylesheet.
+      const place = sel => {
+        const e = bar && bar.querySelector(sel);
+        if (!e) return null;
+        const r = e.getBoundingClientRect(), b = bar.getBoundingClientRect();
+        return { left: (r.left - b.left) / b.width * 100, width: r.width / b.width * 100 };
+      };
+      return {
+        cmp:  cmp ? cmp.innerText : '',
+        route: app.innerText,
+        band: place('.cmp-band'), mid: place('.cmp-mid'), you: place('.cmp-you'),
+        over: app.scrollWidth - app.clientWidth,
+      };
+    }).catch(e => ({ cmp: '(threw) ' + e.message, route: '', over: 0 }));
+
+    for (const re of c.want) if (!re.test(got.cmp)) failures.push(`${where}: no "${re.source}" in "${got.cmp.replace(/\n/g, ' / ').slice(0, 150)}"`);
+    for (const re of c.not)  if (re.test(got.cmp))  failures.push(`${where}: shows "${re.source}", which it must not`);
+    if (!c.want.length && got.cmp) failures.push(`${where}: shows "${got.cmp.slice(0, 80)}" where it must show nothing`);
+    // A class already finished is worth nothing more, whatever the fixture
+    // claims most students ahead have taken. Asserted on the arithmetic rather
+    // than on the screen, because the screen is protected twice — by the
+    // filter that drops a finished course and by the one that drops a course
+    // worth zero — and a test that cannot fail proves nothing.
+    if (!c.scale) { /* checked once per run is enough */ } else {
+      const worthless = await page.evaluate(() => allCourses()
+        .filter(c => S.courses.has(c.id) && S.courseStatus[c.id] !== 'in-progress')
+        .filter(c => courseWouldAdd(c.id) !== 0)
+        .map(c => c.id + ' would add ' + courseWouldAdd(c.id)));
+      for (const w of worthless) failures.push(`${where}: a finished class is still worth something — ${w}`);
+    }
+    const banned = BANNED.exec(got.route);
+    if (banned) failures.push(`${where}: the word "${banned[0]}" is on the Route`);
+    if (got.over > 1) failures.push(`${where}: the page is ${got.over}px wider than its column`);
+
+    // 38% of the way to 77 is 49.4% along, and nothing else is.
+    if (c.scale) {
+      const at = v => v / 77 * 100;
+      const near = (got_, want_, what) => {
+        if (got_ === null || got_ === undefined) return failures.push(`${where}: no ${what} on the scale`);
+        if (Math.abs(got_ - want_) > 1.2) failures.push(`${where}: ${what} drawn at ${got_.toFixed(1)}% of the scale, expected ${want_.toFixed(1)}%`);
+      };
+      near(got.band && got.band.left, at(c.scale.p25), 'the band');
+      near(got.band && got.band.width, at(c.scale.p75) - at(c.scale.p25), "the band's width");
+      near(got.mid && got.mid.left, at(c.scale.p50), 'the median');
+      near(got.you && got.you.left, at(38), 'the student');
+    }
+    }
+    await ctx.close();
+  }
+}
+
 await browser.close();
 server.close();
 
