@@ -422,6 +422,8 @@ const TERMS = [
 // p25 / p50 / p75, and what the student reads: 38%.
 const COMPARE_CASES = [
   { name: 'both groups small',
+    // No band to be in, so no band is reported.
+    event: { group: 'countdown' },
     reply: { school: { n: 7 }, all: { n: 7 }, min_n: 20 },
     want:  [/13 more BYU juniors and you'll see where you stand\./],
     not:   [/middle BYU junior/, /covered/] },
@@ -432,6 +434,7 @@ const COMPARE_CASES = [
     not:   [/1 more BYU juniors/] },
 
   { name: 'school small, every school large',
+    event: { group: 'all', band: 'middle' },
     // The `ahead` list here is one route_compare() will not send: course ids
     // mean different things in different catalogs, so the all-schools group
     // has no course list to give. It is in the fixture anyway, because "the
@@ -446,6 +449,7 @@ const COMPARE_CASES = [
     scale: { p25: 30, p50: 41, p75: 55 } },
 
   { name: 'their own school, large',
+    event: { group: 'school', band: 'middle' },
     reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: TERMS },
              all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
     want:  [/The middle BYU junior has covered 45%\. You've covered 38%\./,
@@ -469,6 +473,8 @@ const COMPARE_CASES = [
 
   { name: 'a seating subgroup of twenty-five',
     term:  '2027-summer',
+    // 38 is under the 42 the middle half of that seating starts at.
+    event: { group: 'school', band: 'lower' },
     reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: TERMS,
                        term_group: { n: 25, p25: 42, p50: 52, p75: 63 } },
              all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
@@ -502,7 +508,10 @@ const COMPARE_CASES = [
     not:   [/unsure/, /Most BYU juniors plan/],
     scale: { p25: 42, p50: 52, p75: 63 } },
 
+  // Above the median but still inside the middle half: "upper" is about the
+  // band, not about the median, and the two are different questions.
   { name: 'further along than the middle',
+    event: { group: 'school', band: 'middle' },
     reply: { school: { n: 34, p25: 18, p50: 29, p75: 44, ahead: AHEAD, terms: [] },
              all: { n: 61, p25: 20, p50: 31, p75: 48 }, min_n: 20 },
     want:  [/You've covered more than most BYU juniors\./],
@@ -517,7 +526,18 @@ const COMPARE_CASES = [
     not:   [/You've covered 38%/],
     scale: { p25: 30, p50: 38, p75: 52 } },
 
+  { name: 'a year earlier in its sequence',
+    event: { group: 'school', band: 'upper' },
+    reply: { school: { n: 22, p25: 12, p50: 19, p75: 27, ahead: [], terms: [] },
+             all: { n: 44, p25: 14, p50: 21, p75: 30 }, min_n: 20 },
+    want:  [/The middle BYU junior has covered 19%\. You've covered 38%\./,
+            /You've covered more than most BYU juniors\./],
+    not:   [/ahead of you/],
+    scale: { p25: 12, p50: 19, p75: 27 } },
+
   { name: 'the server down',
+    // Nothing shown is nothing counted.
+    event: null,
     reply: null,
     want:  [],
     // Not even the offer: this student opted in, so the only honest thing to
@@ -547,6 +567,12 @@ for (const c of COMPARE_CASES) {
     const page = await ctx.newPage();
     page.on('pageerror', e => failures.push(`compare / ${c.name}: threw ${String(e).split('\n')[0]}`));
 
+    // index.html's own snippet is `window.plausible = window.plausible || ...`,
+    // so a stub installed first is the one that runs.
+    await page.addInitScript(() => {
+      window.__ev = [];
+      window.plausible = (name, opts) => window.__ev.push({ name, props: (opts && opts.props) || {} });
+    });
     await page.addInitScript(store => {
       try { localStorage.clear(); } catch (e) { /* private mode */ }
       for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
@@ -602,6 +628,33 @@ for (const c of COMPARE_CASES) {
         .filter(c => courseWouldAdd(c.id) !== 0)
         .map(c => c.id + ' would add ' + courseWouldAdd(c.id)));
       for (const w of worthless) failures.push(`${where}: a finished class is still worth something — ${w}`);
+    }
+    // ── What was counted, and what travelled with it ──────────────────────
+    const ev = await page.evaluate(() => window.__ev || []);
+    const shown = ev.filter(x => x.name === 'compare_shown');
+    // `event: null` means expect nothing counted; no `event` key at all means
+    // this case is not about the counting.
+    if (!('event' in c)) { /* not checked here */ }
+    else if (!c.event) {
+      if (shown.length) failures.push(`${where}: counted ${JSON.stringify(shown[0].props)} with nothing on screen`);
+    } else if (!shown.length) {
+      failures.push(`${where}: nothing counted`);
+    } else {
+      if (shown.length > 1) failures.push(`${where}: counted ${shown.length} times in one visit`);
+      const got_ = shown[0].props;
+      if (got_.group !== c.event.group) failures.push(`${where}: counted group "${got_.group}", expected "${c.event.group}"`);
+      if ((got_.band || undefined) !== c.event.band) failures.push(`${where}: counted band "${got_.band}", expected "${c.event.band}"`);
+    }
+    // The hard line: no figure and no course id leaves with an event, in any
+    // property, ever. Checked against this student's own values rather than a
+    // pattern, so it catches a prop nobody thought to look at.
+    const mine = await page.evaluate(() => [String(coverage(S.courses, true)), ...[...S.courses]]);
+    for (const x of ev) {
+      const flat = JSON.stringify(x.props);
+      for (const v of mine) {
+        if (new RegExp('(?<![A-Za-z0-9])' + v + '(?![A-Za-z0-9])').test(flat))
+          failures.push(`${where}: ${x.name} carried "${v}" — ${flat}`);
+      }
     }
     const banned = BANNED.exec(got.route);
     if (banned) failures.push(`${where}: the word "${banned[0]}" is on the Route`);
@@ -793,6 +846,10 @@ for (const c of COMPARE_CASES) {
   });
   const page = await ctx.newPage();
   page.on('pageerror', e => failures.push(`test term: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(() => {
+    window.__ev = [];
+    window.plausible = (name, opts) => window.__ev.push({ name, props: (opts && opts.props) || {} });
+  });
   await page.addInitScript(store => {
     try { localStorage.clear(); } catch (e) { /* private mode */ }
     for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
@@ -843,6 +900,16 @@ for (const c of COMPARE_CASES) {
   if (w && w.body.p_mcat_term !== want) failures.push(`test term: the snapshot says "${w.body.p_mcat_term}"`);
   const gone = await page.evaluate(() => !document.querySelector('.cmp-term'));
   if (!gone) failures.push('test term: still asking after it was answered');
+
+  // Counted, and the Saturday they picked stays on the device.
+  const set = (await page.evaluate(() => window.__ev)).filter(x => x.name === 'mcat_term_set');
+  if (set.length !== 1) failures.push(`test term: ${set.length} mcat_term_set events, expected 1`);
+  else if (Object.keys(set[0].props).length) failures.push(`test term: mcat_term_set carried ${JSON.stringify(set[0].props)}`);
+  // Tapping the same chip again is not a second answer.
+  await page.evaluate(() => window.setMcatTerm(localStorage.getItem('wp_mcat_term')));
+  await page.waitForTimeout(300);
+  const again_ = (await page.evaluate(() => window.__ev)).filter(x => x.name === 'mcat_term_set');
+  if (again_.length !== 1) failures.push(`test term: answering the same way twice counted ${again_.length} times`);
 
   // And on the next visit — a second page in the same storage, not a reload,
   // which would re-seed the fixture.
@@ -903,6 +970,64 @@ for (const c of COMPARE_CASES) {
   if (!sent.length) failures.push('not sure: nothing was sent at all');
   if (await page.evaluate(() => !!document.querySelector('.cmp-term')))
     failures.push('not sure: still asking after "Not sure yet"');
+  await ctx.close();
+}
+
+// ── WHAT THE OPT-IN AND THE REMOVAL COUNT ──────────────────────────────────
+// compare_opt_in carries the school, because which catalogs are worth
+// checking is the decision it informs. compare_removed carries nothing at
+// all: a student leaving is a count, not a case study.
+{
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    if (/\/rpc\/route_compare$/.test(u))
+      return route.fulfill({ status: 200, contentType: 'application/json',
+                             body: JSON.stringify({ school: { n: 4 }, all: { n: 4 }, min_n: 20 }) });
+    if (/\/rpc\//.test(u)) return route.fulfill({ status: 200, body: '' });
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`compare events: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(() => {
+    window.__ev = [];
+    window.plausible = (name, opts) => window.__ev.push({ name, props: (opts && opts.props) || {} });
+  });
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, { ...BYU, wp_mcat_term: '2027-summer' });
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  await page.evaluate(() => window.go('reveal'));
+  await page.waitForTimeout(220);
+
+  await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /Compare my route/.test(x.innerText)).click(); });
+  await page.waitForTimeout(600);
+  const inEv = (await page.evaluate(() => window.__ev)).filter(x => x.name === 'compare_opt_in');
+  if (inEv.length !== 1) failures.push(`compare events: ${inEv.length} compare_opt_in events`);
+  else if (inEv[0].props.school !== 'byu') failures.push(`compare events: opted in as "${inEv[0].props.school}"`);
+
+  await page.evaluate(() => window.go('settings'));
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /Remove my route/.test(x.innerText)).click(); });
+  await page.waitForTimeout(500);
+  const out = (await page.evaluate(() => window.__ev)).filter(x => x.name === 'compare_removed');
+  if (out.length !== 1) failures.push(`compare events: ${out.length} compare_removed events`);
+  else if (Object.keys(out[0].props).length) failures.push(`compare events: compare_removed carried ${JSON.stringify(out[0].props)}`);
+
+  // And nothing anywhere in the session's analytics carries a figure, a
+  // course id, or the id that owns the row.
+  const all = await page.evaluate(() => window.__ev);
+  const secrets = await page.evaluate(() => [String(coverage(S.courses, true)), ...[...S.courses]]);
+  for (const x of all) {
+    const flat = JSON.stringify(x.props);
+    if (/[0-9a-f]{8}-[0-9a-f]{4}-/.test(flat)) failures.push(`compare events: ${x.name} carried a snapshot id`);
+    for (const v of secrets)
+      if (new RegExp('(?<![A-Za-z0-9])' + v + '(?![A-Za-z0-9])').test(flat))
+        failures.push(`compare events: ${x.name} carried "${v}" — ${flat}`);
+  }
   await ctx.close();
 }
 

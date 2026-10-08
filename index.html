@@ -9305,6 +9305,7 @@ function scheduleSnapshot() {
 // what opting in means, sends the row, and shows whatever comes back.
 async function optInToCompare() {
   if (!makeCompareId()) return;             // storage blocked: nothing to own the row
+  if (window.plausible) plausible('compare_opt_in', { props: { school: schoolId() } });
   render();                                 // the offer goes at once, not after the call
   // A year we already doubt is not written. The student who opts in after a
   // summer away is exactly the student whose year is stale, and the question
@@ -9321,9 +9322,11 @@ async function optInToCompare() {
 // go with them — a student who removes their route should not keep seeing the
 // comparison it bought them.
 async function leaveCompare() {
+  if (window.plausible) plausible('compare_removed');
   await removeSnapshot();
   S._compare = undefined;
   lastSnapshot = null;
+  compareTracked = null;
   render();
 }
 
@@ -9437,6 +9440,9 @@ function termAnswered() { return !!S.mcatTerm; }
 
 function setMcatTerm(id) {
   const moved = id !== S.mcatTerm;
+  // The answer itself does not travel. How many students answer is the
+  // question this is here to settle; which Saturday they picked is theirs.
+  if (moved && window.plausible) plausible('mcat_term_set');
   S.mcatTerm = id;
   save();                       // stores it, and queues the snapshot that carries it
   // The group narrows to the students sitting it when this one does, so what
@@ -9496,6 +9502,30 @@ async function loadCompare() {
 // nothing but the count, so the countdown below is drawn from a number that
 // cannot be one student's figure wearing a disguise. Removing the check here
 // would not reveal anything; there would be nothing to reveal.
+// ── COUNTING IT ────────────────────────────────────────────────────────────
+// Four events, and a hard line on what travels with them: no coverage figure,
+// no course id, no school for anything but the opt-in. The band below is a
+// three-way bucket — lower, middle or upper, against the group's own middle
+// half — which answers "does this land for the people below the middle" and
+// cannot be read back as anybody's percentage.
+//
+// Once per app open, not once per render. The Route redraws on every tap, and
+// an event per redraw would say more about the fidget than the feature.
+let compareTracked = null;
+function trackCompareShown(group, band) {
+  const key = group + ':' + (band || '');
+  if (compareTracked === key) return;
+  compareTracked = key;
+  if (window.plausible) plausible('compare_shown', { props: band ? { group, band } : { group } });
+}
+
+// Where the student sits against the band being drawn. Not a position in a
+// list and not a percentile: three words, the same three the scale draws.
+function compareBand(g, you) {
+  if (!g || g.p25 === undefined) return null;
+  return you < g.p25 ? 'lower' : you > g.p75 ? 'upper' : 'middle';
+}
+
 function compareShownHTML() {
   const d = S._compare;
   if (!d || !d.school) return '';            // not loaded, no server, or nothing to say
@@ -9516,12 +9546,18 @@ function compareShownHTML() {
     const who  = band === tg
       ? compareGroupWords(true) + ' testing in ' + termLabel(plannedTerm())
       : compareGroupWords(true);
+    trackCompareShown('school', compareBand(band, you));
     // The course list stays the whole year's, whichever band the figures come
     // from: what students further along have taken is a fact about the year,
     // and a subgroup of twenty-odd is a thin basis for naming a class.
     return compareStandHTML(band, you, who, sch);
   }
-  if ((any.n || 0) >= min) return compareStandHTML(any, you, compareAnyWords(true), null);
+  if ((any.n || 0) >= min) {
+    trackCompareShown('all', compareBand(any, you));
+    return compareStandHTML(any, you, compareAnyWords(true), null);
+  }
+  // No band to report: there is nothing drawn to be in.
+  trackCompareShown('countdown', null);
   return compareCountdownHTML(min - (sch.n || 0));
 }
 
