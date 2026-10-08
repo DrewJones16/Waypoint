@@ -5789,6 +5789,8 @@ const S = {
   screen:         'landing',
   year:           null,
   school:         'generic',   // which course catalog this student picks from
+  mcatTerm:       null,        // '2027-summer' once asked; declared here so the
+                               // snapshot has something defined to read
   courses:        new Set(),
   courseStatus:   {},          // {courseId: 'in-progress'|'completed'}
   courseWhen:     {},          // {courseId: '2025-fall'} — the term a done course was taken
@@ -5832,7 +5834,10 @@ const S = {
 // Single source of truth for the keys Waypoint owns. Backup, restore and reset
 // all read from here (or from the wp_ prefix scan below), so a key added in a
 // future release is covered everywhere the moment it's listed.
-const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_school','wp_streak','wp_lastDate','wp_qstats',
+// wp_compare_id rides with the rest, so a student signed in on two devices is
+// one row in the comparison rather than two — and so "Start fresh" removes it
+// along with everything else.
+const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_school','wp_compare_id','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
                  'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
@@ -9117,6 +9122,107 @@ function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ── COMPARING ROUTES ────────────────────────────────────────────────────────
+// Where a student stands among students at the same school in the same year.
+//
+// Three rules hold this together, and all three are enforced on the server as
+// well as here (supabase/migrations/0002_route_compare.sql):
+//   OPT-IN — nothing leaves the device until the student taps to add it, which
+//     is why the id below is made at that moment and not before. No id, no row.
+//   ANONYMOUS — the snapshot carries a school, a year, a coverage figure and
+//     two lists of course ids. It carries no name, no email and no account, and
+//     it is never sent with a signed-in student's token.
+//   AGGREGATES ONLY — the server returns counts and medians, never rows, and
+//     below a group of twenty it returns nothing but the count.
+//
+// INERT UNTIL THE MIGRATION RUNS. Every call below swallows its failure and
+// returns null, so a 404 from a function that does not exist yet is
+// indistinguishable from a student who has not opted in: no line, no error,
+// no spinner. That is deliberate — the migration is run by hand, and the app
+// has to keep working in the window before somebody gets round to it.
+const COMPARE_RPC = SUPABASE_URL + '/rest/v1/rpc/';
+
+// The anon key only. A comparison has no account behind it, and sending a
+// signed-in student's token would hand the server the one thing it is built
+// not to know.
+function compareHeaders() {
+  return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON,
+           'content-type': 'application/json' };
+}
+
+// The id IS the opt-in: it exists only once the student has asked for this, and
+// deleting it is what leaving looks like from the device's side.
+function compareId() {
+  try { return localStorage.getItem('wp_compare_id') || null; } catch (e) { return null; }
+}
+function makeCompareId() {
+  let id = null;
+  try {
+    id = (crypto && crypto.randomUUID) ? crypto.randomUUID()
+       // A browser without randomUUID still gets a v4 from the same entropy.
+       : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+           (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+    localStorage.setItem('wp_compare_id', id);
+  } catch (e) { return null; }
+  return id;
+}
+
+async function compareRpc(fn, body) {
+  try {
+    const r = await fetch(COMPARE_RPC + fn, {
+      method: 'POST', headers: compareHeaders(), body: JSON.stringify(body),
+    });
+    if (!r.ok) return null;                 // 404 before the migration, and that is fine
+    const text = await r.text();
+    return text ? JSON.parse(text) : true;  // the writers return nothing
+  } catch (e) { return null; }              // offline, blocked, CORS — all the same answer
+}
+
+// What this student's row says. Course ids only: the catalog that gives them
+// meaning is already in the row beside them.
+function snapshotBody() {
+  return {
+    p_id:        compareId(),
+    p_school:    schoolId(),
+    p_year:      S.year,
+    p_coverage:  coverage(S.courses, true),
+    p_done:      pickedCourses().filter(c => S.courseStatus[c.id] !== 'in-progress').map(c => c.id),
+    p_taking:    pickedCourses().filter(c => S.courseStatus[c.id] === 'in-progress').map(c => c.id),
+    p_mcat_term: S.mcatTerm || null,
+  };
+}
+
+async function saveSnapshot() {
+  if (!compareId() || !S.year) return null;
+  return compareRpc('save_route_snapshot', snapshotBody());
+}
+
+// Debounced the way cloud sync is, and for the same reason: tapping four
+// courses in a row is one change of mind, not four.
+let snapshotTimer = null;
+function scheduleSnapshot() {
+  if (!compareId()) return;                 // not opted in: completely inert
+  clearTimeout(snapshotTimer);
+  snapshotTimer = setTimeout(() => { saveSnapshot(); }, 2000);
+}
+
+// Removal is real: the row goes, and so does the id that was the only way back
+// to it. Done in that order, because an id dropped before the call would leave
+// a row nobody can ever delete.
+async function removeSnapshot() {
+  const id = compareId();
+  if (!id) return null;
+  const out = await compareRpc('delete_route_snapshot', { p_id: id });
+  try { localStorage.removeItem('wp_compare_id'); } catch (e) {}
+  return out;
+}
+
+async function fetchCompare() {
+  if (!S.year) return null;
+  return compareRpc('route_compare',
+    { p_school: schoolId(), p_year: S.year, p_mcat_term: S.mcatTerm || null });
 }
 
 const SYLLABUS_FN = SUPABASE_URL + '/functions/v1/parse-syllabus';
