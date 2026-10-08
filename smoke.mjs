@@ -410,6 +410,15 @@ const AHEAD = [
   { course: 'chem999',   share: 0.55 },   // an id this file has never heard of
 ];
 
+// How the year is spread across seatings, as route_compare() returns it:
+// shares of the whole group, "not sure" counted among them.
+const TERMS = [
+  { term: '2027-summer', share: 0.38 },
+  { term: 'unsure',      share: 0.31 },
+  { term: '2027-fall',   share: 0.19 },
+  { term: '2028-spring', share: 0.12 },
+];
+
 // p25 / p50 / p75, and what the student reads: 38%.
 const COMPARE_CASES = [
   { name: 'both groups small',
@@ -437,12 +446,61 @@ const COMPARE_CASES = [
     scale: { p25: 30, p50: 41, p75: 55 } },
 
   { name: 'their own school, large',
-    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: [] },
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: TERMS },
              all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
     want:  [/The middle BYU junior has covered 45%\. You've covered 38%\./,
-            /Most BYU juniors ahead of you have finished CHEM 481 \(13% of the exam\), PHSCS 105 & 107 \(3%\) and PHSCS 106 & 108 \(3%\)\./],
-    not:   [/CELL 305/, /MMBIO 240/, /chem999/, /Biology I/],
+            /Most BYU juniors ahead of you have finished CHEM 481 \(13% of the exam\), PHSCS 105 & 107 \(3%\) and PHSCS 106 & 108 \(3%\)\./,
+            // The largest plan is 38%, which is not most of anybody.
+            /Summer 2027 is the most common plan among BYU juniors — 38% of them\./],
+    not:   [/CELL 305/, /MMBIO 240/, /chem999/, /Biology I/, /Most BYU juniors plan to test/, /not sure yet\./],
     scale: { p25: 31, p50: 45, p75: 58 } },
+
+  // ── Testing when you are ────────────────────────────────────────────────
+  { name: 'a seating subgroup of nine',
+    term:  '2027-summer',
+    // Nine is under the floor, so the server sends the count and nothing more
+    // and the figures fall back to the whole year.
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: TERMS,
+                       term_group: { n: 9 } },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    want:  [/The middle BYU junior has covered 45%\. You've covered 38%\./],
+    not:   [/testing in/],
+    scale: { p25: 31, p50: 45, p75: 58 } },
+
+  { name: 'a seating subgroup of twenty-five',
+    term:  '2027-summer',
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: TERMS,
+                       term_group: { n: 25, p25: 42, p50: 52, p75: 63 } },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    // The figures come from the twenty-five sitting it that summer; the course
+    // list still comes from the whole year.
+    want:  [/The middle BYU junior testing in Summer 2027 has covered 52%\. You've covered 38%\./,
+            /Most BYU juniors ahead of you have finished CHEM 481/,
+            /Summer 2027 is the most common plan/],
+    not:   [/has covered 45%/],
+    scale: { p25: 42, p50: 52, p75: 63 } },
+
+  { name: 'most of the year on one seating',
+    term:  '2027-summer',
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD,
+                       terms: [{ term: '2027-summer', share: 0.61 }, { term: 'unsure', share: 0.39 }],
+                       term_group: { n: 25, p25: 42, p50: 52, p75: 63 } },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    want:  [/Most BYU juniors plan to test in Summer 2027\./],
+    not:   [/most common plan/],
+    scale: { p25: 42, p50: 52, p75: 63 } },
+
+  { name: 'a year that mostly has not decided',
+    term:  '2027-summer',
+    // "unsure" leads the distribution. It is counted by the server and never
+    // printed: it is not a plan, and the next real seating is.
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD,
+                       terms: [{ term: 'unsure', share: 0.72 }, { term: '2028-spring', share: 0.28 }],
+                       term_group: { n: 25, p25: 42, p50: 52, p75: 63 } },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    want:  [/Spring 2028 is the most common plan among BYU juniors — 28% of them\./],
+    not:   [/unsure/, /Most BYU juniors plan/],
+    scale: { p25: 42, p50: 52, p75: 63 } },
 
   { name: 'further along than the middle',
     reply: { school: { n: 34, p25: 18, p50: 29, p75: 44, ahead: AHEAD, terms: [] },
@@ -492,7 +550,7 @@ for (const c of COMPARE_CASES) {
     await page.addInitScript(store => {
       try { localStorage.clear(); } catch (e) { /* private mode */ }
       for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
-    }, { ...BYU, wp_compare_id: COMPARE_ID });
+    }, { ...BYU, wp_compare_id: COMPARE_ID, ...(c.term ? { wp_mcat_term: c.term } : {}) });
 
     await page.goto(`${ORIGIN}/index.html`);
     await page.waitForTimeout(450);          // the fetch is fired after boot

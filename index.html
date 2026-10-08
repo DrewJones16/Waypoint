@@ -9505,13 +9505,28 @@ function compareShownHTML() {
 
   // Their own school first: it is the group whose courses they can actually
   // register for, and the only one a course list can come from.
-  if (sch.n >= min)        return compareStandHTML(sch, you, compareGroupWords(true), true);
-  if ((any.n || 0) >= min) return compareStandHTML(any, you, compareAnyWords(true), false);
+  if (sch.n >= min) {
+    // And narrower still where there are enough of them. A student sitting
+    // the exam next summer and one sitting it the summer after are not at the
+    // same point in the same race; the second has a year the first does not.
+    // Measuring them against each other is the comparison this whole feature
+    // is supposed to replace.
+    const tg   = sch.term_group;
+    const band = (tg && tg.n >= min) ? tg : sch;
+    const who  = band === tg
+      ? compareGroupWords(true) + ' testing in ' + termLabel(plannedTerm())
+      : compareGroupWords(true);
+    // The course list stays the whole year's, whichever band the figures come
+    // from: what students further along have taken is a fact about the year,
+    // and a subgroup of twenty-odd is a thin basis for naming a class.
+    return compareStandHTML(band, you, who, sch);
+  }
+  if ((any.n || 0) >= min) return compareStandHTML(any, you, compareAnyWords(true), null);
   return compareCountdownHTML(min - (sch.n || 0));
 }
 
-function compareStandHTML(g, you, who, withCourses) {
-  const mid = Math.round(g.p50);
+function compareStandHTML(band, you, who, school) {
+  const mid = Math.round(band.p50);
   // Two figures that happen to be the same read as a stutter when printed as
   // two sentences, so they are printed as one.
   const line = you === mid
@@ -9519,8 +9534,30 @@ function compareStandHTML(g, you, who, withCourses) {
     : `The middle ${who} has covered <b>${mid}%</b>. You've covered <b>${you}%</b>.`;
   return `<div class="cmp">
         <p class="cmp-line">${line}</p>
-        ${compareScaleHTML(g, you)}${withCourses ? compareNextHTML(g, you, mid) : ''}
+        ${compareScaleHTML(band, you)}${school ? compareNextHTML(school, you, mid) + termSpreadHTML(school) : ''}
       </div>`;
+}
+
+// When the year is sitting it. One line, from the group's own distribution —
+// not advice, and not a deadline: a sophomore reading that most of their year
+// plans on the summer after next is being told the shape of the year, which
+// is the thing nobody can see from inside their own schedule.
+//
+// "Not sure yet" is counted by the server and dropped here. It is the honest
+// majority answer in a freshman cohort, and "most BYU freshmen plan to test
+// in not sure yet" is not a sentence.
+function termSpreadHTML(g) {
+  const rows = (g.terms || []).filter(t => t && TERM_RE.test(t.term || ''));
+  if (!rows.length) return '';
+  const top = rows.reduce((a, b) => (Number(b.share) > Number(a.share) ? b : a));
+  const pct = Math.round(Number(top.share) * 100);
+  if (!pct) return '';
+  const when = termLabel(top.term);
+  // "Most" means most. Below half it is the largest group, which is a
+  // different claim and has to be said as one.
+  return `<p class="cmp-next">${Number(top.share) >= 0.5
+    ? `Most ${compareGroupWords()} plan to test in ${when}.`
+    : `${when} is the most common plan among ${compareGroupWords()} — ${pct}% of them.`}</p>`;
 }
 
 // The scale runs to 77, not to 100: courses map to 77% of the exam and CARS is
