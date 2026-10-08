@@ -5909,6 +5909,9 @@ function save() {
   // inert when logged out; schedulePush() returns immediately without a session.
   localStorage.setItem('wp_updated_at', new Date().toISOString());
   schedulePush();
+  // Same shape as schedulePush: inert without an opt-in, and silent when
+  // nothing in the snapshot actually changed.
+  scheduleSnapshot();
 }
 
 function load() {
@@ -9201,11 +9204,40 @@ async function saveSnapshot() {
 
 // Debounced the way cloud sync is, and for the same reason: tapping four
 // courses in a row is one change of mind, not four.
+//
+// And only when something in the row actually moved. save() runs for a dozen
+// reasons — a semester date, a dismissed prompt — and none of those belong in
+// a snapshot that holds a school, a year, a figure and two lists of courses.
+// Comparing the body is exact where a list of "things that count" would drift.
 let snapshotTimer = null;
+let lastSnapshot = null;
 function scheduleSnapshot() {
   if (!compareId()) return;                 // not opted in: completely inert
+  const body = JSON.stringify(snapshotBody());
+  if (body === lastSnapshot) return;
+  lastSnapshot = body;
   clearTimeout(snapshotTimer);
   snapshotTimer = setTimeout(() => { saveSnapshot(); }, 2000);
+}
+
+// Tapping the button is the whole of the consent. It makes the id, which is
+// what opting in means, sends the row, and shows whatever comes back.
+async function optInToCompare() {
+  if (!makeCompareId()) return;             // storage blocked: nothing to own the row
+  render();                                 // the offer goes at once, not after the call
+  await saveSnapshot();
+  lastSnapshot = JSON.stringify(snapshotBody());
+  await loadCompare();
+}
+
+// Leaving. The row goes, the id goes, and the figures this device was holding
+// go with them — a student who removes their route should not keep seeing the
+// comparison it bought them.
+async function leaveCompare() {
+  await removeSnapshot();
+  S._compare = undefined;
+  lastSnapshot = null;
+  render();
 }
 
 // Removal is real: the row goes, and so does the id that was the only way back
@@ -9219,11 +9251,37 @@ async function removeSnapshot() {
   return out;
 }
 
+// How to say a year in the plural, for "other BYU juniors".
+const YEAR_PLURAL = { freshman: 'freshmen', sophomore: 'sophomores',
+                      junior: 'juniors', senior: 'seniors' };
+
+// "other BYU juniors", "other Waypoint juniors" for a student on the standard
+// list — there is no school to name, and "other juniors" sounds like the
+// whole world rather than the people using this.
+function compareGroupWords() {
+  const years = YEAR_PLURAL[S.year] || 'students';
+  return schoolId() === 'generic' ? 'Waypoint ' + years : catalog().name + ' ' + years;
+}
+
 async function fetchCompare() {
   if (!S.year) return null;
   return compareRpc('route_compare',
     { p_school: schoolId(), p_year: S.year, p_mcat_term: S.mcatTerm || null });
 }
+
+// Fetched once per app open and held in transient state. null means "nothing
+// to show", whether that is a server which has not been set up, a group of
+// three, or no network — all of which look the same to a student, correctly.
+async function loadCompare() {
+  if (!compareId()) return;
+  const data = await fetchCompare();
+  S._compare = data || null;
+  render();
+}
+
+// Nothing yet: the comparison itself lands in the next commit. Opting in today
+// shows what the server shows, which with no server is nothing at all.
+function compareShownHTML() { return ''; }
 
 const SYLLABUS_FN = SUPABASE_URL + '/functions/v1/parse-syllabus';
 const SYLLABUS_TIMEOUT = 90000;   // an unhurried read of a long syllabus
@@ -10575,6 +10633,16 @@ function screenSettings() {
 
       <div class="section-divider"></div>
 
+      <p class="label" style="margin-bottom:8px;">Comparison</p>
+      ${compareId() ? `
+        <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Your school, year and courses are in the comparison, with no name or account attached. Removing deletes the row.</p>
+        <button class="btn btn-ghost" onclick="leaveCompare()">Remove my route</button>
+      ` : `
+        <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Off. Adding your route lets you see how it compares with other ${compareGroupWords()}, anonymously — there is an offer on your Route.</p>
+      `}
+
+      <div class="section-divider"></div>
+
       <p class="label" style="margin-bottom:8px;">School</p>
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Which course list you pick from. Switching keeps the other list's answers, so you can switch back and find your route as you left it.</p>
       ${SCHOOL_CHOICES.map(c => `
@@ -11803,7 +11871,27 @@ function screenReveal() {
   // are the map's own annotation rather than a second description, and they
   // are how a student finds their way back to the recommendation after
   // looking around. Closing the parcel brings the block back.
-  const focusBlock = focus && !S._mapOpen ? `      <p class="focus">${focus.detail}</p>
+  // ── Where you stand among students like you ───────────────────────────────
+  // Offered under the detail line, above the button, and only to a student who
+  // has marked at least one course — there is nothing to compare before that.
+  //
+  // THE TAP IS THE CONSENT. Not a checkbox somewhere, not a default, not a
+  // dialogue to dismiss: the button says what it adds, the line underneath
+  // says it is anonymous and removable, and nothing leaves the device until
+  // somebody presses it.
+  //
+  // After opting in this is where the comparison appears. Until the migration
+  // in supabase/migrations/0002 has been run there is nothing to appear — the
+  // server returns nothing and so does this, which is the same thing a student
+  // in a group of three sees.
+  const compareBlock = pickedCount() === 0 ? '' : compareId() ? compareShownHTML() : `
+      <div style="margin-top:14px;">
+        <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 8px;">See how your route compares with other ${compareGroupWords()}.</p>
+        <button class="btn btn-ghost" style="margin:0;" onclick="optInToCompare()">Compare my route</button>
+        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:8px 0 0;">Adds your school, year and courses to the comparison, anonymously. You can remove it any time in Settings.</p>
+      </div>`;
+
+  const focusBlock = focus && !S._mapOpen ? `      <p class="focus">${focus.detail}</p>${compareBlock}
       <div style="margin-top:18px;margin-bottom:8px;">
         ${PRACTICE
           ? `<button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>`
@@ -13664,6 +13752,9 @@ if (pickedCount() > 0) {
   S.screen = 'reveal';
   if (window.plausible) plausible('app_open');
 }
+// Queued, never awaited, and silent on failure: the Route paints with or
+// without it, and a student who has not opted in never makes the call.
+setTimeout(() => { loadCompare(); }, 0);
 // The boot screen is set here rather than through go(), so the funnel's first
 // step would otherwise never fire for the visitor who matters most.
 trackScreen(S.screen);
