@@ -748,6 +748,28 @@
   .focus b { color: var(--ink); font-weight: 600; }
   .focus-why { text-align: center; font-size: var(--fs-13); color: var(--faint); margin: 9px 0 0; line-height: 1.35; }
 
+  /* Where you stand. A ruled scale, not a progress bar: a printed baseline,
+     square ends, the group's middle half as the same tint a covered parcel is
+     filled with, its median as a hairline, and the student as an ink tick.
+     The map is drawn with a straight edge and so is this. */
+  .cmp { margin: 14px 0 0; }
+  .cmp-line { font-size: var(--fs-13); line-height: 1.55; color: var(--ink-2); }
+  .cmp-line b { color: var(--ink); font-weight: 600; }
+  .cmp-scale { position: relative; height: 20px; margin: 12px 0 0; border-bottom: 1px solid var(--ink); }
+  .cmp-scale > span { position: absolute; bottom: 0; }
+  /* The band keeps its printed edge even where it is one percent wide. */
+  .cmp-band { top: 7px; background: var(--covered); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .cmp-mid { top: 4px; width: 1px; background: var(--green); }
+  /* Centred on its figure, which is why it carries the negative margin: a tick
+     drawn from the left edge of 38% would read as 38-and-a-bit. */
+  .cmp-you { top: 0; width: 2px; margin-left: -1px; background: var(--ink); }
+  .cmp-ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--fs-11); color: var(--faint); }
+  .cmp-key { font-size: var(--fs-11); line-height: 1.45; color: var(--faint); margin: 6px 0 0; }
+  .cmp-next { font-size: var(--fs-13); line-height: 1.5; color: var(--ink-2); margin: 10px 0 0; }
+  /* Two answers of equal standing, so neither is the one the app wants. */
+  .cmp-pair { display: flex; gap: 8px; margin-top: 10px; }
+  .cmp-pair .btn { margin: 0; flex: 1; }
+
   .sheet-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 10px; font-size: var(--fs-11); line-height: 1.3; color: var(--ink-2); }
   .sheet-legend > span { display: flex; gap: 7px; align-items: flex-start; }
   .sw { width: 16px; height: 12px; flex: none; margin-top: 1px; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line-2); }
@@ -5788,7 +5810,14 @@ const QUESTIONS = [
 const S = {
   screen:         'landing',
   year:           null,
+  // The academic year in which wp_year was last chosen or confirmed, as the
+  // year 1 August fell in: "2026" means the 2026/27 year. Absent for every
+  // student who answered before this question existed, which is what the last
+  // save stamp stands in for.
+  yearChecked:    null,
   school:         'generic',   // which course catalog this student picks from
+  mcatTerm:       null,        // '2027-summer' once asked; declared here so the
+                               // snapshot has something defined to read
   courses:        new Set(),
   courseStatus:   {},          // {courseId: 'in-progress'|'completed'}
   courseWhen:     {},          // {courseId: '2025-fall'} — the term a done course was taken
@@ -5832,10 +5861,13 @@ const S = {
 // Single source of truth for the keys Waypoint owns. Backup, restore and reset
 // all read from here (or from the wp_ prefix scan below), so a key added in a
 // future release is covered everywhere the moment it's listed.
-const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_school','wp_streak','wp_lastDate','wp_qstats',
+// wp_compare_id rides with the rest, so a student signed in on two devices is
+// one row in the comparison rather than two — and so "Start fresh" removes it
+// along with everything else.
+const WP_KEYS = ['wp_courses','wp_course_status','wp_course_when','wp_syllabus','wp_year','wp_school','wp_compare_id','wp_streak','wp_lastDate','wp_qstats',
                  'wp_total','wp_history','wp_milestones','wp_cov_milestones',
                  'wp_topic_last_seen','wp_nudge_dismissed','wp_sem_start','wp_sem_prompt',
-                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked',
+                 'wp_midterm','wp_updated_at','wp_briefs','wp_brief_seen','wp_remind_asked','wp_year_checked','wp_mcat_term',
                  'wp_upcoming','wp_pace_offset','wp_acct_prompt','wp_term_card'];
 
 // The auth session is deliberately NOT wp_-prefixed: it must stay out of backup
@@ -5874,6 +5906,11 @@ function save() {
   // is the only way to tell "answered Somewhere else" from "never saw the
   // question", which the event below depends on.
   if (S._schoolAsked || schoolAnswered()) localStorage.setItem('wp_school', S.school || 'generic');
+  if (S.yearChecked) localStorage.setItem('wp_year_checked', S.yearChecked);
+  // Written only once answered, the same way wp_school is: the key's absence
+  // is the record of never having been asked, and "not sure yet" is an answer
+  // that has to be tellable from silence or the question comes back forever.
+  if (S.mcatTerm) localStorage.setItem('wp_mcat_term', S.mcatTerm);
   localStorage.setItem('wp_streak',   String(S.streak));
   localStorage.setItem('wp_lastDate', S.lastDate || '');
   localStorage.setItem('wp_qstats',   JSON.stringify(S.qStats));
@@ -5904,6 +5941,9 @@ function save() {
   // inert when logged out; schedulePush() returns immediately without a session.
   localStorage.setItem('wp_updated_at', new Date().toISOString());
   schedulePush();
+  // Same shape as schedulePush: inert without an opt-in, and silent when
+  // nothing in the snapshot actually changed.
+  scheduleSnapshot();
 }
 
 function load() {
@@ -5952,6 +5992,22 @@ function load() {
       } catch(e) { console.warn('[Waypoint] wp_syllabus unreadable — ignoring:', e); }
     }
     S.year     = localStorage.getItem('wp_year')     || null;
+    S.yearChecked = localStorage.getItem('wp_year_checked') || null;
+    S.mcatTerm    = localStorage.getItem('wp_mcat_term')    || null;
+    if (!S.yearChecked) {
+      // No stamp, so this is a student who answered before the question
+      // existed. The last time they saved anything says which school year
+      // their answer belongs to, and it is read HERE, once, because save()
+      // restamps wp_updated_at on every call — one tap anywhere and the
+      // evidence that they were last here in May is gone.
+      //
+      // Turning it into a year on the spot is what makes the question
+      // survivable: a student who ignores it and carries on using the app is
+      // asked again next time, instead of quietly ageing into the wrong group
+      // because their last save is now today.
+      const ms = Date.parse(localStorage.getItem('wp_updated_at') || '') || 0;
+      S.yearChecked = ms ? String(academicYear(ms)) : null;
+    }
     // The one new key this feature adds. Absent means generic, which is every
     // student who has ever used Waypoint until they say otherwise.
     S.school   = localStorage.getItem('wp_school')   || 'generic';
@@ -6415,11 +6471,22 @@ function exampleRoute() {
 }
 
 function coverage(courses, statusAware = false) {
-  return Math.round(TOPICS.reduce((n, t) => {
+  return Math.round(coverageRaw(courses, statusAware));
+}
+
+// The same sum without the rounding, for the one caller that needs a
+// difference between two of them. Rounding each figure first and subtracting
+// can be a whole point out in either direction — enough to print "0%" beside a
+// class that is worth one, or "1%" beside one that is worth nothing.
+//
+// This is not a second version of the coverage arithmetic. It is the only
+// version; coverage() rounds what it returns.
+function coverageRaw(courses, statusAware = false) {
+  return TOPICS.reduce((n, t) => {
     const credit = creditIn(t.id, courses);
     if (!credit) return n;
     return n + t.w * (statusAware ? credit : 1);
-  }, 0));
+  }, 0);
 }
 
 // ── MILESTONES, IN AAMC'S OWN STRUCTURE ───────────────────────────────────────
@@ -7678,6 +7745,28 @@ function recentTerms(n, now = new Date()) {
     out.push(termId(y, TERM_SEASONS[si]));
     if (--si < 0) { si = TERM_SEASONS.length - 1; y--; }
   }
+  return out;
+}
+
+// ── TERMS AHEAD ─────────────────────────────────────────────────────────────
+// recentTerms() counts backwards for "when did you take it". This counts
+// forwards for "when will you sit it", off the same three seasons and the same
+// id shape, because a second term vocabulary is a second thing to keep right.
+//
+// The one thing it has to know that the course picker does not: the MCAT runs
+// January to September, so the app's "fall" — August through December as an
+// academic calendar reads it — is two months of seatings and four of nothing.
+// A term is dropped the month after its last seating rather than at the end of
+// its season, so nobody is offered a date that has already happened.
+const TERM_LAST_SEATING = { spring: 4, summer: 6, fall: 8 };   // May, July, September
+
+function futureTerms(n, now = new Date()) {
+  let y  = now.getFullYear();
+  let si = TERM_SEASONS.indexOf(seasonOfMonth(now.getMonth()));
+  const step = () => { if (++si >= TERM_SEASONS.length) { si = 0; y++; } };
+  if (now.getMonth() > TERM_LAST_SEATING[TERM_SEASONS[si]]) step();
+  const out = [];
+  for (let i = 0; i < n; i++) { out.push(termId(y, TERM_SEASONS[si])); step(); }
   return out;
 }
 
@@ -9119,6 +9208,480 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ── COMPARING ROUTES ────────────────────────────────────────────────────────
+// Where a student stands among students at the same school in the same year.
+//
+// Three rules hold this together, and all three are enforced on the server as
+// well as here (supabase/migrations/0002_route_compare.sql):
+//   OPT-IN — nothing leaves the device until the student taps to add it, which
+//     is why the id below is made at that moment and not before. No id, no row.
+//   ANONYMOUS — the snapshot carries a school, a year, a coverage figure and
+//     two lists of course ids. It carries no name, no email and no account, and
+//     it is never sent with a signed-in student's token.
+//   AGGREGATES ONLY — the server returns counts and medians, never rows, and
+//     below a group of twenty it returns nothing but the count.
+//
+// INERT UNTIL THE MIGRATION RUNS. Every call below swallows its failure and
+// returns null, so a 404 from a function that does not exist yet is
+// indistinguishable from a student who has not opted in: no line, no error,
+// no spinner. That is deliberate — the migration is run by hand, and the app
+// has to keep working in the window before somebody gets round to it.
+const COMPARE_RPC = SUPABASE_URL + '/rest/v1/rpc/';
+
+// The anon key only. A comparison has no account behind it, and sending a
+// signed-in student's token would hand the server the one thing it is built
+// not to know.
+function compareHeaders() {
+  return { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON,
+           'content-type': 'application/json' };
+}
+
+// The id IS the opt-in: it exists only once the student has asked for this, and
+// deleting it is what leaving looks like from the device's side.
+function compareId() {
+  try { return localStorage.getItem('wp_compare_id') || null; } catch (e) { return null; }
+}
+function makeCompareId() {
+  let id = null;
+  try {
+    id = (crypto && crypto.randomUUID) ? crypto.randomUUID()
+       // A browser without randomUUID still gets a v4 from the same entropy.
+       : ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+           (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+    localStorage.setItem('wp_compare_id', id);
+  } catch (e) { return null; }
+  return id;
+}
+
+async function compareRpc(fn, body) {
+  try {
+    const r = await fetch(COMPARE_RPC + fn, {
+      method: 'POST', headers: compareHeaders(), body: JSON.stringify(body),
+    });
+    if (!r.ok) return null;                 // 404 before the migration, and that is fine
+    const text = await r.text();
+    return text ? JSON.parse(text) : true;  // the writers return nothing
+  } catch (e) { return null; }              // offline, blocked, CORS — all the same answer
+}
+
+// What this student's row says. Course ids only: the catalog that gives them
+// meaning is already in the row beside them.
+function snapshotBody() {
+  return {
+    p_id:        compareId(),
+    p_school:    schoolId(),
+    p_year:      S.year,
+    p_coverage:  coverage(S.courses, true),
+    p_done:      pickedCourses().filter(c => S.courseStatus[c.id] !== 'in-progress').map(c => c.id),
+    p_taking:    pickedCourses().filter(c => S.courseStatus[c.id] === 'in-progress').map(c => c.id),
+    p_mcat_term: plannedTerm(),
+  };
+}
+
+async function saveSnapshot() {
+  if (!compareId() || !S.year) return null;
+  return compareRpc('save_route_snapshot', snapshotBody());
+}
+
+// Debounced the way cloud sync is, and for the same reason: tapping four
+// courses in a row is one change of mind, not four.
+//
+// And only when something in the row actually moved. save() runs for a dozen
+// reasons — a semester date, a dismissed prompt — and none of those belong in
+// a snapshot that holds a school, a year, a figure and two lists of courses.
+// Comparing the body is exact where a list of "things that count" would drift.
+let snapshotTimer = null;
+let lastSnapshot = null;
+function scheduleSnapshot() {
+  if (!compareId()) return;                 // not opted in: completely inert
+  const body = JSON.stringify(snapshotBody());
+  if (body === lastSnapshot) return;
+  lastSnapshot = body;
+  clearTimeout(snapshotTimer);
+  snapshotTimer = setTimeout(() => { saveSnapshot(); }, 2000);
+}
+
+// Tapping the button is the whole of the consent. It makes the id, which is
+// what opting in means, sends the row, and shows whatever comes back.
+async function optInToCompare() {
+  if (!makeCompareId()) return;             // storage blocked: nothing to own the row
+  if (window.plausible) plausible('compare_opt_in', { props: { school: schoolId() } });
+  render();                                 // the offer goes at once, not after the call
+  // A year we already doubt is not written. The student who opts in after a
+  // summer away is exactly the student whose year is stale, and the question
+  // that corrects it is now where the offer was — so the first snapshot waits
+  // for the answer rather than going out wrong and being corrected a tap
+  // later, which the server's thirty-second write floor would drop anyway.
+  if (yearIsStale()) return;
+  await saveSnapshot();
+  lastSnapshot = JSON.stringify(snapshotBody());
+  await loadCompare();
+}
+
+// Leaving. The row goes, the id goes, and the figures this device was holding
+// go with them — a student who removes their route should not keep seeing the
+// comparison it bought them.
+async function leaveCompare() {
+  if (window.plausible) plausible('compare_removed');
+  await removeSnapshot();
+  S._compare = undefined;
+  lastSnapshot = null;
+  compareTracked = null;
+  render();
+}
+
+// Removal is real: the row goes, and so does the id that was the only way back
+// to it. Done in that order, because an id dropped before the call would leave
+// a row nobody can ever delete.
+async function removeSnapshot() {
+  const id = compareId();
+  if (!id) return null;
+  const out = await compareRpc('delete_route_snapshot', { p_id: id });
+  try { localStorage.removeItem('wp_compare_id'); } catch (e) {}
+  return out;
+}
+
+// How to say a year in the plural, for "other BYU juniors".
+const YEAR_PLURAL = { freshman: 'freshmen', sophomore: 'sophomores',
+                      junior: 'juniors', senior: 'seniors' };
+
+// "other BYU juniors", "other Waypoint juniors" for a student on the standard
+// list — there is no school to name, and "other juniors" sounds like the
+// whole world rather than the people using this.
+// Singular where a sentence needs one: "the middle BYU junior", "1 more
+// Waypoint junior".
+function compareGroupWords(one) {
+  const years = one ? (S.year || 'student') : (YEAR_PLURAL[S.year] || 'students');
+  return schoolId() === 'generic' ? 'Waypoint ' + years : catalog().name + ' ' + years;
+}
+
+// The wider group: the same year at every school. Named "at any school" rather
+// than "everyone", because that is the honest description of a group drawn
+// from three course lists — and because a student on the standard list would
+// otherwise read the same four words twice.
+function compareAnyWords(one) {
+  const years = one ? (S.year || 'student') : (YEAR_PLURAL[S.year] || 'students');
+  return 'Waypoint ' + years + ' at any school';
+}
+
+// ── THE YEAR GOES STALE ────────────────────────────────────────────────────
+// wp_year is answered once, at onboarding, and then believed forever. A
+// sophomore who signed up last spring is a junior by October, and comparing
+// them with this year's sophomores puts them in a group they left.
+//
+// So an opted-in student whose route has not been touched since before the
+// school year started is asked, once, before any comparison is drawn. Not a
+// guess, and not a silent increment: a student who took a year out is still a
+// sophomore, and the app has no way of knowing which happened.
+const YEAR_NEXT = { freshman: 'sophomore', sophomore: 'junior', junior: 'senior' };
+
+// The academic year we are in, named by the August it started in. The same cut
+// the server makes in 0002_route_compare.sql, and it has to stay the same cut:
+// a question asked on one boundary against a group counted on another would
+// move a student into a group the server has already aged out.
+function academicYear(now) {
+  const d = now ? new Date(now) : new Date();
+  return d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1;
+}
+
+// One comparison, against one stamp. Null means there is nothing to go on —
+// a student with no save history at all — and a student the app knows nothing
+// about is not asked anything.
+function yearIsStale() {
+  if (!compareId()) return false;                   // nobody else is in a group
+  if (!S.year || !YEAR_NEXT[S.year]) return false;  // "Senior / Post-bacc" is 4th+ year: it has no next
+  return S.yearChecked !== null && Number(S.yearChecked) < academicYear();
+}
+
+function yearCheckHTML() {
+  const now = S.year, next = YEAR_NEXT[now];
+  return `<div class="cmp">
+        <p class="cmp-line">You were last here before this school year started. Still a ${now}, or a ${next} now?</p>
+        <div class="cmp-pair">
+          <button class="btn btn-ghost" onclick="confirmYear('${now}')">Still a ${now}</button>
+          <button class="btn btn-ghost" onclick="confirmYear('${next}')">A ${next} now</button>
+        </div>
+      </div>`;
+}
+
+// Either answer is an answer: "still a sophomore" is as much a correction as
+// "a junior now", and both stamp the year so the question is asked once.
+async function confirmYear(year) {
+  const moved = year !== S.year;
+  S.year = year;
+  S.yearChecked = String(academicYear());
+  save();                       // writes wp_year, stamps the key
+  // The group itself changed, so whatever was on screen is about other people.
+  if (moved) S._compare = undefined;
+  render();
+  // Sent now rather than on save()'s two-second debounce. For the student who
+  // has just opted in this is the first write there has ever been, and for
+  // everyone else it is the one write the thirty-second floor must not eat.
+  await saveSnapshot();
+  lastSnapshot = JSON.stringify(snapshotBody());
+  await loadCompare();
+}
+
+// ── WHEN YOU PLAN TO TEST ──────────────────────────────────────────────────
+// Two students in the same year can be eighteen months apart on the thing that
+// decides what their pace means: one sits the exam this summer, the other the
+// summer after. Asking turns "other BYU juniors" into "other BYU juniors
+// sitting it when I am", which is the only group whose middle says anything
+// about mine.
+const TERM_AHEAD = 7;        // a shade over two years: a freshman can answer it
+
+// "Not sure yet" is stored as a word, because the app has to tell it from
+// never having been asked. The server is told null instead: its column takes a
+// term or nothing, and a value it rejects makes save_route_snapshot drop the
+// WHOLE write — which would quietly stop this student's route updating at all
+// for as long as the answer sat on the device.
+function plannedTerm()  { return TERM_RE.test(S.mcatTerm || '') ? S.mcatTerm : null; }
+function termAnswered() { return !!S.mcatTerm; }
+
+function setMcatTerm(id) {
+  const moved = id !== S.mcatTerm;
+  // The answer itself does not travel. How many students answer is the
+  // question this is here to settle; which Saturday they picked is theirs.
+  if (moved && window.plausible) plausible('mcat_term_set');
+  S.mcatTerm = id;
+  save();                       // stores it, and queues the snapshot that carries it
+  // The group narrows to the students sitting it when this one does, so what
+  // is on screen is about other people now.
+  if (moved) S._compare = undefined;
+  render();
+  if (moved) loadCompare();
+}
+
+// The same chip row the course picker uses, counting the other way. One tap,
+// no form, and "Not sure yet" is a real answer that costs nothing — which is
+// the point: a student who does not know is not the same as one who was never
+// asked, and only one of them should see this again.
+function termAskHTML() {
+  const chip = (id, label) => `<button class="term-chip${S.mcatTerm === id ? ' on' : ''}" onclick="setMcatTerm('${id}')">${label}</button>`;
+  // Its own modifier: this question sits under the comparison rather than in
+  // its place, and the two have to be tellable apart from outside.
+  return `<div class="cmp cmp-term">
+        <p class="cmp-line">When do you plan to take the MCAT?</p>
+        <div class="term-row" style="margin-top:10px;">
+          ${futureTerms(TERM_AHEAD).map(t => chip(t, termLabel(t))).join('')}
+          <button class="term-chip quiet${S.mcatTerm === 'unsure' ? ' on' : ''}" onclick="setMcatTerm('unsure')">Not sure yet</button>
+        </div>
+      </div>`;
+}
+
+async function fetchCompare() {
+  if (!S.year) return null;
+  return compareRpc('route_compare',
+    { p_school: schoolId(), p_year: S.year, p_mcat_term: plannedTerm() });
+}
+
+// Fetched once per app open and held in transient state. null means "nothing
+// to show", whether that is a server which has not been set up, a group of
+// three, or no network — all of which look the same to a student, correctly.
+async function loadCompare() {
+  if (!compareId()) return;
+  const data = await fetchCompare();
+  S._compare = data || null;
+  render();
+}
+
+// ── WHERE YOU STAND ────────────────────────────────────────────────────────
+// One line, one ruled scale, at most one next move.
+//
+// PACE, NOT ABILITY. Coverage is which classes somebody has taken. It says
+// nothing about how well they did in them, and the words here never imply
+// otherwise: "has covered", "you've covered", and a course they could take.
+//
+// NO POSITION AND NO PERCENTILE. The server hands back a count and three
+// quartiles; the scale draws the middle half as a band and the median as a
+// hairline. The only numbers on screen are the group's middle and the
+// student's own figure. There is deliberately no "you are in the Nth percent"
+// anywhere — that is a grade, and this is a map.
+//
+// THE FLOOR IS THE SERVER'S, NOT THIS FILE'S. Below twenty the server returns
+// nothing but the count, so the countdown below is drawn from a number that
+// cannot be one student's figure wearing a disguise. Removing the check here
+// would not reveal anything; there would be nothing to reveal.
+// ── COUNTING IT ────────────────────────────────────────────────────────────
+// Four events, and a hard line on what travels with them: no coverage figure,
+// no course id, no school for anything but the opt-in. The band below is a
+// three-way bucket — lower, middle or upper, against the group's own middle
+// half — which answers "does this land for the people below the middle" and
+// cannot be read back as anybody's percentage.
+//
+// Once per app open, not once per render. The Route redraws on every tap, and
+// an event per redraw would say more about the fidget than the feature.
+let compareTracked = null;
+function trackCompareShown(group, band) {
+  const key = group + ':' + (band || '');
+  if (compareTracked === key) return;
+  compareTracked = key;
+  if (window.plausible) plausible('compare_shown', { props: band ? { group, band } : { group } });
+}
+
+// Where the student sits against the band being drawn. Not a position in a
+// list and not a percentile: three words, the same three the scale draws.
+function compareBand(g, you) {
+  if (!g || g.p25 === undefined) return null;
+  return you < g.p25 ? 'lower' : you > g.p75 ? 'upper' : 'middle';
+}
+
+function compareShownHTML() {
+  const d = S._compare;
+  if (!d || !d.school) return '';            // not loaded, no server, or nothing to say
+  const min = d.min_n || 20;
+  const sch = d.school, any = d.all || {};
+  const you = coverage(S.courses, true);
+
+  // Their own school first: it is the group whose courses they can actually
+  // register for, and the only one a course list can come from.
+  if (sch.n >= min) {
+    // And narrower still where there are enough of them. A student sitting
+    // the exam next summer and one sitting it the summer after are not at the
+    // same point in the same race; the second has a year the first does not.
+    // Measuring them against each other is the comparison this whole feature
+    // is supposed to replace.
+    const tg   = sch.term_group;
+    const band = (tg && tg.n >= min) ? tg : sch;
+    const who  = band === tg
+      ? compareGroupWords(true) + ' testing in ' + termLabel(plannedTerm())
+      : compareGroupWords(true);
+    trackCompareShown('school', compareBand(band, you));
+    // The course list stays the whole year's, whichever band the figures come
+    // from: what students further along have taken is a fact about the year,
+    // and a subgroup of twenty-odd is a thin basis for naming a class.
+    return compareStandHTML(band, you, who, sch);
+  }
+  if ((any.n || 0) >= min) {
+    trackCompareShown('all', compareBand(any, you));
+    return compareStandHTML(any, you, compareAnyWords(true), null);
+  }
+  // No band to report: there is nothing drawn to be in.
+  trackCompareShown('countdown', null);
+  return compareCountdownHTML(min - (sch.n || 0));
+}
+
+function compareStandHTML(band, you, who, school) {
+  const mid = Math.round(band.p50);
+  // Two figures that happen to be the same read as a stutter when printed as
+  // two sentences, so they are printed as one.
+  const line = you === mid
+    ? `The middle ${who} has covered <b>${mid}%</b>, and so have you.`
+    : `The middle ${who} has covered <b>${mid}%</b>. You've covered <b>${you}%</b>.`;
+  return `<div class="cmp">
+        <p class="cmp-line">${line}</p>
+        ${compareScaleHTML(band, you)}${school ? compareNextHTML(school, you, mid) + termSpreadHTML(school) : ''}
+      </div>`;
+}
+
+// When the year is sitting it. One line, from the group's own distribution —
+// not advice, and not a deadline: a sophomore reading that most of their year
+// plans on the summer after next is being told the shape of the year, which
+// is the thing nobody can see from inside their own schedule.
+//
+// "Not sure yet" is counted by the server and dropped here. It is the honest
+// majority answer in a freshman cohort, and "most BYU freshmen plan to test
+// in not sure yet" is not a sentence.
+function termSpreadHTML(g) {
+  const rows = (g.terms || []).filter(t => t && TERM_RE.test(t.term || ''));
+  if (!rows.length) return '';
+  const top = rows.reduce((a, b) => (Number(b.share) > Number(a.share) ? b : a));
+  const pct = Math.round(Number(top.share) * 100);
+  if (!pct) return '';
+  const when = termLabel(top.term);
+  // "Most" means most. Below half it is the largest group, which is a
+  // different claim and has to be said as one.
+  return `<p class="cmp-next">${Number(top.share) >= 0.5
+    ? `Most ${compareGroupWords()} plan to test in ${when}.`
+    : `${when} is the most common plan among ${compareGroupWords()} — ${pct}% of them.`}</p>`;
+}
+
+// The scale runs to 77, not to 100: courses map to 77% of the exam and CARS is
+// the remaining 23%, which no class teaches. A scale to 100 would draw every
+// student, however far through their sequence, as a tick in the left half.
+function compareScaleHTML(g, you) {
+  const CEIL = 77;
+  const at  = v => Math.max(0, Math.min(100, (Number(v) || 0) / CEIL * 100));
+  const l = at(g.p25), r = at(g.p75);
+  const read = `A scale from 0 to 77 percent. The middle half of the group runs from `
+             + `${Math.round(g.p25)} to ${Math.round(g.p75)} percent, its middle is `
+             + `${Math.round(g.p50)} percent, and you are at ${you} percent.`;
+  return `<div class="cmp-scale" role="img" aria-label="${read}">
+          <span class="cmp-band" style="left:${l}%;width:${Math.max(r - l, 0.8)}%;"></span>
+          <span class="cmp-mid" style="left:${at(g.p50)}%;"></span>
+          <span class="cmp-you" style="left:${at(you)}%;"></span>
+        </div>
+        <div class="cmp-ends"><span>0</span><span>77%</span></div>
+        <p class="cmp-key">The band is the middle half of the group, the hairline its middle. The dark tick is you.</p>`;
+}
+
+// The next move. Up to three classes this student has not finished that most
+// of the students further along have, biggest first — which is the only part
+// of a comparison anybody can act on.
+//
+// "Ahead of you" appears here and nowhere else, because here it ends in a
+// course code. A student who is further along than the middle is told that and
+// handed nothing: there is no class to name, and a list of courses they
+// already have would be a reward for having had them.
+function compareNextHTML(g, you, mid) {
+  if (you > mid) return `<p class="cmp-next">You've covered more than most ${compareGroupWords()}.</p>`;
+  const done = new Set(pickedCourses()
+    .filter(c => S.courseStatus[c.id] !== 'in-progress').map(c => c.id));
+  const seen = new Set(), picks = [];
+  for (const row of (g.ahead || [])) {
+    const id = row && row.course;
+    if (!id || seen.has(id) || done.has(id)) continue;
+    seen.add(id);
+    // A course id from a catalog this student is not on, or one since renamed,
+    // is skipped rather than printed: the server stores ids, and only this
+    // file knows what they are called this week.
+    const c = courseById(id);
+    if (!c) continue;
+    const w = courseWouldAdd(id);
+    if (w > 0) picks.push({ c, w });      // a class worth nothing is not a move
+  }
+  const top = picks.sort((a, b) => b.w - a.w).slice(0, 3);
+  if (!top.length) return '';
+  // The unit is said once, on the first figure, and the rest are read as
+  // the same kind of number.
+  const names = top.map((x, i) => `${courseLabel(x.c)} (${x.w}%${i ? '' : ' of the exam'})`);
+  const list  = names.length < 2 ? names[0]
+              : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+  return `<p class="cmp-next">Most ${compareGroupWords()} ahead of you have finished ${list}.</p>`;
+}
+
+// What a class would add to THIS student's figure — never more than the class's
+// own share of the exam and often less, because a topic two of their courses
+// both cover is already counted once. Measured with the app's own arithmetic by
+// adding the course, finishing it, reading the figure and putting everything
+// back: the same trick coverageAfterCourse() plays on a course already on the
+// route, one step further along because this one is not on it yet.
+function courseWouldAdd(courseId) {
+  const had    = S.courses.has(courseId);
+  const prev   = S.courseStatus[courseId];
+  const before = coverageRaw(S.courses, true);
+  S.courses.add(courseId);
+  S.courseStatus[courseId] = 'completed';
+  try { return Math.round(coverageRaw(S.courses, true) - before); }
+  finally {
+    if (!had) S.courses.delete(courseId);
+    if (prev === undefined) delete S.courseStatus[courseId];
+    else S.courseStatus[courseId] = prev;
+  }
+}
+
+// Under twenty in both groups. The count is the one thing the server will say
+// about a small group, so it is the one thing this says back — with the reason,
+// because "nothing yet" without a reason reads as a broken screen.
+function compareCountdownHTML(left) {
+  const who = left === 1 ? compareGroupWords(true) : compareGroupWords();
+  return `<div class="cmp">
+        <p class="cmp-line"><b>${left} more ${who}</b> and you'll see where you stand.</p>
+        <p class="cmp-key">A group shows nothing until twenty students are in it, so that no figure on this screen can be traced back to a person.</p>
+        <button class="btn btn-ghost" style="margin:10px 0 0;" onclick="shareCoverageCard('coverage', this)">Share Waypoint</button>
+      </div>`;
+}
+
 const SYLLABUS_FN = SUPABASE_URL + '/functions/v1/parse-syllabus';
 const SYLLABUS_TIMEOUT = 90000;   // an unhurried read of a long syllabus
 const SYLLABUS_MAX_WEEK = 20;
@@ -10469,6 +11032,25 @@ function screenSettings() {
 
       <div class="section-divider"></div>
 
+      <p class="label" style="margin-bottom:8px;">Comparison</p>
+      ${compareId() ? `
+        <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Your school, year and courses are in the comparison, with no name or account attached. Removing deletes the row.</p>
+        <button class="btn btn-ghost" onclick="leaveCompare()">Remove my route</button>
+      ` : `
+        <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Off. Adding your route lets you see how it compares with other ${compareGroupWords()}, anonymously — there is an offer on your Route.</p>
+      `}
+
+      <div class="section-divider"></div>
+
+      <p class="label" style="margin-bottom:8px;">When you'll test</p>
+      <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Used to compare your pace with students sitting the exam when you are. Change it whenever the plan changes.</p>
+      <div class="term-row">
+        ${futureTerms(TERM_AHEAD).map(t => `<button class="term-chip${S.mcatTerm === t ? ' on' : ''}" onclick="setMcatTerm('${t}')">${termLabel(t)}</button>`).join('')}
+        <button class="term-chip quiet${S.mcatTerm === 'unsure' ? ' on' : ''}" onclick="setMcatTerm('unsure')">Not sure yet</button>
+      </div>
+
+      <div class="section-divider"></div>
+
       <p class="label" style="margin-bottom:8px;">School</p>
       <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin-bottom:16px;">Which course list you pick from. Switching keeps the other list's answers, so you can switch back and find your route as you left it.</p>
       ${SCHOOL_CHOICES.map(c => `
@@ -11697,7 +12279,31 @@ function screenReveal() {
   // are the map's own annotation rather than a second description, and they
   // are how a student finds their way back to the recommendation after
   // looking around. Closing the parcel brings the block back.
-  const focusBlock = focus && !S._mapOpen ? `      <p class="focus">${focus.detail}</p>
+  // ── Where you stand among students like you ───────────────────────────────
+  // Offered under the detail line, above the button, and only to a student who
+  // has marked at least one course — there is nothing to compare before that.
+  //
+  // THE TAP IS THE CONSENT. Not a checkbox somewhere, not a default, not a
+  // dialogue to dismiss: the button says what it adds, the line underneath
+  // says it is anonymous and removable, and nothing leaves the device until
+  // somebody presses it.
+  //
+  // After opting in this is where the comparison appears. Until the migration
+  // in supabase/migrations/0002 has been run there is nothing to appear — the
+  // server returns nothing and so does this, which is the same thing a student
+  // in a group of three sees.
+  const compareBlock = pickedCount() === 0 ? '' : yearIsStale() ? yearCheckHTML() : compareId() ? compareShownHTML() : `
+      <div class="cmp">
+        <p style="font-size: var(--fs-13);color:var(--muted);line-height:1.55;margin:0 0 8px;">See how your route compares with other ${compareGroupWords()}.</p>
+        <button class="btn btn-ghost" style="margin:0;" onclick="optInToCompare()">Compare my route</button>
+        <p style="font-size: var(--fs-11);color:var(--faint);line-height:1.5;margin:8px 0 0;">Adds your school, year and courses to the comparison, anonymously. You can remove it any time in Settings.</p>
+      </div>`;
+
+  // Under the comparison, and never beside another question: the year is
+  // asked first, because it decides which group this one narrows.
+  const termBlock = pickedCount() === 0 || termAnswered() || yearIsStale() ? '' : termAskHTML();
+
+  const focusBlock = focus && !S._mapOpen ? `      <p class="focus">${focus.detail}</p>${compareBlock}${termBlock}
       <div style="margin-top:18px;margin-bottom:8px;">
         ${PRACTICE
           ? `<button class="btn btn-primary" onclick="startRouteFocus('${focus.topic.id}')">Practice ${focus.n} ${lower(focus.topic.name)} question${focus.n !== 1 ? 's' : ''}</button>`
@@ -12403,6 +13009,9 @@ function go(screen) {
 
 function selectYear(year) {
   S.year = year;
+  // Chosen now, so it is current now: a student who answers today is not asked
+  // again until next August.
+  S.yearChecked = String(academicYear());
   save();
   go('courses');
 }
@@ -13558,6 +14167,9 @@ if (pickedCount() > 0) {
   S.screen = 'reveal';
   if (window.plausible) plausible('app_open');
 }
+// Queued, never awaited, and silent on failure: the Route paints with or
+// without it, and a student who has not opted in never makes the call.
+setTimeout(() => { loadCompare(); }, 0);
 // The boot screen is set here rather than through go(), so the funnel's first
 // step would otherwise never fire for the visitor who matters most.
 trackScreen(S.screen);

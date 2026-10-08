@@ -1,9 +1,19 @@
-# Syllabus parsing — server setup
+# Server setup
 
-This is the one piece of Waypoint that can't live in `index.html`. Parsing a
-syllabus needs an AI API key, and a key that ships to the browser is a key
-anyone can spend. So the call happens in a Supabase Edge Function, where the key
-sits as a project secret.
+Two pieces of Waypoint can't live in `index.html`: **syllabus parsing**, which
+needs an API key, and **route comparison**, which needs a table every student
+writes one row to. Everything else is still one static file.
+
+Steps 1 to 4 are syllabus parsing. Step 5 is comparison, and is independent —
+run either, both, or neither.
+
+---
+
+## Syllabus parsing
+
+Parsing a syllabus needs an AI API key, and a key that ships to the browser is a
+key anyone can spend. So the call happens in a Supabase Edge Function, where the
+key sits as a project secret.
 
 Everything here is inert until it's deployed. The app keeps working on its
 static pacing table exactly as it does today; nothing in `index.html` changes
@@ -125,7 +135,7 @@ delete from public.syllabus_parse_quota where user_id = '<your-user-id>';
 
 ---
 
-## What it costs
+## What syllabus parsing costs
 
 Claude Opus 5, at $5 per million input tokens and $25 per million output. A
 typical syllabus is 2–6k tokens in and under 2k out, so **roughly $0.05–0.09 a
@@ -140,3 +150,73 @@ const MODEL = 'claude-sonnet-5';   // ~40% the input cost, ~60% the output cost
 ```
 
 Redeploy and it takes effect immediately — no other change, no client change.
+
+---
+
+## Route comparison
+
+## Step 5 — Create the comparison table
+
+Dashboard → **SQL Editor** → **New query**, paste the whole of
+[`migrations/0002_route_compare.sql`](migrations/0002_route_compare.sql), and
+run it. It is independent of steps 1–4 and needs no secret and no deploy.
+
+That file creates one table and three functions. **Until you run it, the app is
+exactly today's app**: every call is wrapped so that a missing function is
+indistinguishable from a student who has not opted in, and nothing about
+comparison appears on any screen.
+
+### What the row holds
+
+A random id made in the browser, a school, a year, a coverage figure, two arrays
+of course ids, and a planned test term. **No name, no email, no user id, no
+account link** — nothing in the file references `auth.users`, so a snapshot
+cannot be joined to the student who wrote it. Holding the id is what owning the
+row means, and the id lives only on that student's devices.
+
+### Checking it is shut
+
+Row-level security is on with no policies, the same pattern as step 2, so the
+publishable key can reach the table only through the three functions. With
+`ANON` set to the anon key from Project Settings → API:
+
+```sh
+URL=https://xaldfseldfqctmplfpfu.supabase.co
+```
+
+**The table is unreadable.** Returns `[]`, whatever is in it:
+
+```sh
+curl -sS "$URL/rest/v1/route_snapshot?select=*" -H "apikey: $ANON"
+```
+
+**A comparison for a group that does not exist yet** returns a count and nothing
+else — this is also what every group looks like below twenty:
+
+```sh
+curl -sS "$URL/rest/v1/rpc/route_compare" -H "apikey: $ANON" \
+  -H 'content-type: application/json' -d '{"p_school":"byu","p_year":"junior"}'
+# {"school":{"n":0},"all":{"n":0},"min_n":20}
+```
+
+**Junk is dropped rather than stored.** Coverage above 77 (the ceiling, because
+CARS is 23% and no class teaches it), an unknown school, a 41-course array — all
+return success and write nothing:
+
+```sh
+curl -sS "$URL/rest/v1/rpc/save_route_snapshot" -H "apikey: $ANON" \
+  -H 'content-type: application/json' -d '{
+    "p_id":"00000000-0000-4000-8000-000000000001",
+    "p_school":"hogwarts","p_year":"junior","p_coverage":99,
+    "p_done":[],"p_taking":[]}'
+```
+
+**Removing is real.** `delete_route_snapshot` with the id deletes the row; there
+is no tombstone and no counter left behind.
+
+### Adding a school
+
+`save_route_snapshot` lists the known catalog ids — `generic`, `byu`, `utah`.
+Adding a catalog to `index.html` means adding it to that list in a new
+migration. One line, and the cost of not letting a typo create a group that can
+never reach twenty and so never shows anything.

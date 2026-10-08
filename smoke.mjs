@@ -353,7 +353,13 @@ for (const variant of VARIANTS) {
         // labels were standing in for, and it cannot drift with a typeface.
         const got = await page.evaluate(() => {
           const app = document.getElementById('app');
-          const labels = [...app.querySelectorAll('.pl-name, .pl-sub')];
+          // .cmp-term is hidden for the same reason, one step removed: the
+          // test-term question lists the next seven seatings, so its chips
+          // read "Spring 2027" today and something else next January. A
+          // snapshot of them would fail on a calendar page turn rather than on
+          // a change anybody made. The question has its own test below, where
+          // the date it is run on is the thing being checked.
+          const labels = [...app.querySelectorAll('.pl-name, .pl-sub, .cmp-term')];
           const was = labels.map(e => e.style.display);
           labels.forEach(e => { e.style.display = 'none'; });
           const text = app.innerText.trim();
@@ -380,6 +386,649 @@ for (const variant of VARIANTS) {
 
     await ctx.close();
   }
+}
+
+// ── WHERE YOU STAND, AGAINST A SERVER THAT IS ONLY EVER A FIXTURE ───────────
+// The comparison is the one part of the app whose content comes from outside
+// this repo, so it is checked against mocked replies: every shape
+// route_compare() can return, read back off the rendered page at both widths.
+//
+// The geometry is checked too, not just the words. Each figure in the reply
+// has one place on a scale that runs to 77, and a band drawn anywhere else is
+// a comparison that lies quietly — the sort of bug no sentence catches.
+const COMPARE_ID = '11111111-2222-4333-8444-555555555555';
+
+// What the students further along have finished. Four of these seven must
+// never reach the screen, each for its own reason, which is why they are here.
+const AHEAD = [
+  { course: 'chem481',   share: 0.82 },   // 13% to this student: the first move
+  { course: 'phscs105',  share: 0.71 },   // 3%
+  { course: 'phscs106',  share: 0.64 },   // 3%
+  { course: 'cell305',   share: 0.93 },   // already finished — never offered back
+  { course: 'mmbio240',  share: 0.70 },   // worth nothing on top of what they hold
+  { course: 'ubiol1610', share: 0.58 },   // another catalog's id
+  { course: 'chem999',   share: 0.55 },   // an id this file has never heard of
+];
+
+// How the year is spread across seatings, as route_compare() returns it:
+// shares of the whole group, "not sure" counted among them.
+const TERMS = [
+  { term: '2027-summer', share: 0.38 },
+  { term: 'unsure',      share: 0.31 },
+  { term: '2027-fall',   share: 0.19 },
+  { term: '2028-spring', share: 0.12 },
+];
+
+// p25 / p50 / p75, and what the student reads: 38%.
+const COMPARE_CASES = [
+  { name: 'both groups small',
+    // No band to be in, so no band is reported.
+    event: { group: 'countdown' },
+    reply: { school: { n: 7 }, all: { n: 7 }, min_n: 20 },
+    want:  [/13 more BYU juniors and you'll see where you stand\./],
+    not:   [/middle BYU junior/, /covered/] },
+
+  { name: 'one short of twenty',
+    reply: { school: { n: 19 }, all: { n: 19 }, min_n: 20 },
+    want:  [/1 more BYU junior and/],
+    not:   [/1 more BYU juniors/] },
+
+  { name: 'school small, every school large',
+    event: { group: 'all', band: 'middle' },
+    // The `ahead` list here is one route_compare() will not send: course ids
+    // mean different things in different catalogs, so the all-schools group
+    // has no course list to give. It is in the fixture anyway, because "the
+    // client would ignore it if it arrived" is the property worth holding —
+    // the alternative is a Utah course code on a BYU student's Route the day
+    // somebody adds one server-side.
+    reply: { school: { n: 12 }, all: { n: 40, p25: 30, p50: 41, p75: 55, ahead: AHEAD }, min_n: 20 },
+    want:  [/The middle Waypoint junior at any school has covered 41%\. You've covered 38%\./],
+    // No course list: an id from another school's catalog is not a class this
+    // student can register for, and the server does not send one.
+    not:   [/CHEM/, /ahead of you/],
+    scale: { p25: 30, p50: 41, p75: 55 } },
+
+  { name: 'their own school, large',
+    event: { group: 'school', band: 'middle' },
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: TERMS },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    want:  [/The middle BYU junior has covered 45%\. You've covered 38%\./,
+            /Most BYU juniors ahead of you have finished CHEM 481 \(13% of the exam\), PHSCS 105 & 107 \(3%\) and PHSCS 106 & 108 \(3%\)\./,
+            // The largest plan is 38%, which is not most of anybody.
+            /Summer 2027 is the most common plan among BYU juniors — 38% of them\./],
+    not:   [/CELL 305/, /MMBIO 240/, /chem999/, /Biology I/, /Most BYU juniors plan to test/, /not sure yet\./],
+    scale: { p25: 31, p50: 45, p75: 58 } },
+
+  // ── Testing when you are ────────────────────────────────────────────────
+  { name: 'a seating subgroup of nine',
+    term:  '2027-summer',
+    // Nine is under the floor, so the server sends the count and nothing more
+    // and the figures fall back to the whole year.
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: TERMS,
+                       term_group: { n: 9 } },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    want:  [/The middle BYU junior has covered 45%\. You've covered 38%\./],
+    not:   [/testing in/],
+    scale: { p25: 31, p50: 45, p75: 58 } },
+
+  { name: 'a seating subgroup of twenty-five',
+    term:  '2027-summer',
+    // 38 is under the 42 the middle half of that seating starts at.
+    event: { group: 'school', band: 'lower' },
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: TERMS,
+                       term_group: { n: 25, p25: 42, p50: 52, p75: 63 } },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    // The figures come from the twenty-five sitting it that summer; the course
+    // list still comes from the whole year.
+    want:  [/The middle BYU junior testing in Summer 2027 has covered 52%\. You've covered 38%\./,
+            /Most BYU juniors ahead of you have finished CHEM 481/,
+            /Summer 2027 is the most common plan/],
+    not:   [/has covered 45%/],
+    scale: { p25: 42, p50: 52, p75: 63 } },
+
+  { name: 'most of the year on one seating',
+    term:  '2027-summer',
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD,
+                       terms: [{ term: '2027-summer', share: 0.61 }, { term: 'unsure', share: 0.39 }],
+                       term_group: { n: 25, p25: 42, p50: 52, p75: 63 } },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    want:  [/Most BYU juniors plan to test in Summer 2027\./],
+    not:   [/most common plan/],
+    scale: { p25: 42, p50: 52, p75: 63 } },
+
+  { name: 'a year that mostly has not decided',
+    term:  '2027-summer',
+    // "unsure" leads the distribution. It is counted by the server and never
+    // printed: it is not a plan, and the next real seating is.
+    reply: { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD,
+                       terms: [{ term: 'unsure', share: 0.72 }, { term: '2028-spring', share: 0.28 }],
+                       term_group: { n: 25, p25: 42, p50: 52, p75: 63 } },
+             all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 },
+    want:  [/Spring 2028 is the most common plan among BYU juniors — 28% of them\./],
+    not:   [/unsure/, /Most BYU juniors plan/],
+    scale: { p25: 42, p50: 52, p75: 63 } },
+
+  // Above the median but still inside the middle half: "upper" is about the
+  // band, not about the median, and the two are different questions.
+  { name: 'further along than the middle',
+    event: { group: 'school', band: 'middle' },
+    reply: { school: { n: 34, p25: 18, p50: 29, p75: 44, ahead: AHEAD, terms: [] },
+             all: { n: 61, p25: 20, p50: 31, p75: 48 }, min_n: 20 },
+    want:  [/You've covered more than most BYU juniors\./],
+    not:   [/ahead of you/, /CHEM 481/],
+    scale: { p25: 18, p50: 29, p75: 44 } },
+
+  { name: 'level with the middle',
+    reply: { school: { n: 22, p25: 30, p50: 38, p75: 52, ahead: AHEAD, terms: [] },
+             all: { n: 40, p25: 30, p50: 38, p75: 52 }, min_n: 20 },
+    // One sentence, not the same figure twice.
+    want:  [/The middle BYU junior has covered 38%, and so have you\./],
+    not:   [/You've covered 38%/],
+    scale: { p25: 30, p50: 38, p75: 52 } },
+
+  { name: 'a year earlier in its sequence',
+    event: { group: 'school', band: 'upper' },
+    reply: { school: { n: 22, p25: 12, p50: 19, p75: 27, ahead: [], terms: [] },
+             all: { n: 44, p25: 14, p50: 21, p75: 30 }, min_n: 20 },
+    want:  [/The middle BYU junior has covered 19%\. You've covered 38%\./,
+            /You've covered more than most BYU juniors\./],
+    not:   [/ahead of you/],
+    scale: { p25: 12, p50: 19, p75: 27 } },
+
+  { name: 'the server down',
+    // Nothing shown is nothing counted.
+    event: null,
+    reply: null,
+    want:  [],
+    // Not even the offer: this student opted in, so the only honest thing to
+    // show while the server is unreachable is nothing.
+    not:   [/Compare my route/, /where you stand/, /middle BYU junior/] },
+];
+
+// Never these four, on any screen of a comparison. Coverage is which classes
+// somebody has taken; a word that turns it into a placing or a contest is a
+// different product.
+const BANNED = /\brank(?:ed|ing|s)?\b|\bpercentiles?\b|\bbehind\b|\bbeats?\b/i;
+
+served = VARIANTS[0].src;        // the shipped flag state
+for (const c of COMPARE_CASES) {
+  {
+    const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+    await ctx.route('**', route => {
+      const u = route.request().url();
+      if (u.startsWith(ORIGIN)) return route.continue();
+      if (/\/rpc\/route_compare$/.test(u)) {
+        return c.reply ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(c.reply) })
+                       : route.fulfill({ status: 404, body: '' });
+      }
+      if (/\/rpc\//.test(u)) return route.fulfill({ status: 200, body: '' });   // the writers
+      route.abort();
+    });
+    const page = await ctx.newPage();
+    page.on('pageerror', e => failures.push(`compare / ${c.name}: threw ${String(e).split('\n')[0]}`));
+
+    // index.html's own snippet is `window.plausible = window.plausible || ...`,
+    // so a stub installed first is the one that runs.
+    await page.addInitScript(() => {
+      window.__ev = [];
+      window.plausible = (name, opts) => window.__ev.push({ name, props: (opts && opts.props) || {} });
+    });
+    await page.addInitScript(store => {
+      try { localStorage.clear(); } catch (e) { /* private mode */ }
+      for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+    }, { ...BYU, wp_compare_id: COMPARE_ID, ...(c.term ? { wp_mcat_term: c.term } : {}) });
+
+    await page.goto(`${ORIGIN}/index.html`);
+    await page.waitForTimeout(450);          // the fetch is fired after boot
+    await page.evaluate(() => window.go('reveal'));
+    await page.waitForTimeout(220);
+
+    // Both widths off one load. Nothing about the comparison depends on how
+    // the page was fetched, so resizing is the same test for a fifth of the
+    // wall clock — and this file is run on every push.
+    for (const width of [375, 1280]) {
+    const where = `compare / ${c.name} @ ${width}px`;
+    await page.setViewportSize({ width, height: 1100 });
+    await page.waitForTimeout(120);
+
+    const got = await page.evaluate(() => {
+      const app = document.getElementById('app');
+      // Not .cmp-term: the test-term question sits UNDER the comparison and is
+      // a block of its own, so reading the first .cmp would read the question
+      // whenever the comparison itself has nothing to say.
+      const cmp = document.querySelector('.cmp:not(.cmp-term)');
+      const bar = document.querySelector('.cmp-scale');
+      // Each mark as a percentage of the scale's own width, which is the only
+      // way to ask "is 45% drawn at 45 of 77" without trusting the stylesheet.
+      const place = sel => {
+        const e = bar && bar.querySelector(sel);
+        if (!e) return null;
+        const r = e.getBoundingClientRect(), b = bar.getBoundingClientRect();
+        return { left: (r.left - b.left) / b.width * 100, width: r.width / b.width * 100 };
+      };
+      return {
+        cmp:  cmp ? cmp.innerText : '',
+        route: app.innerText,
+        band: place('.cmp-band'), mid: place('.cmp-mid'), you: place('.cmp-you'),
+        over: app.scrollWidth - app.clientWidth,
+      };
+    }).catch(e => ({ cmp: '(threw) ' + e.message, route: '', over: 0 }));
+
+    for (const re of c.want) if (!re.test(got.cmp)) failures.push(`${where}: no "${re.source}" in "${got.cmp.replace(/\n/g, ' / ').slice(0, 150)}"`);
+    for (const re of c.not)  if (re.test(got.cmp))  failures.push(`${where}: shows "${re.source}", which it must not`);
+    if (!c.want.length && got.cmp) failures.push(`${where}: shows "${got.cmp.slice(0, 80)}" where it must show nothing`);
+    // A class already finished is worth nothing more, whatever the fixture
+    // claims most students ahead have taken. Asserted on the arithmetic rather
+    // than on the screen, because the screen is protected twice — by the
+    // filter that drops a finished course and by the one that drops a course
+    // worth zero — and a test that cannot fail proves nothing.
+    if (!c.scale) { /* checked once per run is enough */ } else {
+      const worthless = await page.evaluate(() => allCourses()
+        .filter(c => S.courses.has(c.id) && S.courseStatus[c.id] !== 'in-progress')
+        .filter(c => courseWouldAdd(c.id) !== 0)
+        .map(c => c.id + ' would add ' + courseWouldAdd(c.id)));
+      for (const w of worthless) failures.push(`${where}: a finished class is still worth something — ${w}`);
+    }
+    // ── What was counted, and what travelled with it ──────────────────────
+    const ev = await page.evaluate(() => window.__ev || []);
+    const shown = ev.filter(x => x.name === 'compare_shown');
+    // `event: null` means expect nothing counted; no `event` key at all means
+    // this case is not about the counting.
+    if (!('event' in c)) { /* not checked here */ }
+    else if (!c.event) {
+      if (shown.length) failures.push(`${where}: counted ${JSON.stringify(shown[0].props)} with nothing on screen`);
+    } else if (!shown.length) {
+      failures.push(`${where}: nothing counted`);
+    } else {
+      if (shown.length > 1) failures.push(`${where}: counted ${shown.length} times in one visit`);
+      const got_ = shown[0].props;
+      if (got_.group !== c.event.group) failures.push(`${where}: counted group "${got_.group}", expected "${c.event.group}"`);
+      if ((got_.band || undefined) !== c.event.band) failures.push(`${where}: counted band "${got_.band}", expected "${c.event.band}"`);
+    }
+    // The hard line: no figure and no course id leaves with an event, in any
+    // property, ever. Checked against this student's own values rather than a
+    // pattern, so it catches a prop nobody thought to look at.
+    const mine = await page.evaluate(() => [String(coverage(S.courses, true)), ...[...S.courses]]);
+    for (const x of ev) {
+      const flat = JSON.stringify(x.props);
+      for (const v of mine) {
+        if (new RegExp('(?<![A-Za-z0-9])' + v + '(?![A-Za-z0-9])').test(flat))
+          failures.push(`${where}: ${x.name} carried "${v}" — ${flat}`);
+      }
+    }
+    const banned = BANNED.exec(got.route);
+    if (banned) failures.push(`${where}: the word "${banned[0]}" is on the Route`);
+    if (got.over > 1) failures.push(`${where}: the page is ${got.over}px wider than its column`);
+
+    // 38% of the way to 77 is 49.4% along, and nothing else is.
+    if (c.scale) {
+      const at = v => v / 77 * 100;
+      const near = (got_, want_, what) => {
+        if (got_ === null || got_ === undefined) return failures.push(`${where}: no ${what} on the scale`);
+        if (Math.abs(got_ - want_) > 1.2) failures.push(`${where}: ${what} drawn at ${got_.toFixed(1)}% of the scale, expected ${want_.toFixed(1)}%`);
+      };
+      near(got.band && got.band.left, at(c.scale.p25), 'the band');
+      near(got.band && got.band.width, at(c.scale.p75) - at(c.scale.p25), "the band's width");
+      near(got.mid && got.mid.left, at(c.scale.p50), 'the median');
+      near(got.you && got.you.left, at(38), 'the student');
+    }
+    }
+    await ctx.close();
+  }
+}
+
+// ── A YEAR ANSWERED LAST SPRING ────────────────────────────────────────────
+// wp_year is answered once and then believed forever, so a student who was a
+// sophomore in May is still a sophomore to this file in October. They are
+// asked before any comparison is drawn, once, and the answer has to stick
+// across a reload — otherwise the question is a nag rather than a correction.
+//
+// The May stamp is fixed rather than computed, and stays stale whenever this
+// is run: the cut is 1 August of the academic year in progress, and no later
+// year's cut falls before May 2026.
+{
+  const STALE = { ...BYU, wp_year: 'sophomore', wp_compare_id: COMPARE_ID,
+                  wp_updated_at: '2026-05-14T18:02:00.000Z' };
+  const reply = { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: [] },
+                  all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 };
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    if (/\/rpc\/route_compare$/.test(u))
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply) });
+    if (/\/rpc\//.test(u)) return route.fulfill({ status: 200, body: '' });
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`stale year: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, STALE);
+
+  const route = async (pg) => {
+    await pg.evaluate(() => window.go('reveal'));
+    await pg.waitForTimeout(220);
+    return pg.evaluate(() => (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '');
+  };
+
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  const asked = await route(page);
+  if (!/Still a sophomore, or a junior now\?/.test(asked))
+    failures.push(`stale year: the Route reads "${asked.replace(/\n/g, ' / ').slice(0, 120)}" instead of asking`);
+  // And it is asked BEFORE any comparison: a figure drawn against the wrong
+  // group is worse than no figure.
+  if (/middle BYU/.test(asked)) failures.push('stale year: compared against last year\'s group before asking');
+
+  const moved = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('#app button')].find(x => /^A junior now$/.test(x.innerText));
+    if (!b) return 'no "A junior now" button';
+    b.click();
+    return null;
+  });
+  if (moved) failures.push(`stale year: ${moved}`);
+  await page.waitForTimeout(400);
+
+  const after = await page.evaluate(() => ({
+    year: localStorage.getItem('wp_year'),
+    stamped: localStorage.getItem('wp_year_checked'),
+    cmp: (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '',
+  }));
+  if (after.year !== 'junior') failures.push(`stale year: wp_year is "${after.year}" after answering`);
+  if (!/^\d{4}$/.test(after.stamped || '')) failures.push(`stale year: wp_year_checked is "${after.stamped}"`);
+  if (/Still a sophomore/.test(after.cmp)) failures.push('stale year: still asking after it was answered');
+
+  // Once, and never again this year — on the next VISIT, which is the only
+  // version of "never again" that means anything. A reload would not do: this
+  // page carries an init script that re-seeds localStorage on every
+  // navigation, so reloading would hand the answer back to May. A second page
+  // in the same context is the real thing — same origin, same storage, no
+  // fixture.
+  const next = await ctx.newPage();
+  next.on('pageerror', e => failures.push(`stale year, next visit: threw ${String(e).split('\n')[0]}`));
+  await next.goto(`${ORIGIN}/index.html`);
+  await next.waitForTimeout(450);
+  const again = await route(next);
+  if (/Still a /.test(again)) failures.push(`stale year: asked again after a reload — "${again.slice(0, 80)}"`);
+  if (!/middle BYU junior/.test(again))
+    failures.push(`stale year: no comparison after answering — "${again.replace(/\n/g, ' / ').slice(0, 120)}"`);
+  await ctx.close();
+}
+
+// ── OPTING IN WITH A YEAR FROM LAST SPRING ─────────────────────────────────
+// The student most likely to have a stale year is the one coming back after a
+// summer away, which is also the one most likely to meet the offer for the
+// first time. So the order matters: nothing may be written under a year the
+// app already doubts, because the server drops a second write to the same row
+// inside thirty seconds and the correction would be the write it drops.
+{
+  const STALE = { ...BYU, wp_year: 'sophomore', wp_updated_at: '2026-05-14T18:02:00.000Z' };
+  const reply = { school: { n: 34, p25: 31, p50: 45, p75: 58, ahead: AHEAD, terms: [] },
+                  all: { n: 61, p25: 28, p50: 43, p75: 56 }, min_n: 20 };
+  const sent = [];
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    const fn = (/\/rpc\/([a-z_]+)$/.exec(u) || [])[1];
+    if (fn) {
+      sent.push({ fn, body: JSON.parse(route.request().postData() || '{}') });
+      if (fn === 'route_compare')
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply) });
+      return route.fulfill({ status: 200, body: '' });
+    }
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`opt in stale: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, STALE);
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  await page.evaluate(() => window.go('reveal'));
+  await page.waitForTimeout(200);
+
+  // Not opted in, so the offer — not the question. Nobody is asked to confirm
+  // a year for a comparison they have not joined.
+  const first = await page.evaluate(() => (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '');
+  if (!/Compare my route/.test(first)) failures.push(`opt in stale: no offer, read "${first.slice(0, 90)}"`);
+  if (/Still a sophomore/.test(first)) failures.push('opt in stale: asked about the year before being offered the comparison');
+  if (sent.length) failures.push(`opt in stale: ${sent[0].fn} was called before anyone opted in`);
+
+  await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /Compare my route/.test(x.innerText)).click(); });
+  await page.waitForTimeout(500);
+  const asked = await page.evaluate(() => (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '');
+  if (!/Still a sophomore, or a junior now\?/.test(asked))
+    failures.push(`opt in stale: after opting in it reads "${asked.replace(/\n/g, ' / ').slice(0, 110)}"`);
+  const early = sent.find(x => x.fn === 'save_route_snapshot');
+  if (early) failures.push(`opt in stale: a snapshot went out saying year "${early.body.p_year}" before the question was answered`);
+
+  await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /^A junior now$/.test(x.innerText)).click(); });
+  await page.waitForTimeout(600);
+  const wrote = sent.filter(x => x.fn === 'save_route_snapshot');
+  if (wrote.length !== 1) failures.push(`opt in stale: ${wrote.length} snapshots written after answering, expected 1`);
+  else if (wrote[0].body.p_year !== 'junior') failures.push(`opt in stale: the snapshot says year "${wrote[0].body.p_year}"`);
+  const shown = await page.evaluate(() => (document.querySelector('.cmp:not(.cmp-term)') || {}).innerText || '');
+  if (!/middle BYU junior/.test(shown))
+    failures.push(`opt in stale: no comparison after answering — "${shown.replace(/\n/g, ' / ').slice(0, 110)}"`);
+  await ctx.close();
+}
+
+// ── WHEN YOU PLAN TO TEST ──────────────────────────────────────────────────
+// Asked once, on the Route, whether or not the student has opted in — the
+// answer is theirs either way. Three things have to hold, and only one of them
+// is about what is on screen:
+//   every term offered is still to come, measured against the machine's own
+//     clock, because a list of seatings is only right on the day it is read;
+//   "Not sure yet" counts as an answer here and as nothing at all to the
+//     server, whose column takes a term or null and drops the entire write
+//     for anything else;
+//   once answered it never comes back.
+{
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  const sent = [];
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    const fn = (/\/rpc\/([a-z_]+)$/.exec(u) || [])[1];
+    if (fn) {
+      sent.push({ fn, body: JSON.parse(route.request().postData() || '{}') });
+      if (fn === 'route_compare')
+        return route.fulfill({ status: 200, contentType: 'application/json',
+                               body: JSON.stringify({ school: { n: 3 }, all: { n: 3 }, min_n: 20 }) });
+      return route.fulfill({ status: 200, body: '' });
+    }
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`test term: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(() => {
+    window.__ev = [];
+    window.plausible = (name, opts) => window.__ev.push({ name, props: (opts && opts.props) || {} });
+  });
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, { ...BYU, wp_compare_id: COMPARE_ID });
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  await page.evaluate(() => window.go('reveal'));
+  await page.waitForTimeout(220);
+
+  const asked = await page.evaluate(() => {
+    const el = document.querySelector('.cmp-term');
+    return { text: el ? el.innerText : '',
+             chips: el ? [...el.querySelectorAll('.term-chip')].map(b => b.innerText.trim()) : [] };
+  });
+  if (!/When do you plan to take the MCAT\?/.test(asked.text))
+    failures.push(`test term: not asked — "${asked.text.slice(0, 90)}"`);
+  if (asked.chips.length !== 8)
+    failures.push(`test term: ${asked.chips.length} choices, expected seven terms and "Not sure yet"`);
+  if (asked.chips[asked.chips.length - 1] !== 'Not sure yet')
+    failures.push(`test term: the last choice is "${asked.chips[asked.chips.length - 1]}"`);
+
+  // Every seating offered is still ahead. Read off the rendered labels and
+  // checked against the clock, so the day this starts being wrong is the day
+  // it fails, wherever it is run.
+  const SEASON_END = { Spring: 4, Summer: 6, Fall: 8 };      // May, July, September
+  const now = new Date();
+  for (const label of asked.chips.slice(0, -1)) {
+    const [season, year] = label.split(' ');
+    if (!(season in SEASON_END)) { failures.push(`test term: "${label}" is not a season`); continue; }
+    const last = new Date(Number(year), SEASON_END[season] + 1, 0);   // the end of its last month
+    if (last < now) failures.push(`test term: "${label}" has already been sat`);
+  }
+  const terms = new Set(asked.chips.slice(0, -1));
+  if (terms.size !== asked.chips.length - 1) failures.push('test term: the same seating is offered twice');
+
+  // Answering with a real term: stored, and sent as itself.
+  sent.length = 0;
+  await page.evaluate(() => { [...document.querySelectorAll('.cmp-term .term-chip')][1].click(); });
+  await page.waitForTimeout(600);
+  const second = asked.chips[1].split(' ');
+  const want = `${second[1]}-${second[0].toLowerCase()}`;
+  const stored = await page.evaluate(() => localStorage.getItem('wp_mcat_term'));
+  if (stored !== want) failures.push(`test term: stored "${stored}" after tapping "${asked.chips[1]}", expected "${want}"`);
+  const q = sent.find(x => x.fn === 'route_compare');
+  if (!q) failures.push('test term: the comparison was not asked again for the narrower group');
+  else if (q.body.p_mcat_term !== want) failures.push(`test term: the comparison asked for "${q.body.p_mcat_term}"`);
+  const w = sent.find(x => x.fn === 'save_route_snapshot');
+  if (w && w.body.p_mcat_term !== want) failures.push(`test term: the snapshot says "${w.body.p_mcat_term}"`);
+  const gone = await page.evaluate(() => !document.querySelector('.cmp-term'));
+  if (!gone) failures.push('test term: still asking after it was answered');
+
+  // Counted, and the Saturday they picked stays on the device.
+  const set = (await page.evaluate(() => window.__ev)).filter(x => x.name === 'mcat_term_set');
+  if (set.length !== 1) failures.push(`test term: ${set.length} mcat_term_set events, expected 1`);
+  else if (Object.keys(set[0].props).length) failures.push(`test term: mcat_term_set carried ${JSON.stringify(set[0].props)}`);
+  // Tapping the same chip again is not a second answer.
+  await page.evaluate(() => window.setMcatTerm(localStorage.getItem('wp_mcat_term')));
+  await page.waitForTimeout(300);
+  const again_ = (await page.evaluate(() => window.__ev)).filter(x => x.name === 'mcat_term_set');
+  if (again_.length !== 1) failures.push(`test term: answering the same way twice counted ${again_.length} times`);
+
+  // And on the next visit — a second page in the same storage, not a reload,
+  // which would re-seed the fixture.
+  const next = await ctx.newPage();
+  next.on('pageerror', e => failures.push(`test term, next visit: threw ${String(e).split('\n')[0]}`));
+  await next.goto(`${ORIGIN}/index.html`);
+  await next.waitForTimeout(450);
+  await next.evaluate(() => window.go('reveal'));
+  await next.waitForTimeout(220);
+  if (await next.evaluate(() => !!document.querySelector('.cmp-term')))
+    failures.push('test term: asked again on the next visit');
+  await ctx.close();
+}
+
+// ── "NOT SURE YET" IS AN ANSWER HERE AND NOTHING THERE ─────────────────────
+// The one value that must never reach the server: save_route_snapshot drops
+// the whole write for a term it does not recognise, so a student who said
+// "not sure" would silently stop updating their row.
+{
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  const sent = [];
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    const fn = (/\/rpc\/([a-z_]+)$/.exec(u) || [])[1];
+    if (fn) {
+      sent.push({ fn, body: JSON.parse(route.request().postData() || '{}') });
+      if (fn === 'route_compare')
+        return route.fulfill({ status: 200, contentType: 'application/json',
+                               body: JSON.stringify({ school: { n: 3 }, all: { n: 3 }, min_n: 20 }) });
+      return route.fulfill({ status: 200, body: '' });
+    }
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`not sure: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, { ...BYU, wp_compare_id: COMPARE_ID });
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  await page.evaluate(() => window.go('reveal'));
+  await page.waitForTimeout(220);
+  sent.length = 0;
+  await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('.cmp-term .term-chip')];
+    chips[chips.length - 1].click();
+  });
+  await page.waitForTimeout(600);
+  const stored = await page.evaluate(() => localStorage.getItem('wp_mcat_term'));
+  if (stored !== 'unsure') failures.push(`not sure: stored "${stored}" on the device`);
+  for (const x of sent) {
+    if (!('p_mcat_term' in x.body)) continue;
+    if (x.body.p_mcat_term !== null)
+      failures.push(`not sure: ${x.fn} was sent "${x.body.p_mcat_term}", which the column rejects`);
+  }
+  if (!sent.length) failures.push('not sure: nothing was sent at all');
+  if (await page.evaluate(() => !!document.querySelector('.cmp-term')))
+    failures.push('not sure: still asking after "Not sure yet"');
+  await ctx.close();
+}
+
+// ── WHAT THE OPT-IN AND THE REMOVAL COUNT ──────────────────────────────────
+// compare_opt_in carries the school, because which catalogs are worth
+// checking is the decision it informs. compare_removed carries nothing at
+// all: a student leaving is a count, not a case study.
+{
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 1100 } });
+  await ctx.route('**', route => {
+    const u = route.request().url();
+    if (u.startsWith(ORIGIN)) return route.continue();
+    if (/\/rpc\/route_compare$/.test(u))
+      return route.fulfill({ status: 200, contentType: 'application/json',
+                             body: JSON.stringify({ school: { n: 4 }, all: { n: 4 }, min_n: 20 }) });
+    if (/\/rpc\//.test(u)) return route.fulfill({ status: 200, body: '' });
+    route.abort();
+  });
+  const page = await ctx.newPage();
+  page.on('pageerror', e => failures.push(`compare events: threw ${String(e).split('\n')[0]}`));
+  await page.addInitScript(() => {
+    window.__ev = [];
+    window.plausible = (name, opts) => window.__ev.push({ name, props: (opts && opts.props) || {} });
+  });
+  await page.addInitScript(store => {
+    try { localStorage.clear(); } catch (e) { /* private mode */ }
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v);
+  }, { ...BYU, wp_mcat_term: '2027-summer' });
+  await page.goto(`${ORIGIN}/index.html`);
+  await page.waitForTimeout(450);
+  await page.evaluate(() => window.go('reveal'));
+  await page.waitForTimeout(220);
+
+  await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /Compare my route/.test(x.innerText)).click(); });
+  await page.waitForTimeout(600);
+  const inEv = (await page.evaluate(() => window.__ev)).filter(x => x.name === 'compare_opt_in');
+  if (inEv.length !== 1) failures.push(`compare events: ${inEv.length} compare_opt_in events`);
+  else if (inEv[0].props.school !== 'byu') failures.push(`compare events: opted in as "${inEv[0].props.school}"`);
+
+  await page.evaluate(() => window.go('settings'));
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { [...document.querySelectorAll('#app button')].find(x => /Remove my route/.test(x.innerText)).click(); });
+  await page.waitForTimeout(500);
+  const out = (await page.evaluate(() => window.__ev)).filter(x => x.name === 'compare_removed');
+  if (out.length !== 1) failures.push(`compare events: ${out.length} compare_removed events`);
+  else if (Object.keys(out[0].props).length) failures.push(`compare events: compare_removed carried ${JSON.stringify(out[0].props)}`);
+
+  // And nothing anywhere in the session's analytics carries a figure, a
+  // course id, or the id that owns the row.
+  const all = await page.evaluate(() => window.__ev);
+  const secrets = await page.evaluate(() => [String(coverage(S.courses, true)), ...[...S.courses]]);
+  for (const x of all) {
+    const flat = JSON.stringify(x.props);
+    if (/[0-9a-f]{8}-[0-9a-f]{4}-/.test(flat)) failures.push(`compare events: ${x.name} carried a snapshot id`);
+    for (const v of secrets)
+      if (new RegExp('(?<![A-Za-z0-9])' + v + '(?![A-Za-z0-9])').test(flat))
+        failures.push(`compare events: ${x.name} carried "${v}" — ${flat}`);
+  }
+  await ctx.close();
 }
 
 await browser.close();
